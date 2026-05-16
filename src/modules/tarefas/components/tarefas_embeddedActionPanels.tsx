@@ -275,13 +275,19 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     const pad = (n: number) => n.toString().padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
+  type ItemPlano = {
+    tipo: "foto" | "video" | "audio" | "texto";
+    titulo: string;
+    obrigatorio: boolean;
+  };
   const [planos, setPlanos] = useState<Record<string, {
     descricao_acao: string;
     prazo: string;
     prazo_padrao: string;
     justificativa_alteracao_prazo: string;
     criticidade: "baixa" | "media" | "alta";
-    tipo_evidencia_exigida: "foto" | "video" | "audio" | "descricao" | "nenhuma";
+    tipo_evidencia_exigida: string;
+    itens_plano: ItemPlano[];
   }>>({});
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   // Por NC, o aprovador escolhe se vira plano de ação ou só devolução para refazer
