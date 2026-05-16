@@ -1232,11 +1232,14 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   {/* Botões como o executor marcou — bloqueados */}
                   <div className="flex gap-2">
                     {getReviewOptions(f, "aprovador").map((opt) => {
-                      const marcado = execAnswer?.valor_booleano === true
-                        ? opt.v === "conforme" || opt.v === "sim"
-                        : execAnswer?.valor_booleano === false
-                        ? opt.v === "nao_conforme" || opt.v === "nao"
-                        : execAnswer?.resposta === opt.v;
+                      const optStatus = normalizeAnswer(opt.v);
+                      const marcado = execAnswerStatus
+                        ? optStatus === execAnswerStatus
+                        : (execAnswer?.valor_booleano === true
+                            ? (opt.v === "conforme" || opt.v === "sim")
+                            : execAnswer?.valor_booleano === false
+                            ? (opt.v === "nao_conforme" || opt.v === "nao")
+                            : execAnswer?.resposta === opt.v);
                       return (
                         <div key={opt.v}
                           className={`flex-1 text-xs px-2 py-2 rounded border text-center font-medium transition-none ${marcado ? opt.cls + " ring-2 ring-current/20" : "border-border text-muted-foreground opacity-40"}`}>
