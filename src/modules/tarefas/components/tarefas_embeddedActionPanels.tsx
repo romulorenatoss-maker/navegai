@@ -1232,11 +1232,50 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                 {allowedActions.length > 0 && (
                   <div className="border-t border-border/50 pt-2 space-y-1">
                     <Label className="text-[11px]">Tratamento desta resposta</Label>
-                    <div className="mt-1">
-                      <div className="py-1.5 px-2 rounded text-xs border bg-primary/10 border-primary text-primary text-center font-medium">
-                        Plano de ação
+                    {/* Campos inline do plano de ação — aparecem direto ao marcar Não Conforme */}
+                    <div className="mt-2 border border-amber-300 dark:border-amber-800 rounded-lg overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800">
+                        <ClipboardList className="w-3.5 h-3.5 text-amber-700 shrink-0" aria-hidden="true" />
+                        <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">Plano de ação</span>
                       </div>
-                      <p className="text-[10px] text-muted-foreground mt-1">Será criado um plano de ação com prazo na próxima etapa.</p>
+                      <div className="p-3 space-y-2">
+                        {/* Instrução */}
+                        <div className="space-y-1">
+                          <Label className="text-[11px]">O que precisa ser feito *</Label>
+                          <Textarea
+                            value={planos[f.id]?.descricao_acao ?? ""}
+                            onChange={e => setPlanos(prev => ({ ...prev, [f.id]: { ...prev[f.id] ?? { prazo: computeDefaultPrazo(), prazo_padrao: computeDefaultPrazo(), justificativa_alteracao_prazo: "", criticidade: "media" as const, tipo_evidencia_exigida: "descricao" }, descricao_acao: e.target.value } }))}
+                            className="text-xs min-h-[48px]"
+                            placeholder="Descreva o que precisa ser corrigido..."
+                          />
+                        </div>
+                        {/* Evidência exigida */}
+                        <div className="space-y-1">
+                          <Label className="text-[11px]">Evidência exigida do executor</Label>
+                          <div className="flex gap-1.5 flex-wrap">
+                            {([
+                              { v: "foto", label: "📷 Foto" },
+                              { v: "video", label: "🎥 Vídeo" },
+                              { v: "audio", label: "🎵 Áudio" },
+                              { v: "descricao", label: "✏️ Texto" },
+                              { v: "nenhuma", label: "Nenhuma" },
+                            ] as const).map(opt => (
+                              <button key={opt.v} type="button"
+                                onClick={() => setPlanos(prev => ({ ...prev, [f.id]: { ...prev[f.id] ?? { descricao_acao: "", prazo: computeDefaultPrazo(), prazo_padrao: computeDefaultPrazo(), justificativa_alteracao_prazo: "", criticidade: "media" as const }, tipo_evidencia_exigida: opt.v } }))}
+                                className={`px-2 py-1 rounded border text-[11px] transition-colors ${(planos[f.id]?.tipo_evidencia_exigida ?? "descricao") === opt.v ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}
+                              >{opt.label}</button>
+                            ))}
+                          </div>
+                        </div>
+                        {/* Prazo */}
+                        <div className="space-y-1">
+                          <Label className="text-[11px]">Prazo para resolver (SLA padrão: {prazoPadraoHoras}h)</Label>
+                          <Input type="datetime-local" className="h-8 text-xs"
+                            value={planos[f.id]?.prazo ?? computeDefaultPrazo()}
+                            onChange={e => setPlanos(prev => ({ ...prev, [f.id]: { ...prev[f.id] ?? { descricao_acao: "", prazo_padrao: computeDefaultPrazo(), justificativa_alteracao_prazo: "", criticidade: "media" as const, tipo_evidencia_exigida: "descricao" }, prazo: e.target.value } }))}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
