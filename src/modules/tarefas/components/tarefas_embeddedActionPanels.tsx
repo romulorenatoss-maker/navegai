@@ -489,12 +489,8 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     [perguntasComAcao, acaoPorNC, flow.approverAnswers, flow.existingApprovalAnswers]
   );
   const naoConformesDevolver = useMemo(
-    () => perguntasComAcao.filter(f => {
-      const v = flow.approverAnswers[f.id]?.resposta ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta;
-      const rule = v ? getRuleForResposta(f, v, "aprovador") : null;
-      return getAllowedActions(rule).includes("devolver") && (acaoPorNC[f.id] ?? getDefaultReviewAction(rule)) === "devolver";
-    }),
-    [perguntasComAcao, acaoPorNC, flow.approverAnswers, flow.existingApprovalAnswers]
+    () => [] as typeof approverFields,
+    []
   );
 
   const irParaPlano = () => {
