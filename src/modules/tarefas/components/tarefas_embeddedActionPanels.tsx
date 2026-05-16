@@ -1321,19 +1321,10 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             }}
             disabled={flow.isSaving || blockReasons.length > 0}
             className="bg-amber-600 hover:bg-amber-700 text-white"
-            title={
-              naoConformesPlano.length > 0 && naoConformesDevolver.length > 0
-                ? `${naoConformesPlano.length} plano(s) + ${naoConformesDevolver.length} devolução(ões)`
-                : naoConformesPlano.length > 0
-                ? `${naoConformesPlano.length} plano(s) de ação`
-                : `${naoConformesDevolver.length} devolução(ões)`
-            }
+            title={`${perguntasComAcao.length} item(s) para plano de ação`}
           >
             <ClipboardList className="w-3.5 h-3.5 mr-1" />
-            Finalizar revisão ({perguntasComAcao.length} ação
-            {naoConformesPlano.length > 0 && naoConformesDevolver.length > 0
-              ? `: ${naoConformesPlano.length} plano + ${naoConformesDevolver.length} devolver`
-              : ""})
+            Finalizar revisão ({perguntasComAcao.length} ação)
           </Button>
         ) : (
           <Button
