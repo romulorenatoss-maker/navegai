@@ -1289,6 +1289,7 @@ export type Database = {
           flag_prazo_alterado: boolean | null
           herdada: boolean | null
           id: string
+          itens_plano: Json | null
           justificativa_alteracao_prazo: string | null
           justificativa_atraso: string | null
           justificativa_atraso_anexo_url: string | null
@@ -1314,6 +1315,7 @@ export type Database = {
           flag_prazo_alterado?: boolean | null
           herdada?: boolean | null
           id?: string
+          itens_plano?: Json | null
           justificativa_alteracao_prazo?: string | null
           justificativa_atraso?: string | null
           justificativa_atraso_anexo_url?: string | null
@@ -1339,6 +1341,7 @@ export type Database = {
           flag_prazo_alterado?: boolean | null
           herdada?: boolean | null
           id?: string
+          itens_plano?: Json | null
           justificativa_alteracao_prazo?: string | null
           justificativa_atraso?: string | null
           justificativa_atraso_anexo_url?: string | null
@@ -1875,6 +1878,7 @@ export type Database = {
           descricao: string
           id: string
           impacto_score: number | null
+          itens_plano: Json | null
           justificativa_rejeicao: string | null
           motivo_instrucao: string | null
           numero_contingencia: number
@@ -1901,6 +1905,7 @@ export type Database = {
           descricao: string
           id?: string
           impacto_score?: number | null
+          itens_plano?: Json | null
           justificativa_rejeicao?: string | null
           motivo_instrucao?: string | null
           numero_contingencia?: number
@@ -1927,6 +1932,7 @@ export type Database = {
           descricao?: string
           id?: string
           impacto_score?: number | null
+          itens_plano?: Json | null
           justificativa_rejeicao?: string | null
           motivo_instrucao?: string | null
           numero_contingencia?: number
@@ -2274,6 +2280,7 @@ export type Database = {
           field_id: string
           id: string
           instrucao_aprovador: string | null
+          itens_plano: Json | null
           motivo_devolucao: string | null
           observacao: string | null
           reincidencia_ref: string | null
@@ -2291,6 +2298,7 @@ export type Database = {
           field_id: string
           id?: string
           instrucao_aprovador?: string | null
+          itens_plano?: Json | null
           motivo_devolucao?: string | null
           observacao?: string | null
           reincidencia_ref?: string | null
@@ -2308,6 +2316,7 @@ export type Database = {
           field_id?: string
           id?: string
           instrucao_aprovador?: string | null
+          itens_plano?: Json | null
           motivo_devolucao?: string | null
           observacao?: string | null
           reincidencia_ref?: string | null
