@@ -332,6 +332,8 @@ export function useApprovalFlow(assignmentId: string | null) {
         anexo_url?: string | null;
         responsavel_profile_id?: string | null;
         criticidade: "baixa" | "media" | "alta";
+        tipo_evidencia_exigida?: string;
+        itens_plano?: Array<{ tipo: "foto" | "video" | "audio" | "texto"; titulo: string; obrigatorio: boolean }>;
       }>;
       motivoGeral?: string;
     }) => {
