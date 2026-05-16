@@ -1151,7 +1151,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                 <div className="px-3 py-2.5 bg-muted/20 border-b border-border space-y-2">
                   {/* Botões como o executor marcou — bloqueados */}
                   <div className="flex gap-2">
-                    {getReviewOptions(f, "executor").map((opt) => {
+                    {getReviewOptions(f, "aprovador").map((opt) => {
                       const marcado = execAnswer?.valor_booleano === true
                         ? opt.v === "conforme" || opt.v === "sim"
                         : execAnswer?.valor_booleano === false
