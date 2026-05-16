@@ -1233,29 +1233,38 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   <div className="flex gap-2">
                     {getReviewOptions(f, "aprovador").map((opt) => {
                       const optStatus = normalizeAnswer(opt.v);
-                      const marcado = execAnswerStatus
-                        ? optStatus === execAnswerStatus
+                      const originalValueNorm = execAnswerStatus;
+                      const isSelected = originalValueNorm
+                        ? optStatus === originalValueNorm
                         : (execAnswer?.valor_booleano === true
                             ? (opt.v === "conforme" || opt.v === "sim")
                             : execAnswer?.valor_booleano === false
                             ? (opt.v === "nao_conforme" || opt.v === "nao")
                             : execAnswer?.resposta === opt.v);
-                      const highlightCls = marcado
-                        ? (optStatus === "conforme"
-                            ? "bg-emerald-100 border-emerald-500 text-emerald-800 ring-2 ring-emerald-300"
-                            : optStatus === "nao_conforme"
-                            ? "bg-red-100 border-red-500 text-red-800 ring-2 ring-red-300"
-                            : optStatus === "na"
-                            ? "bg-slate-200 border-slate-500 text-slate-800 ring-2 ring-slate-300"
-                            : "bg-primary/10 border-primary text-primary ring-2 ring-primary/30")
-                        : "border-border text-muted-foreground opacity-40";
+                      const aliases = optionAliases(opt.v);
+                      const cls = isSelected
+                        ? aliases.includes("conforme")
+                          ? "bg-emerald-600 text-white border-emerald-700 opacity-100"
+                          : aliases.includes("nao_conforme")
+                          ? "bg-red-600 text-white border-red-700 opacity-100"
+                          : "bg-slate-600 text-white border-slate-700 opacity-100"
+                        : "border-muted bg-background text-muted-foreground opacity-40";
                       return (
                         <div key={opt.v}
-                          className={`flex-1 text-xs px-2 py-2 rounded border text-center font-medium transition-none ${highlightCls}`}>
-                          {marcado && "✓ "}{opt.label}
+                          className={`flex-1 text-xs px-2 py-2 rounded border text-center font-medium transition-none ${cls}`}>
+                          {isSelected && "✓ "}{opt.label}
                         </div>
                       );
                     })}
+                  </div>
+                  <div className="text-[11px] font-medium text-muted-foreground">
+                    Resposta do executor:
+                    <span className="ml-1 text-foreground">
+                      {execAnswerStatus === "conforme" ? "Conforme"
+                        : execAnswerStatus === "nao_conforme" ? "Não Conforme"
+                        : execAnswerStatus === "na" ? "N/A"
+                        : (getAnswerValue(execAnswer) ?? "Sem resposta")}
+                    </span>
                   </div>
                   {/* Observação do executor */}
                   {execObservation && (
