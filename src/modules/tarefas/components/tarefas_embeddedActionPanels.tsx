@@ -25,6 +25,83 @@ import { useAuditFlow } from "@/modules/tarefas/hooks/tarefas_useAuditFlow";
 import { ReviewFieldCard } from "@/modules/tarefas/components/tarefas_reviewFieldCard";
 import { SnapshotField, evaluateVisibility } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 
+/* =========================================================================
+ * Helpers defensivos de leitura (somente UI) — não alteram dados.
+ * Tolerantes a variações de nomes de campos retornados pelo flow.
+ * ========================================================================= */
+const sameId = (a: any, b: any) => String(a ?? "") === String(b ?? "");
+
+const normalizeAnswer = (value: any): "conforme" | "nao_conforme" | "na" | null => {
+  if (value === true) return "conforme";
+  if (value === false) return "nao_conforme";
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (!raw) return null;
+  if (["conforme", "ok", "true", "sim", "c"].includes(raw)) return "conforme";
+  if (["nao_conforme", "não conforme", "nao conforme", "nc", "false", "nao", "não", "n"].includes(raw)) return "nao_conforme";
+  if (["na", "n/a", "nao_aplica", "não aplica", "nao aplica", "nao se aplica", "não se aplica", "nao_se_aplica"].includes(raw)) return "na";
+  return null;
+};
+
+const getFieldId = (item: any) =>
+  item?.field_id ?? item?.campo_id ?? item?.pergunta_id ?? item?.question_id ?? item?.checklist_item_id ?? null;
+
+const getAnswerValue = (item: any) => {
+  if (item == null) return null;
+  if (item.valor_booleano === true) return "conforme";
+  if (item.valor_booleano === false) return "nao_conforme";
+  return item?.resposta ?? item?.answer ?? item?.valor ?? item?.value ?? item?.status ?? item?.resultado ?? null;
+};
+
+const getObservation = (item: any) =>
+  item?.observacao ?? item?.observation ?? item?.comentario ?? item?.comment ?? item?.justificativa ?? "";
+
+const getEvidence = (item: any) =>
+  item?.evidencia_url ?? item?.evidencia ?? item?.evidence ?? item?.arquivo ?? item?.anexo ?? item?.attachment ?? item?.attachments ?? item?.file_url ?? item?.url ?? null;
+
+const findOriginalFieldAnswer = (field: any, flow: any) => {
+  const answers = Array.isArray(flow?.fieldAnswers) ? flow.fieldAnswers : [];
+  // resposta original = rodada 1 (ou sem rodada)
+  const matches = answers.filter((a: any) => sameId(getFieldId(a), field?.id));
+  if (matches.length === 0) return null;
+  const original = matches.find((a: any) => {
+    const r = Number(a?.rodada ?? a?.round ?? 1);
+    return r <= 1;
+  });
+  return original ?? matches[0];
+};
+
+const findExecutorPlanResponse = (field: any, review: any, contingency: any, flow: any) => {
+  const answers = Array.isArray(flow?.fieldAnswers) ? flow.fieldAnswers : [];
+  const reviewId = review?.id;
+  const contingencyId = contingency?.id;
+  const reviewRound = Number(review?.rodada ?? review?.round ?? 0);
+
+  return answers.find((answer: any) => {
+    if (reviewId && (
+      sameId(answer?.plano_acao_id, reviewId) ||
+      sameId(answer?.field_review_id, reviewId) ||
+      sameId(answer?.review_id, reviewId) ||
+      sameId(answer?.devolucao_id, reviewId) ||
+      sameId(answer?.parent_id, reviewId)
+    )) return true;
+
+    if (contingencyId && sameId(answer?.contingency_id, contingencyId)) return true;
+
+    if (!sameId(getFieldId(answer), field?.id)) return false;
+
+    const answerRound = Number(answer?.rodada ?? answer?.round ?? 0);
+    const answerPlanRound = Number(answer?.rodada_plano ?? answer?.plan_round ?? 0);
+    const answerType = String(answer?.tipo ?? answer?.type ?? answer?.kind ?? "").toLowerCase();
+
+    return (
+      answerRound === reviewRound + 1 ||
+      answerPlanRound === reviewRound ||
+      answerType.includes("plano") ||
+      answerType.includes("devolucao") ||
+      answerType.includes("devolução")
+    );
+  }) ?? null;
+};
 
 /* =========================================================================
  * EmbeddedReviewPanel — usado quando current user é avaliador
@@ -1125,7 +1202,10 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             const value = draft?.resposta ?? existing?.resposta ?? "";
             const obs = draft?.observacao ?? existing?.observacao ?? "";
             const evid = draft?.evidencia_url ?? existing?.evidencia_url ?? null;
-            const execAnswer = (flow.fieldAnswers || []).find((a: any) => a.field_id === f.id);
+            const execAnswer = findOriginalFieldAnswer(f, flow);
+            const execAnswerStatus = normalizeAnswer(getAnswerValue(execAnswer));
+            const execObservation = getObservation(execAnswer);
+            const execEvidence = getEvidence(execAnswer);
             const selectedRule = value ? getRuleForResposta(f, value, "aprovador") : null;
             const allowedActions = getAllowedActions(selectedRule);
             const selectedAction = acaoPorNC[f.id] ?? getDefaultReviewAction(selectedRule);
@@ -1152,11 +1232,14 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   {/* Botões como o executor marcou — bloqueados */}
                   <div className="flex gap-2">
                     {getReviewOptions(f, "aprovador").map((opt) => {
-                      const marcado = execAnswer?.valor_booleano === true
-                        ? opt.v === "conforme" || opt.v === "sim"
-                        : execAnswer?.valor_booleano === false
-                        ? opt.v === "nao_conforme" || opt.v === "nao"
-                        : execAnswer?.resposta === opt.v;
+                      const optStatus = normalizeAnswer(opt.v);
+                      const marcado = execAnswerStatus
+                        ? optStatus === execAnswerStatus
+                        : (execAnswer?.valor_booleano === true
+                            ? (opt.v === "conforme" || opt.v === "sim")
+                            : execAnswer?.valor_booleano === false
+                            ? (opt.v === "nao_conforme" || opt.v === "nao")
+                            : execAnswer?.resposta === opt.v);
                       return (
                         <div key={opt.v}
                           className={`flex-1 text-xs px-2 py-2 rounded border text-center font-medium transition-none ${marcado ? opt.cls + " ring-2 ring-current/20" : "border-border text-muted-foreground opacity-40"}`}>
@@ -1166,33 +1249,36 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                     })}
                   </div>
                   {/* Observação do executor */}
-                  {execAnswer?.observacao && (
-                    <p className="text-xs text-foreground">{execAnswer.observacao}</p>
+                  {execObservation && (
+                    <p className="text-xs text-foreground">{execObservation}</p>
                   )}
                   {/* Evidência do executor */}
-                  {execAnswer?.evidencia_url && (
-                    <div className="bg-card border border-border rounded-md overflow-hidden">
-                      <div className="px-2 py-1.5 bg-blue-50 dark:bg-blue-950/20 border-b border-border flex items-center gap-1.5">
-                        <span className="text-[10px] font-medium text-blue-800 dark:text-blue-400">
-                          {/\.(jpg|jpeg|png|gif|webp)$/i.test(execAnswer.evidencia_url) ? "📷 Foto anexada" : /\.(mp4|webm|mov)$/i.test(execAnswer.evidencia_url) ? "🎥 Vídeo anexado" : /\.(mp3|wav|ogg|m4a)$/i.test(execAnswer.evidencia_url) ? "🎵 Áudio anexado" : "📎 Arquivo anexado"}
-                        </span>
+                  {execEvidence && (() => {
+                    const url = String(execEvidence);
+                    return (
+                      <div className="bg-card border border-border rounded-md overflow-hidden">
+                        <div className="px-2 py-1.5 bg-blue-50 dark:bg-blue-950/20 border-b border-border flex items-center gap-1.5">
+                          <span className="text-[10px] font-medium text-blue-800 dark:text-blue-400">
+                            {/\.(jpg|jpeg|png|gif|webp)$/i.test(url) ? "📷 Foto anexada" : /\.(mp4|webm|mov)$/i.test(url) ? "🎥 Vídeo anexado" : /\.(mp3|wav|ogg|m4a)$/i.test(url) ? "🎵 Áudio anexado" : "📎 Arquivo anexado"}
+                          </span>
+                        </div>
+                        <div className="p-2">
+                          {/\.(jpg|jpeg|png|gif|webp)$/i.test(url) ? (
+                            <div className="flex gap-2 items-center">
+                              <img src={url} alt="Evidência" className="w-14 h-10 rounded border border-border object-cover cursor-pointer" onClick={() => window.open(url, "_blank")} />
+                              <a href={url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver em tela cheia</a>
+                            </div>
+                          ) : /\.(mp4|webm|mov)$/i.test(url) ? (
+                            <video src={url} controls playsInline className="w-full max-h-40 rounded border border-border" />
+                          ) : /\.(mp3|wav|ogg|m4a)$/i.test(url) ? (
+                            <audio src={url} controls className="w-full" />
+                          ) : (
+                            <a href={url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver anexo</a>
+                          )}
+                        </div>
                       </div>
-                      <div className="p-2">
-                        {/\.(jpg|jpeg|png|gif|webp)$/i.test(execAnswer.evidencia_url) ? (
-                          <div className="flex gap-2 items-center">
-                            <img src={execAnswer.evidencia_url} alt="Evidência" className="w-14 h-10 rounded border border-border object-cover cursor-pointer" onClick={() => window.open(execAnswer.evidencia_url, "_blank")} />
-                            <a href={execAnswer.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver em tela cheia</a>
-                          </div>
-                        ) : /\.(mp4|webm|mov)$/i.test(execAnswer.evidencia_url) ? (
-                          <video src={execAnswer.evidencia_url} controls playsInline className="w-full max-h-40 rounded border border-border" />
-                        ) : /\.(mp3|wav|ogg|m4a)$/i.test(execAnswer.evidencia_url) ? (
-                          <audio src={execAnswer.evidencia_url} controls className="w-full" />
-                        ) : (
-                          <a href={execAnswer.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver anexo</a>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                   {/* Quem preencheu + versões */}
                   {execAnswer?.respondido_por_nome && (
                     <p className="text-[10px] text-muted-foreground flex items-center gap-1">
@@ -1271,7 +1357,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                           </div>
                           {/* Resposta do executor ao plano */}
                           {(() => {
-                            const resp = (flow.fieldAnswers as any[]).find((a: any) => a.field_id === f.id && (a.rodada === r.rodada + 1 || a.rodada_plano === r.rodada));
+                            const resp = findExecutorPlanResponse(f, r, c, flow);
                             if (!resp && !(c?.resolvida_em)) {
                               return (
                                 <div className="px-3 py-2 bg-muted/10 flex items-center gap-2">
@@ -1281,33 +1367,42 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                               );
                             }
                             if (!resp) return null;
+                            const respObs = getObservation(resp);
+                            const respEvid = getEvidence(resp);
+                            const respStatus = normalizeAnswer(getAnswerValue(resp));
+                            const evidUrl = respEvid ? String(respEvid) : "";
                             return (
                               <div className="px-3 py-2 bg-muted/10 border-b border-border space-y-1.5">
-                                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Respondido pelo executor:</p>
-                                {resp.observacao && (
+                                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Resposta do executor — R{r.rodada}</p>
+                                {respStatus && (
+                                  <p className="text-[10px] text-blue-700 dark:text-blue-400">Status: {respStatus === "conforme" ? "Conforme" : respStatus === "nao_conforme" ? "Não Conforme" : "N/A"}</p>
+                                )}
+                                {respObs && (
                                   <div className="bg-card border border-border rounded-md p-2">
                                     <p className="text-[10px] text-muted-foreground mb-1">✏️ {itens.find((i: any) => i.tipo === "texto")?.titulo || "Descrição"}</p>
-                                    <p className="text-xs text-foreground">{resp.observacao}</p>
+                                    <p className="text-xs text-foreground">{respObs}</p>
                                   </div>
                                 )}
-                                {resp.evidencia_url && (
+                                {evidUrl && (
                                   <div className="bg-card border border-border rounded-md overflow-hidden">
                                     <div className="px-2 py-1.5 bg-blue-50 dark:bg-blue-950/20 border-b border-border">
                                       <span className="text-[10px] font-medium text-blue-800 dark:text-blue-400">
-                                        {/\.(jpg|jpeg|png|gif|webp)$/i.test(resp.evidencia_url) ? "📷" : /\.(mp4|webm|mov)$/i.test(resp.evidencia_url) ? "🎥" : "🎵"} {itens.find((i: any) => i.tipo !== "texto")?.titulo || "Evidência"}
+                                        {/\.(jpg|jpeg|png|gif|webp)$/i.test(evidUrl) ? "📷" : /\.(mp4|webm|mov)$/i.test(evidUrl) ? "🎥" : /\.(mp3|wav|ogg|m4a)$/i.test(evidUrl) ? "🎵" : "📎"} {itens.find((i: any) => i.tipo !== "texto")?.titulo || "Evidência"}
                                       </span>
                                     </div>
                                     <div className="p-2">
-                                      {/\.(jpg|jpeg|png|gif|webp)$/i.test(resp.evidencia_url) ? (
+                                      {/\.(jpg|jpeg|png|gif|webp)$/i.test(evidUrl) ? (
                                         <div className="flex gap-2 items-center">
-                                          <img src={resp.evidencia_url} alt="Evidência" className="w-12 h-9 rounded border border-border object-cover cursor-pointer" onClick={() => window.open(resp.evidencia_url, "_blank")} />
-                                          <a href={resp.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver em tela cheia</a>
+                                          <img src={evidUrl} alt="Evidência" className="w-12 h-9 rounded border border-border object-cover cursor-pointer" onClick={() => window.open(evidUrl, "_blank")} />
+                                          <a href={evidUrl} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver em tela cheia</a>
                                         </div>
-                                      ) : /\.(mp4|webm|mov)$/i.test(resp.evidencia_url) ? (
-                                        <video src={resp.evidencia_url} controls playsInline className="w-full max-h-32 rounded border border-border" />
-                                      ) : /\.(mp3|wav|ogg|m4a)$/i.test(resp.evidencia_url) ? (
-                                        <audio src={resp.evidencia_url} controls className="w-full" />
-                                      ) : null}
+                                      ) : /\.(mp4|webm|mov)$/i.test(evidUrl) ? (
+                                        <video src={evidUrl} controls playsInline className="w-full max-h-32 rounded border border-border" />
+                                      ) : /\.(mp3|wav|ogg|m4a)$/i.test(evidUrl) ? (
+                                        <audio src={evidUrl} controls className="w-full" />
+                                      ) : (
+                                        <a href={evidUrl} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver anexo</a>
+                                      )}
                                     </div>
                                   </div>
                                 )}
