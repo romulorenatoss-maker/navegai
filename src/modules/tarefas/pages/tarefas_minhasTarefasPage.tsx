@@ -560,7 +560,10 @@ export default function OperationalExecucaoPage() {
 
   const openExecution = useCallback((a: any) => {
     // Fluxo "avaliacao_avaliador" REMOVIDO — Executor já responde diretamente.
-    setSelectedAssignment(a);
+    // Anti-contaminação: força unmount/remount dos painéis ao trocar de tarefa,
+    // garantindo que estado interno (answers/approverAnswers) zere antes do remount.
+    setSelectedAssignment(null);
+    setTimeout(() => setSelectedAssignment(a), 0);
     setExecDialogOpen(true);
     setShowHistory(false);
     const sections = a.template_snapshot?.sections?.sort((x: any, y: any) => x.ordem - y.ordem);

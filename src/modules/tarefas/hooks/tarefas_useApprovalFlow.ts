@@ -105,6 +105,17 @@ export function useApprovalFlow(assignmentId: string | null) {
     enabled: !!assignmentId,
   });
 
+  // Reset approverAnswers ao trocar de tarefa (anti-contaminação entre tarefas)
+  useEffect(() => {
+    setApproverAnswers({});
+    qc.cancelQueries({ queryKey: ["operational_approval_answers"] });
+    qc.cancelQueries({ queryKey: ["operational_approval_field_answers"] });
+    if (assignmentId) {
+      qc.cancelQueries({ queryKey: ["operational_approval_answers", assignmentId] });
+      qc.cancelQueries({ queryKey: ["operational_approval_field_answers", assignmentId] });
+    }
+  }, [assignmentId, qc]);
+
   // Hidrata approverAnswers a partir de respostas já salvas
   // (auto-save persistente: ao reabrir, toggles/observação/anexo já vêm preenchidos).
   useEffect(() => {
@@ -112,6 +123,8 @@ export function useApprovalFlow(assignmentId: string | null) {
     setApproverAnswers(prev => {
       const next = { ...prev };
       for (const a of existingApprovalAnswers as any[]) {
+        // Guard defensivo: ignora respostas de outra tarefa (cache stale)
+        if (assignmentId && a.assignment_id && a.assignment_id !== assignmentId) continue;
         if (next[a.field_id]) continue; // não sobrescreve edição local
         next[a.field_id] = {
           field_id: a.field_id,
@@ -123,7 +136,7 @@ export function useApprovalFlow(assignmentId: string | null) {
       }
       return next;
     });
-  }, [existingApprovalAnswers]);
+  }, [existingApprovalAnswers, assignmentId]);
 
   // Auto-save a single approver answer (upsert)
   const autoSaveApproverAnswer = useMutation({
