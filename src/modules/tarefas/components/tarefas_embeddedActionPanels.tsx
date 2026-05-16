@@ -513,6 +513,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           justificativa_alteracao_prazo: "",
           criticidade: "media",
           tipo_evidencia_exigida: "descricao",
+          itens_plano: [],
         };
       }
     }
