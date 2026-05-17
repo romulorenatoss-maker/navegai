@@ -217,36 +217,16 @@ export default function RelatorioTarefasPage() {
     setSelected(allSelected ? new Set() : new Set(allVisibleIds));
 
   const cleanupAssignment = async (aid: string, label: string) => {
-    const { data: cgs } = await supabase
-      .from("operational_contingencies")
-      .select("id")
-      .eq("assignment_id", aid);
-    const cgIds = (cgs || []).map((c: any) => c.id);
-    if (cgIds.length) {
-      await supabase
-        .from("operational_contingency_resolution_logs")
-        .delete()
-        .in("contingency_id", cgIds);
+    // Todas as tabelas filhas têm ON DELETE CASCADE na FK para operational_assignments.
+    // Um único DELETE na tabela pai remove tudo de forma atômica e segura.
+    const { error } = await supabase
+      .from("operational_assignments")
+      .delete()
+      .eq("id", aid);
+    if (error) {
+      logSystem.error(`Falha ao excluir tarefa ${label}`, { error: error.message, assignmentId: aid });
+      throw error;
     }
-    const tables = [
-      "operational_contingencies",
-      "operational_field_answers",
-      "operational_field_reviews",
-      "operational_approval_answers",
-      "operational_execution_check_answers",
-      "operational_execution_step_logs",
-      "operational_execution_logs",
-      "operational_assignment_history",
-      "operational_audit_trail",
-      "operational_score_logs",
-      "operational_score_overrides",
-    ] as const;
-    for (const t of tables) {
-      const { error } = await (supabase as any).from(t).delete().eq("assignment_id", aid);
-      if (error) logSystem.warn(`Falha ao limpar ${t}`, { error: error.message, assignmentId: aid, label });
-    }
-    const { error: delErr } = await supabase.from("operational_assignments").delete().eq("id", aid);
-    if (delErr) throw delErr;
   };
 
   const handleDelete = async () => {
