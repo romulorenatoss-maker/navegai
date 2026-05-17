@@ -1,6 +1,6 @@
 /**
  * Subaba Configurações → Tarefas → Armazenamento.
- * Gerencia provider, pasta-mãe e regras de upload/visualização.
+ * Gerencia provider, pasta-mãe e validação da conexão com Google Drive.
  */
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,9 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, CheckCircle2, AlertCircle, FolderOpen } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, FolderOpen, FolderPlus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -26,10 +25,7 @@ interface ConfigState {
     root_folder_link: string | null;
     limite_upload_mb: number;
     tipos_permitidos: string[];
-    usar_proxy_visualizacao: boolean;
-    bloquear_link_direto: boolean;
     permitir_download: boolean;
-    permitir_preview: boolean;
     observacoes: string | null;
     status_conexao: string | null;
     ultima_validacao_em: string | null;
@@ -38,27 +34,28 @@ interface ConfigState {
 }
 
 export function TarefasConfigArmazenamento() {
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [state, setState] = useState<ConfigState>({ configured: false });
+  const [loading, setLoading]               = useState(true);
+  const [saving, setSaving]                 = useState(false);
+  const [criandoPasta, setCriandoPasta]     = useState(false);
+  const [state, setState]                   = useState<ConfigState>({ configured: false });
 
-  // form state
-  const [folderId, setFolderId] = useState("");
-  const [folderLink, setFolderLink] = useState("");
-  const [limiteMb, setLimiteMb] = useState(25);
-  const [tiposCsv, setTiposCsv] = useState("image/*, video/*, application/pdf");
-  const [usarProxy, setUsarProxy] = useState(true);
-  const [bloquearDireto, setBloquearDireto] = useState(true);
+  const [folderId, setFolderId]             = useState("");
+  const [folderLink, setFolderLink]         = useState("");
+  const [limiteMb, setLimiteMb]             = useState(25);
+  const [tiposCsv, setTiposCsv]             = useState("image/*, video/*, application/pdf");
   const [permitirDownload, setPermitirDownload] = useState(true);
-  const [permitirPreview, setPermitirPreview] = useState(true);
-  const [observacoes, setObservacoes] = useState("");
+
+  async function getToken() {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? "";
+  }
 
   async function loadConfig() {
     setLoading(true);
     try {
-      const { data: sess } = await supabase.auth.getSession();
+      const token = await getToken();
       const res = await fetch(`${FN_BASE}/tarefas-storage-config?provider=google_drive`, {
-        headers: { Authorization: `Bearer ${sess.session?.access_token}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const json: ConfigState = await res.json();
       setState(json);
@@ -67,13 +64,9 @@ export function TarefasConfigArmazenamento() {
         setFolderLink(json.config.root_folder_link || "");
         setLimiteMb(json.config.limite_upload_mb ?? 25);
         setTiposCsv((json.config.tipos_permitidos ?? []).join(", "));
-        setUsarProxy(json.config.usar_proxy_visualizacao ?? true);
-        setBloquearDireto(json.config.bloquear_link_direto ?? true);
         setPermitirDownload(json.config.permitir_download ?? true);
-        setPermitirPreview(json.config.permitir_preview ?? true);
-        setObservacoes(json.config.observacoes ?? "");
       }
-    } catch (e) {
+    } catch {
       toast.error("Falha ao carregar configuração");
     } finally {
       setLoading(false);
@@ -86,24 +79,20 @@ export function TarefasConfigArmazenamento() {
     if (!folderId.trim()) { toast.error("Informe o ID da pasta-mãe"); return; }
     setSaving(true);
     try {
-      const { data: sess } = await supabase.auth.getSession();
+      const token = await getToken();
       const res = await fetch(`${FN_BASE}/tarefas-storage-config`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${sess.session?.access_token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           provider: "google_drive",
           root_folder_id: folderId.trim(),
           root_folder_link: folderLink.trim() || undefined,
           limite_upload_mb: limiteMb,
           tipos_permitidos: tiposCsv.split(",").map((s) => s.trim()).filter(Boolean),
-          usar_proxy_visualizacao: usarProxy,
-          bloquear_link_direto: bloquearDireto,
+          usar_proxy_visualizacao: true,
+          bloquear_link_direto: true,
           permitir_download: permitirDownload,
-          permitir_preview: permitirPreview,
-          observacoes,
+          permitir_preview: true,
         }),
       });
       const json = await res.json();
@@ -114,6 +103,33 @@ export function TarefasConfigArmazenamento() {
       toast.error(e.message ?? "Falha ao salvar");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleCriarPasta() {
+    if (!folderId.trim()) {
+      toast.error("Informe o ID da pasta-mãe antes de criar a pasta Tarefas");
+      return;
+    }
+    setCriandoPasta(true);
+    try {
+      const token = await getToken();
+      const res = await fetch(`${FN_BASE}/tarefas-storage-create-folder`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "google_drive",
+          root_folder_id: folderId.trim(),
+          folder_name: "tarefas",
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.detail ?? json.error ?? "create_folder_failed");
+      toast.success(`✅ Pasta "tarefas" criada com sucesso! Conexão com o Drive OK.`);
+    } catch (e: any) {
+      toast.error(`Falha ao criar pasta: ${e.message}`);
+    } finally {
+      setCriandoPasta(false);
     }
   }
 
@@ -173,16 +189,30 @@ export function TarefasConfigArmazenamento() {
 
               <Separator />
 
-              <div className="grid sm:grid-cols-2 gap-3">
-                <SwitchRow label="Visualização via proxy interno" desc="Streams binários sem expor URL do provider" checked={usarProxy} onChange={setUsarProxy} />
-                <SwitchRow label="Bloquear link direto do provider" desc="UI nunca renderiza links do Drive/etc." checked={bloquearDireto} onChange={setBloquearDireto} />
-                <SwitchRow label="Permitir download" desc="Usuários podem baixar anexos" checked={permitirDownload} onChange={setPermitirDownload} />
-                <SwitchRow label="Permitir preview inline" desc="Imagens/vídeos/PDF abertos no viewer" checked={permitirPreview} onChange={setPermitirPreview} />
+              <div className="flex items-center justify-between p-3 rounded border bg-card">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium">Permitir download</p>
+                  <p className="text-xs text-muted-foreground">Usuários podem baixar anexos</p>
+                </div>
+                <Switch checked={permitirDownload} onCheckedChange={setPermitirDownload} />
               </div>
 
-              <div>
-                <Label htmlFor="obs">Observações</Label>
-                <Textarea id="obs" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={2} />
+              <Separator />
+
+              <div className="flex flex-col gap-2">
+                <p className="text-xs text-muted-foreground">
+                  Testa a conexão criando a pasta <strong>tarefas</strong> dentro da pasta-mãe configurada no Drive.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={handleCriarPasta}
+                  disabled={criandoPasta || !folderId.trim()}
+                  className="w-full sm:w-auto"
+                >
+                  {criandoPasta
+                    ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Criando pasta...</>
+                    : <><FolderPlus className="w-4 h-4 mr-2" /> Criar pasta Tarefas no Drive</>}
+                </Button>
               </div>
 
               <div className="flex justify-end">
@@ -206,22 +236,10 @@ export function TarefasConfigArmazenamento() {
           </code>
           <p className="text-xs text-muted-foreground">
             Todos os anexos (evidências, aprovações, planos de ação, contingências) vão para esta pasta no Google Drive.
-            A regra de path é independente do provider. Trocar provider futuramente não altera o path lógico nem o banco.
+            Trocar provider futuramente não altera o path lógico nem o banco.
           </p>
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-function SwitchRow({ label, desc, checked, onChange }: { label: string; desc: string; checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <div className="flex items-start justify-between gap-3 p-3 rounded border bg-card">
-      <div className="space-y-0.5">
-        <p className="text-sm font-medium">{label}</p>
-        <p className="text-xs text-muted-foreground">{desc}</p>
-      </div>
-      <Switch checked={checked} onCheckedChange={onChange} />
     </div>
   );
 }
