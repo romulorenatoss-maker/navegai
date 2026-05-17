@@ -603,6 +603,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         template_versao: 1,
         template_snapshot: snapshot,
         rodada_atual: 1,
+        origem: isAvulsa ? "ad_hoc" : (recorrenciaAtiva ? "rotina" : "ad_hoc"),
       };
       const { error: assignErr } = await (supabase as any)
         .from("operational_assignments").insert(assignPayload);

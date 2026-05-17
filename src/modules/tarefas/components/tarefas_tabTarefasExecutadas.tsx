@@ -209,6 +209,7 @@ export function TabTarefasExecutadas({ templateId }: Props) {
           template_versao: t.versao || 1,
           template_snapshot: snapshot,
           rodada_atual: 1,
+          origem: "rotina",
         });
 
       if (insErr) throw insErr;

@@ -217,6 +217,7 @@ Deno.serve(async (req) => {
           template_versao: t.versao || 1,
           template_snapshot: snapshot,
           rodada_atual: 1,
+          origem: "rotina",
         });
 
       if (insErr) {
