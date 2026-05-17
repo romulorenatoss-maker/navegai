@@ -1462,6 +1462,7 @@ export type Database = {
           motivo_exclusao_media: string | null
           numero_tarefa: number
           observacao: string | null
+          origem: string
           parent_assignment_id: string | null
           pausa_iniciada_em: string | null
           pontuacao_obtida: number | null
@@ -1519,6 +1520,7 @@ export type Database = {
           motivo_exclusao_media?: string | null
           numero_tarefa?: number
           observacao?: string | null
+          origem?: string
           parent_assignment_id?: string | null
           pausa_iniciada_em?: string | null
           pontuacao_obtida?: number | null
@@ -1576,6 +1578,7 @@ export type Database = {
           motivo_exclusao_media?: string | null
           numero_tarefa?: number
           observacao?: string | null
+          origem?: string
           parent_assignment_id?: string | null
           pausa_iniciada_em?: string | null
           pontuacao_obtida?: number | null
