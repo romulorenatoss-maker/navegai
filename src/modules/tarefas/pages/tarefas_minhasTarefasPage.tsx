@@ -559,11 +559,14 @@ export default function OperationalExecucaoPage() {
   }, [effectiveFields]);
 
   const openExecution = useCallback((a: any) => {
-    // Fluxo "avaliacao_avaliador" REMOVIDO — Executor já responde diretamente.
-    // Anti-contaminação: força unmount/remount dos painéis ao trocar de tarefa,
-    // garantindo que estado interno (answers/approverAnswers) zere antes do remount.
-    setSelectedAssignment(null);
-    setTimeout(() => setSelectedAssignment(a), 0);
+    // Anti-contaminação: troca o assignment diretamente.
+    // O key={selectedAssignment?.id} no Sheet garante unmount/remount completo ao trocar de tarefa,
+    // zerando todos os estados internos (answers, logs, reviews) sem depender de setTimeout.
+    // Invalida cache das queries da tarefa anterior para evitar dados fantasma.
+    qc.removeQueries({ queryKey: ["operational_field_answers"] });
+    qc.removeQueries({ queryKey: ["operational_field_reviews"] });
+    qc.removeQueries({ queryKey: ["operational_execution_logs"] });
+    setSelectedAssignment(a);
     setExecDialogOpen(true);
     setShowHistory(false);
     const sections = a.template_snapshot?.sections?.sort((x: any, y: any) => x.ordem - y.ordem);
@@ -610,6 +613,10 @@ export default function OperationalExecucaoPage() {
     setSelectedAssignment(null);
     setSubmitAttempted(false);
     setShowHistory(false);
+    // Limpa cache das queries da tarefa encerrada para não vazar para a próxima
+    qc.removeQueries({ queryKey: ["operational_field_answers"] });
+    qc.removeQueries({ queryKey: ["operational_field_reviews"] });
+    qc.removeQueries({ queryKey: ["operational_execution_logs"] });
   };
 
   const visibleFields = useMemo(() =>
@@ -1038,7 +1045,7 @@ export default function OperationalExecucaoPage() {
       </Tabs>
 
       {/* Execution Dialog */}
-      <Sheet open={execDialogOpen} onOpenChange={v => { if (!v) closeExecution(); }}>
+      <Sheet key={selectedAssignment?.id ?? "none"} open={execDialogOpen} onOpenChange={v => { if (!v) closeExecution(); }}>
         <SheetContent
           side={isMobile ? "bottom" : "right"}
           className={cn(
