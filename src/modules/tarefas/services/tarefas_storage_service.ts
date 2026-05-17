@@ -43,10 +43,11 @@ export interface UploadAnexoParams {
   contexto_ref_id?: string | null;
   assignment_id?: string | null;
   template_id?: string | null;
-  // Para compor o path_relativo oficial
-  codigo_tarefa?: string;
-  nome_tarefa?: string;
-  tipo_tarefa?: 'avulsa' | 'rotina' | 'template';
+  // Campos para compor o path lógico oficial:
+  // tarefas/{MM-YYYY}/{DD}/{rotina|ad_hoc}/#{XXXX}-{slug-nome}.{ext}
+  numero_tarefa: number | string;
+  nome_tarefa: string;
+  origem: 'rotina' | 'ad_hoc';
 }
 
 const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
@@ -62,16 +63,22 @@ async function authHeader(): Promise<HeadersInit> {
 // upload
 // ---------------------------------------------------------------------------
 export async function uploadAnexo(params: UploadAnexoParams): Promise<TarefasAnexo> {
+  const { buildStoragePath } = await import('@/modules/tarefas/utils/tarefas_storagePath');
+  const path_relativo = buildStoragePath({
+    numero_tarefa: params.numero_tarefa,
+    nome_tarefa: params.nome_tarefa,
+    origem: params.origem,
+    nome_arquivo: params.file.name,
+  });
+
   const headers = await authHeader();
   const fd = new FormData();
   fd.append('file', params.file);
   fd.append('contexto_tipo', params.contexto_tipo);
+  fd.append('path_relativo', path_relativo);
   if (params.contexto_ref_id) fd.append('contexto_ref_id', params.contexto_ref_id);
   if (params.assignment_id)   fd.append('assignment_id',   params.assignment_id);
   if (params.template_id)     fd.append('template_id',     params.template_id);
-  if (params.codigo_tarefa)   fd.append('codigo_tarefa',   params.codigo_tarefa);
-  if (params.nome_tarefa)     fd.append('nome_tarefa',     params.nome_tarefa);
-  if (params.tipo_tarefa)     fd.append('tipo_tarefa',     params.tipo_tarefa);
 
   const res = await fetch(`${FN_BASE}/tarefas-storage-upload`, {
     method: 'POST', headers, body: fd,

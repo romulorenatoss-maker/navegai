@@ -109,6 +109,10 @@ interface Props {
   allAnswers: Record<string, FieldAnswer>;
   onChange: (fieldId: string, answer: Partial<FieldAnswer>) => void;
   assignmentId: string;
+  /** Para compor o path de upload: número, nome e origem da tarefa */
+  numeroTarefa: number | string;
+  nomeTarefa: string;
+  origemTarefa: "rotina" | "ad_hoc";
   showValidation?: boolean;
   approverPlan?: {
     plano_acao_descricao?: string | null;
@@ -174,7 +178,7 @@ function validateField(field: SnapshotField, answer: FieldAnswer | undefined): s
 
 export { evaluateVisibility, validateField };
 
-export function DynamicFieldRenderer({ field, answer, review, userRole, disabled, allAnswers, onChange, assignmentId, showValidation = true, approverPlan, allReviews = [], horarioLimite, dataPrevista, profileId, responsavelId, setorExecutorId, meusSetorIds = [], isAdmin = false }: Props) {
+export function DynamicFieldRenderer({ field, answer, review, userRole, disabled, allAnswers, onChange, assignmentId, numeroTarefa, nomeTarefa, origemTarefa, showValidation = true, approverPlan, allReviews = [], horarioLimite, dataPrevista, profileId, responsavelId, setorExecutorId, meusSetorIds = [], isAdmin = false }: Props) {
   const [uploading, setUploading] = useState(false);
 
   const isVisible = field.visivel_para.includes(userRole) && evaluateVisibility(field.condicao_visibilidade, allAnswers);
@@ -222,13 +226,17 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
   const handleUpload = async (file: File) => {
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop();
-      const path = `${assignmentId}/${field.id}/${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("evidencias").upload(path, file);
-      if (upErr) throw upErr;
-      const { data: signed, error: signErr } = await supabase.storage.from("evidencias").createSignedUrl(path, 60 * 60 * 24 * 365);
-      if (signErr) throw signErr;
-      update({ evidencia_url: signed.signedUrl });
+      const { uploadAnexo } = await import('@/modules/tarefas/services/tarefas_storage_service');
+      const anexo = await uploadAnexo({
+        file,
+        contexto_tipo: 'evidencia',
+        assignment_id: assignmentId,
+        contexto_ref_id: field.id,
+        numero_tarefa: numeroTarefa,
+        nome_tarefa: nomeTarefa,
+        origem: origemTarefa,
+      });
+      update({ evidencia_url: anexo.path_relativo });
     } catch (e: any) {
       console.error("Upload failed:", e);
     } finally {
@@ -768,13 +776,17 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                     if (!file || !assignmentId) return;
                     setUploading(true);
                     try {
-                      const ext = file.name.split(".").pop();
-                      const path = `${assignmentId}/${planResponseFieldId}/${Date.now()}.${ext}`;
-                      const { error: upErr } = await (supabase as any).storage.from("evidencias").upload(path, file);
-                      if (upErr) throw upErr;
-                      const { data: signed, error: signErr } = await (supabase as any).storage.from("evidencias").createSignedUrl(path, 60 * 60 * 24 * 365);
-                      if (signErr) throw signErr;
-                      updatePlanAnswer({ evidencia_url: signed.signedUrl });
+                      const { uploadAnexo } = await import('@/modules/tarefas/services/tarefas_storage_service');
+                      const anexo = await uploadAnexo({
+                        file,
+                        contexto_tipo: 'plano_acao',
+                        assignment_id: assignmentId,
+                        contexto_ref_id: planResponseFieldId,
+                        numero_tarefa: numeroTarefa,
+                        nome_tarefa: nomeTarefa,
+                        origem: origemTarefa,
+                      });
+                      updatePlanAnswer({ evidencia_url: anexo.path_relativo });
                     } catch (err) {
                       console.error(err);
                     } finally {

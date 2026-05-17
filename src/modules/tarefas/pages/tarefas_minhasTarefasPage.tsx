@@ -1233,6 +1233,9 @@ export default function OperationalExecucaoPage() {
                         review={exec.getLatestReview(f.id)} userRole="executor"
                         disabled={isDevolvida && exec.getLatestReview(f.id)?.devolvido !== true}
                         allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id}
+                        numeroTarefa={selectedAssignment.numero_tarefa ?? 0}
+                        nomeTarefa={selectedAssignment.template_snapshot?.nome ?? "tarefa"}
+                        origemTarefa={(selectedAssignment.origem ?? "rotina") as "rotina" | "ad_hoc"}
                         showValidation={submitAttempted}
                         approverPlan={approverPlanByField[f.id]}
                         allReviews={exec.getAllReviews(f.id)}
@@ -1302,6 +1305,9 @@ export default function OperationalExecucaoPage() {
                               review={exec.getLatestReview(f.id)} userRole="executor"
                               disabled={isDevolvida && exec.getLatestReview(f.id)?.devolvido !== true}
                               allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id}
+                              numeroTarefa={selectedAssignment.numero_tarefa ?? 0}
+                              nomeTarefa={selectedAssignment.template_snapshot?.nome ?? "tarefa"}
+                              origemTarefa={(selectedAssignment.origem ?? "rotina") as "rotina" | "ad_hoc"}
                               showValidation={submitAttempted}
                               approverPlan={approverPlanByField[f.id]}
                               allReviews={exec.getAllReviews(f.id)}
@@ -1354,7 +1360,10 @@ export default function OperationalExecucaoPage() {
                 {effectiveFields.map(f => (
                   <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
                     review={exec.getLatestReview(f.id)} userRole="executor"
-                    disabled={true} allAnswers={exec.answers} onChange={() => {}} assignmentId={selectedAssignment?.id || ""} />
+                    disabled={true} allAnswers={exec.answers} onChange={() => {}} assignmentId={selectedAssignment?.id || ""}
+                    numeroTarefa={selectedAssignment?.numero_tarefa ?? 0}
+                    nomeTarefa={selectedAssignment?.template_snapshot?.nome ?? "tarefa"}
+                    origemTarefa={(selectedAssignment?.origem ?? "rotina") as "rotina" | "ad_hoc"} />
                 ))}
               </div>
             )}

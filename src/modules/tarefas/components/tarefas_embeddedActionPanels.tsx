@@ -557,20 +557,24 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     if (!assignment?.id) return;
     setUploadingFor(f.id);
     try {
-      const ext = file.name.split(".").pop();
-      const path = `${assignment.id}/aprovador/${f.id}/${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("evidencias").upload(path, file);
-      if (upErr) throw upErr;
-      const { data: signed, error: signErr } = await supabase.storage.from("evidencias").createSignedUrl(path, 60 * 60 * 24 * 365);
-      if (signErr) throw signErr;
+      const { uploadAnexo } = await import('@/modules/tarefas/services/tarefas_storage_service');
+      const anexo = await uploadAnexo({
+        file,
+        contexto_tipo: 'aprovacao',
+        assignment_id: assignment.id,
+        contexto_ref_id: f.id,
+        numero_tarefa: assignment.numero_tarefa ?? 0,
+        nome_tarefa: assignment.template_snapshot?.nome ?? assignment.nome ?? "tarefa",
+        origem: (assignment.origem ?? "rotina") as "rotina" | "ad_hoc",
+      });
       const draft = flow.approverAnswers[f.id];
-      flow.updateApproverAnswer(f.id, { evidencia_url: signed.signedUrl, peso: f.aprovador_peso || 1 });
+      flow.updateApproverAnswer(f.id, { evidencia_url: anexo.path_relativo, peso: f.aprovador_peso || 1 });
       flow.autoSaveApproverAnswer.mutate({
         fieldId: f.id,
         resposta: draft?.resposta ?? "",
         observacao: draft?.observacao ?? "",
         peso: f.aprovador_peso || 1,
-        evidenciaUrl: signed.signedUrl,
+        evidenciaUrl: anexo.path_relativo,
       });
       toast.success("Anexo salvo");
     } catch (e: any) {

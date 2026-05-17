@@ -202,9 +202,10 @@ export function TarefasConfigArmazenamento() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <code className="block rounded bg-muted px-3 py-2 text-xs overflow-x-auto">
-            tarefas/{"{MM-YYYY}"}/{"{DD}"}/{"{tipo_tarefa}"}/{"{codigo_tarefa}"}-{"{slug_nome}"}/{"{contexto}"}/{"{nome_arquivo}"}
+            tarefas/{"{MM-YYYY}"}/{"{DD}"}/{"{rotina|ad_hoc}"}/#{"{ XXXX}"}-{"{slug-nome}"}.{"{ext}"}
           </code>
           <p className="text-xs text-muted-foreground">
+            Todos os anexos (evidências, aprovações, planos de ação, contingências) vão para esta pasta no Google Drive.
             A regra de path é independente do provider. Trocar provider futuramente não altera o path lógico nem o banco.
           </p>
         </CardContent>

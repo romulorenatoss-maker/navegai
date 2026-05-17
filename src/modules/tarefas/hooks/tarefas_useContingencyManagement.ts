@@ -50,17 +50,21 @@ async function assertIsValidador(contingencyId: string, profileId: string, isAdm
   }
 }
 
-export async function uploadContingencyAttachment(file: File, contingencyId: string): Promise<string> {
-  const ext = file.name.split(".").pop() || "bin";
-  const path = `${contingencyId}/${Date.now()}.${ext}`;
-  const { error } = await supabase.storage
-    .from("contingency-attachments")
-    .upload(path, file, { upsert: true });
-  if (error) throw new Error("Erro ao enviar anexo: " + error.message);
-  const { data: urlData } = supabase.storage
-    .from("contingency-attachments")
-    .getPublicUrl(path);
-  return urlData.publicUrl;
+export async function uploadContingencyAttachment(
+  file: File,
+  contingencyId: string,
+  assignment: { numero_tarefa: number | string; nome_tarefa?: string; origem?: string }
+): Promise<string> {
+  const { uploadAnexo } = await import('@/modules/tarefas/services/tarefas_storage_service');
+  const anexo = await uploadAnexo({
+    file,
+    contexto_tipo: 'evidencia',
+    contexto_ref_id: contingencyId,
+    numero_tarefa: assignment.numero_tarefa,
+    nome_tarefa: assignment.nome_tarefa ?? "tarefa",
+    origem: (assignment.origem ?? "rotina") as "rotina" | "ad_hoc",
+  });
+  return anexo.path_relativo;
 }
 
 export function useContingencyManagement(filters: ContingencyFilters = {}) {
