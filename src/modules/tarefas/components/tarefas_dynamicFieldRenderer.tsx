@@ -792,21 +792,23 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
             const tipoEv = r.tipo_evidencia_exigida || "nenhuma";
             const prazo = approverPlan?.plano_acao_prazo;
             const prazoAlterado = approverPlan?.flag_prazo_alterado && idx === allReviews.length - 1;
-            const aguardando = isReturned && idx === allReviews.length - 1 && !val.observacao && !val.evidencia_url;
+            const isUltimaRodada = idx === allReviews.length - 1;
+            const aguardando = isReturned && isUltimaRodada && !val.evidencia_url && tipoEv !== "nenhuma" && tipoEv !== "texto";
 
             return (
               <div key={r.id || idx} className="flex gap-2">
-                {/* Linha colorida lateral */}
                 <div className="w-0.5 rounded-full shrink-0 mt-1" style={{ backgroundColor: corBorda, minHeight: "100%" }} />
                 <div className="flex-1 border border-border rounded-lg overflow-hidden bg-card">
-                  {/* Header da rodada */}
+
+                  {/* Header */}
                   <div className="flex items-center justify-between px-3 py-1.5 border-b border-border" style={{ backgroundColor: corHeader }}>
                     <span className="text-[11px] font-semibold" style={{ color: corTexto }}>{tipoLabel}</span>
                     <span className="text-[10px] text-muted-foreground">
                       {r.avaliado_em ? format(new Date(r.avaliado_em), "dd/MM HH:mm") : ""}{r.profiles?.nome ? ` · ${r.profiles.nome}` : ""}
                     </span>
                   </div>
-                  {/* Instrução do aprovador */}
+
+                  {/* Instrução + prazo + anexo de orientação do aprovador */}
                   {instrucao && (
                     <div className="px-3 py-2 space-y-1.5">
                       <p className="text-xs text-foreground whitespace-pre-wrap">{instrucao}</p>
@@ -822,36 +824,21 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                           </span>
                         )}
                       </div>
-                    </div>
-                  )}
-                  {/* Resposta do executor */}
-                  {(val.observacao || val.evidencia_url) && idx === allReviews.length - 1 ? (
-                    <div className="px-3 py-2 border-t border-border bg-muted/30 space-y-1">
-                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Resposta do executor</p>
-                      {val.observacao && <p className="text-xs text-foreground">{val.observacao}</p>}
-                      {val.evidencia_url && (
+                      {/* Anexo de orientação do aprovador (instrução em mídia) */}
+                      {r.anexo_orientacao_url && (
                         <EvidenciaPreview
-                          anexoId={val.evidencia_anexo_id}
-                          url={val.evidencia_url}
-                          mimeType={val.evidencia_mime_type}
+                          anexoId={r.anexo_orientacao_anexo_id ?? null}
+                          url={r.anexo_orientacao_url}
+                          mimeType={r.anexo_orientacao_mime_type ?? null}
                           disabled
                         />
                       )}
-                      {val.respondido_por_nome && (
-                        <p className="text-[10px] text-muted-foreground">{val.respondido_por_nome} · {val.respondido_em ? format(new Date(val.respondido_em), "dd/MM HH:mm") : ""}</p>
-                      )}
                     </div>
-                  ) : aguardando ? (
-                    <div className="px-3 py-2 border-t border-border bg-muted/20 flex items-center gap-2">
-                      <Clock className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground italic">Aguardando resposta do executor...</span>
-                    </div>
-                  ) : null}
+                  )}
 
-                  {/* Campos para o executor preencher (última rodada ativa) */}
-                  {isReturned && idx === allReviews.length - 1 && isEditable && (
+                  {/* Campo de resposta do executor (última rodada ativa) */}
+                  {isReturned && isUltimaRodada && isEditable && (
                     <div className="px-3 py-2 border-t border-border space-y-2">
-                      {/* Foto */}
                       {tipoEv === "foto" && !val.evidencia_url && (
                         <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-2.5 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
                           {uploading ? (
@@ -864,7 +851,6 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                           <input type="file" className="hidden" accept="image/*" capture="environment" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
                         </label>
                       )}
-                      {/* Vídeo */}
                       {tipoEv === "video" && !val.evidencia_url && (
                         <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-2.5 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
                           {uploading ? (
@@ -877,7 +863,6 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                           <input type="file" className="hidden" accept="video/*" capture="environment" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
                         </label>
                       )}
-                      {/* Áudio */}
                       {tipoEv === "audio" && !val.evidencia_url && (
                         <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-2.5 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
                           {uploading ? (
@@ -890,7 +875,6 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                           <input type="file" className="hidden" accept="audio/*" capture="user" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
                         </label>
                       )}
-                      {/* Texto */}
                       {tipoEv === "texto" && (
                         <textarea
                           value={val.observacao ?? ""}
@@ -900,7 +884,6 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                           className="w-full text-xs rounded border border-amber-300 bg-white dark:bg-amber-950/10 px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400"
                         />
                       )}
-                      {/* Preview após upload */}
                       {val.evidencia_url && (
                         <EvidenciaPreview
                           anexoId={val.evidencia_anexo_id}
@@ -911,6 +894,15 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                       )}
                     </div>
                   )}
+
+                  {/* Aguardando resposta */}
+                  {aguardando && !isEditable && (
+                    <div className="px-3 py-2 border-t border-border bg-muted/20 flex items-center gap-2">
+                      <Clock className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground italic">Aguardando resposta do executor...</span>
+                    </div>
+                  )}
+
                 </div>
               </div>
             );
