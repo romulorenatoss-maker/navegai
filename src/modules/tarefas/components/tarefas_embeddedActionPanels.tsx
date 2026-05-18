@@ -2116,7 +2116,7 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
 
   if (showConfirmModal) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4" style={{position:"relative"}}>
         <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex items-start gap-2">
           <ShieldCheck className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0 mt-0.5" />
           <div className="text-xs text-blue-800 dark:text-blue-300">
@@ -2402,7 +2402,7 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
         const ITENS_TIPOS = [{tipo:"foto",label:"Foto"},{tipo:"video",label:"Video"},{tipo:"audio",label:"Audio"},{tipo:"texto",label:"Texto"}];
         const step1 = perguntasSelecionadas.size === 0;
         return (
-          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:9999,overflowY:"auto",padding:"20px 0"}} onClick={e => { if (e.target === e.currentTarget) setShowPlanoModal(false); }}>
+          <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,minHeight:"100%",background:"rgba(0,0,0,0.6)",zIndex:50,overflowY:"auto",padding:"20px 0"}} onClick={e => { if (e.target === e.currentTarget) setShowPlanoModal(false); }}>
             <div style={{maxWidth:480,margin:"0 auto",background:"var(--color-background-primary)",borderRadius:12,overflow:"hidden",border:"0.5px solid var(--color-border-tertiary)"}}>
               <div style={{padding:"12px 16px",borderBottom:"0.5px solid var(--color-border-tertiary)",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#EEEDFE"}}>
                 <span style={{fontSize:13,fontWeight:500,color:"#3C3489"}}>Criar plano de acao — Auditor</span>
