@@ -145,14 +145,15 @@ async function getAssignmentSnapshot(assignmentId: string): Promise<{ status: st
   return data;
 }
 
-async function hasOpenContingencies(assignmentId: string): Promise<number> {
+async function hasOpenContingencies(assignmentId: string): Promise<{ count: number; nomes: string[] }> {
   const { data, error } = await (supabase as any)
     .from("operational_contingencies")
-    .select("id")
+    .select("id, descricao")
     .eq("assignment_id", assignmentId)
     .in("status", ["aberta", "em_andamento"]);
   if (error) throw error;
-  return data?.length || 0;
+  const nomes = (data || []).map((c: any) => c.descricao || "sem descrição");
+  return { count: data?.length || 0, nomes };
 }
 
 function resolveTargetStatus(action: TransitionAction, _currentStatus: string, extraData?: Record<string, any>): string {
@@ -288,9 +289,9 @@ export function useOperationalTransition() {
           (((extraData as any)?.rodadaAtual ?? 1) > 1 ||
             (extraData as any)?.contingenciesCleanupDone === true);
         if (!isReenvioPosDevolucao) {
-          const openCount = await hasOpenContingencies(assignmentId);
+          const { count: openCount, nomes } = await hasOpenContingencies(assignmentId);
           if (openCount > 0) {
-            throw new Error(`Não é possível avançar: existem ${openCount} plano de ação(s) pendente(s).`);
+            throw new Error(`Nao e possivel avançar. Plano(s) de ação pendente(s): ${nomes.join(", ")}`);
           }
         }
       }
