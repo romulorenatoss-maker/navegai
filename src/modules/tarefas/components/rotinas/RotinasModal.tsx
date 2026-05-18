@@ -26,13 +26,15 @@ interface Props {
   setores: any[];
   colaboradores: any[];
   colaboradorSetores: any[];
+  destinoAba?: "padrao" | "minhas";
+  createdBy?: string;
 }
 
 type AbaKey = "geral" | "avaliado" | "aprovador" | "auditor" | "rotina";
 
 // ─── Helpers de save ──────────────────────────────────────────────────────────
 
-function buildGeralPayload(form: TemplateForm) {
+function buildGeralPayload(form: TemplateForm, destinoAba: "padrao" | "minhas", createdBy?: string) {
   return {
     nome: form.nome.trim(),
     descricao: form.descricao?.trim() || null,
@@ -47,6 +49,8 @@ function buildGeralPayload(form: TemplateForm) {
     auditor_profile_id: form.auditor_profile_id || null,
     auditor_setor_id: form.auditor_setor_id || null,
     requer_aprovacao_gestor: form.requer_aprovacao_gestor,
+    destino_aba: destinoAba,
+    ...(createdBy ? { created_by: createdBy } : {}),
   };
 }
 
@@ -65,6 +69,7 @@ function buildRotinaPayload(form: TemplateForm) {
     sla_horas: form.sla_horas,
     prazo_sla_correcao_horas: form.prazo_sla_correcao_horas,
     peso_recorrencia: form.peso_recorrencia,
+    exceto_fds: form.exceto_fds ?? false,
   };
 }
 
@@ -323,7 +328,7 @@ async function loadTemplate(templateId: string) {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-export function RotinasModal({ open, onClose, templateId, setores, colaboradores, colaboradorSetores }: Props) {
+export function RotinasModal({ open, onClose, templateId, setores, colaboradores, colaboradorSetores, destinoAba = "padrao", createdBy }: Props) {
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<AbaKey>("geral");
   const [currentId, setCurrentId] = useState<string | null>(templateId);
@@ -392,7 +397,7 @@ export function RotinasModal({ open, onClose, templateId, setores, colaboradores
     if (!form.nome.trim()) { toast.error("Nome é obrigatório."); return; }
     setSaving1("geral", true);
     try {
-      const id = await upsertTemplate(currentId, buildGeralPayload(form));
+      const id = await upsertTemplate(currentId, buildGeralPayload(form, destinoAba, !currentId ? createdBy : undefined));
       if (!currentId) setCurrentId(id);
       invalidate();
       toast.success("Geral salvo.");

@@ -468,6 +468,17 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
         </div>
       )}
 
+      {/* Toggle exceto fins de semana */}
+      <div className="flex items-center justify-between p-3 rounded border bg-card">
+        <div className="space-y-0.5">
+          <p className="text-sm font-medium">Exceto Sábado e Domingo</p>
+          <p className="text-xs text-muted-foreground">
+            Se o dia agendado cair em sáb/dom, a tarefa será gerada na segunda-feira seguinte.
+          </p>
+        </div>
+        <Switch checked={form.exceto_fds ?? false} onCheckedChange={(v) => set("exceto_fds", v)} />
+      </div>
+
       {/* Botão salvar */}
       <div className="flex justify-end pt-2 border-t border-border">
         <Button onClick={onSave} disabled={saving}>

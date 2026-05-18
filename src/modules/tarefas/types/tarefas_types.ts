@@ -123,6 +123,7 @@ export interface TemplateForm {
   modo_pontuacao: string;
   destino_score: string;
   peso_recorrencia: number;
+  exceto_fds: boolean;
   tipo_atribuicao_avaliado: string;
   penalidade_contingencia: number;
   penalidade_sla_contingencia: number;
@@ -179,6 +180,7 @@ export const defaultTemplate: TemplateForm = {
   auditor_profile_id: "", auditor_setor_id: "",
   modo_pontuacao: "pontuar_avaliado", destino_score: "individual",
   peso_recorrencia: 2.0,
+  exceto_fds: false,
   tipo_atribuicao_avaliado: "individual",
   penalidade_contingencia: 10,
   penalidade_sla_contingencia: 15,
