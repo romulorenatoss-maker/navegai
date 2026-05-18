@@ -879,6 +879,50 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                     </div>
                   )}
 
+                  {/* Resposta do executor em rodadas anteriores — somente leitura */}
+                  {!isUltimaRodada && (() => {
+                    const itens: Array<{tipo: string; titulo: string; obrigatorio: boolean}> =
+                      Array.isArray(r.itens_plano) && r.itens_plano.length > 0
+                        ? r.itens_plano
+                        : tipoEv !== "nenhuma" ? [{ tipo: tipoEv, titulo: "", obrigatorio: true }] : [];
+                    if (itens.length === 0) return null;
+                    const rodada = Number(r.rodada ?? 1);
+                    const prefixoRodada = `${field.id}__plano_acao__r${rodada}__`;
+                    const valorJson = (allAnswers?.[field.id] as any)?.valor_json || {};
+                    const temResposta = itens.some(item => {
+                      const dado = valorJson[`__plano_acao__r${rodada}__${item.tipo}`];
+                      return !!(dado?.evidencia_url || dado?.valor_texto);
+                    });
+                    if (!temResposta) return null;
+                    return (
+                      <div className="px-3 py-2 border-t border-border space-y-2 bg-muted/5">
+                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Resposta do executor — R{rodada}</p>
+                        {itens.map((item, iIdx) => {
+                          const dado = valorJson[`__plano_acao__r${rodada}__${item.tipo}`];
+                          if (!dado) return null;
+                          return (
+                            <div key={iIdx} className="space-y-1">
+                              {item.titulo && <p className="text-xs text-amber-800 font-medium">{item.titulo}</p>}
+                              {(item.tipo === "texto" || item.tipo === "descricao") && dado.valor_texto && (
+                                <div className="bg-card border border-border rounded p-2">
+                                  <p className="text-xs">{dado.valor_texto}</p>
+                                </div>
+                              )}
+                              {(item.tipo === "foto" || item.tipo === "video" || item.tipo === "audio") && dado.evidencia_url && (
+                                <EvidenciaPreview
+                                  anexoId={dado.evidencia_anexo_id ?? null}
+                                  url={dado.evidencia_url}
+                                  mimeType={dado.evidencia_mime_type ?? null}
+                                  disabled
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+
                   {/* Campos de resposta do executor ao plano (última rodada ativa) */}
                   {isReturned && isUltimaRodada && (() => {
                     const itens: Array<{tipo: string; titulo: string; obrigatorio: boolean}> =
