@@ -91,6 +91,8 @@ export function useAssignmentExecution(assignmentId: string | null) {
           valor_data: a.valor_data,
           valor_json: a.valor_json,
           evidencia_url: a.evidencia_url,
+          evidencia_anexo_id: a.evidencia_anexo_id ?? null,
+          evidencia_mime_type: a.evidencia_mime_type ?? null,
           respondido_por_nome: a.profiles?.nome || null,
           respondido_em: a.respondido_em,
           versao: a.versao || 1,

@@ -6,8 +6,10 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Upload, X, AlertTriangle, RotateCcw, Camera, Eye, Clock } from "lucide-react";
+import { Upload, X, AlertTriangle, RotateCcw, Camera, Eye, Clock, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { AnexoViewer } from "@/modules/tarefas/components/anexos/AnexoViewer";
+import { tarefas_storage_service } from "@/modules/tarefas/services/tarefas_storage_service";
 
 export interface SnapshotField {
   id: string;
@@ -82,7 +84,9 @@ export interface FieldAnswer {
   valor_booleano?: boolean | null;
   valor_data?: string | null;
   valor_json?: any;
-  evidencia_url?: string | null;
+  evidencia_url?: string | null;       // path_relativo no Drive (para referência)
+  evidencia_anexo_id?: string | null;  // UUID da tarefas_anexos (para signed URL via AnexoViewer)
+  evidencia_mime_type?: string | null; // mime type para o viewer saber como renderizar
   observacao?: string | null;
   // Metadata for display
   respondido_por_nome?: string | null;
@@ -178,6 +182,97 @@ function validateField(field: SnapshotField, answer: FieldAnswer | undefined): s
 
 export { evaluateVisibility, validateField };
 
+// ── EvidenciaPreview ──────────────────────────────────────────────────────────
+// Renderiza preview inline + loading + tela cheia via AnexoViewer (signed URL).
+// Suporta dados novos (anexo_id) e legados (url direta).
+function EvidenciaPreview({
+  anexoId, url, mimeType, onRemove, disabled,
+}: {
+  anexoId?: string | null;
+  url?: string | null;
+  mimeType?: string | null;
+  onRemove?: () => void;
+  disabled?: boolean;
+}) {
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+
+  const mt = (mimeType ?? url ?? "").toLowerCase();
+  const isImage = mt.includes("image/") || /\.(jpg|jpeg|png|gif|webp)$/i.test(url ?? "");
+  const isVideo = mt.includes("video/") || /\.(mp4|webm|mov)$/i.test(url ?? "");
+  const isAudio = mt.includes("audio/") || /\.(mp3|wav|ogg|m4a)$/i.test(url ?? "");
+
+  // Se tem anexo_id, busca signed URL para o preview inline
+  React.useEffect(() => {
+    if (!anexoId) { setSignedUrl(url ?? null); return; }
+    setLoadingPreview(true);
+    tarefas_storage_service.getSignedUrl(anexoId)
+      .then(({ url: u }) => setSignedUrl(u))
+      .catch(() => setSignedUrl(null))
+      .finally(() => setLoadingPreview(false));
+  }, [anexoId, url]);
+
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      {/* Thumbnail / preview inline */}
+      <div
+        className="relative w-16 h-16 rounded border border-border bg-muted flex items-center justify-center overflow-hidden cursor-pointer shrink-0"
+        onClick={() => setViewerOpen(true)}
+      >
+        {loadingPreview ? (
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        ) : signedUrl && isImage ? (
+          <img src={signedUrl} alt="Evidência" className="w-full h-full object-cover" />
+        ) : signedUrl && isVideo ? (
+          <video src={signedUrl} className="w-full h-full object-cover" muted />
+        ) : (
+          <Eye className="w-5 h-5 text-muted-foreground" />
+        )}
+        {/* Overlay de clique */}
+        <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center">
+          <Eye className="w-4 h-4 text-white opacity-0 group-hover:opacity-100" />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+        <span>{isImage ? "📷 Foto anexada" : isVideo ? "🎥 Vídeo anexado" : isAudio ? "🎵 Áudio anexado" : "📎 Arquivo anexado"}</span>
+        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setViewerOpen(true)}>
+          <Eye className="w-3 h-3 mr-1" /> Ver em tela cheia
+        </Button>
+      </div>
+
+      {!disabled && onRemove && (
+        <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 ml-auto shrink-0" onClick={onRemove}>
+          <X className="w-3 h-3" />
+        </Button>
+      )}
+
+      {/* Viewer em tela cheia via signed URL */}
+      {anexoId ? (
+        <AnexoViewer
+          anexoId={anexoId}
+          mimeType={mimeType}
+          open={viewerOpen}
+          onOpenChange={setViewerOpen}
+        />
+      ) : signedUrl ? (
+        // Fallback para dados legados: abre a URL diretamente
+        viewerOpen && (
+          <div
+            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
+            onClick={() => setViewerOpen(false)}
+          >
+            {isImage && <img src={signedUrl} alt="Evidência" className="max-h-[90vh] max-w-[90vw] object-contain" />}
+            {isVideo && <video src={signedUrl} controls className="max-h-[90vh] max-w-[90vw]" autoPlay />}
+            {isAudio && <audio src={signedUrl} controls autoPlay />}
+          </div>
+        )
+      ) : null}
+    </div>
+  );
+}
+
 export function DynamicFieldRenderer({ field, answer, review, userRole, disabled, allAnswers, onChange, assignmentId, numeroTarefa, nomeTarefa, origemTarefa, showValidation = true, approverPlan, allReviews = [], horarioLimite, dataPrevista, profileId, responsavelId, setorExecutorId, meusSetorIds = [], isAdmin = false }: Props) {
   const [uploading, setUploading] = useState(false);
 
@@ -236,7 +331,11 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
         nome_tarefa: nomeTarefa,
         origem: origemTarefa,
       });
-      update({ evidencia_url: anexo.path_relativo });
+      update({
+        evidencia_url: anexo.path_relativo,
+        evidencia_anexo_id: anexo.id,
+        evidencia_mime_type: anexo.mime_type ?? file.type,
+      });
     } catch (e: any) {
       console.error("Upload failed:", e);
     } finally {
@@ -368,23 +467,13 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
         return (
           <div className="space-y-2">
             {val.evidencia_url ? (
-              <div className="relative inline-block">
-                {field.tipo === "foto" ? (
-                  <img src={val.evidencia_url} alt="Evidência" className="max-h-32 rounded border border-border" />
-                ) : /\.(mp4|webm|mov)$/i.test(val.evidencia_url) ? (
-                  <video src={val.evidencia_url} controls className="max-h-40 rounded border border-border" />
-                ) : /\.(mp3|wav|ogg|m4a|webm)$/i.test(val.evidencia_url) ? (
-                  <audio src={val.evidencia_url} controls className="w-full max-w-xs" />
-                ) : (
-                  <a href={val.evidencia_url} target="_blank" rel="noreferrer" className="text-sm text-primary underline">Ver arquivo</a>
-                )}
-                {originalEditable && (
-                  <Button type="button" variant="destructive" size="sm" className="absolute -top-2 -right-2 h-6 w-6 p-0 rounded-full"
-                    onClick={() => update({ evidencia_url: null })}>
-                    <X className="w-3 h-3" />
-                  </Button>
-                )}
-              </div>
+              <EvidenciaPreview
+                anexoId={val.evidencia_anexo_id}
+                url={val.evidencia_url}
+                mimeType={val.evidencia_mime_type}
+                disabled={!originalEditable}
+                onRemove={originalEditable ? () => update({ evidencia_url: null, evidencia_anexo_id: null, evidencia_mime_type: null }) : undefined}
+              />
             ) : originalEditable ? (
               <label className={`flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg p-4 cursor-pointer hover:border-primary/50 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
                 {uploading ? <span className="text-sm text-muted-foreground">Enviando...</span> : (
@@ -492,20 +581,13 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
             <div className="space-y-1">
               <Label className="text-[11px]">Evidência obrigatória *</Label>
               {val.evidencia_url ? (
-                <div className="flex items-center gap-2">
-                  {/\.(jpg|jpeg|png|gif|webp)$/i.test(val.evidencia_url) ? (
-                    <img src={val.evidencia_url} alt="Evidência" className="max-h-24 rounded border border-border" />
-                  ) : /\.(mp4|webm|mov)$/i.test(val.evidencia_url) ? (
-                    <video src={val.evidencia_url} controls className="max-h-24 rounded border border-border" />
-                  ) : (
-                    <a href={val.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver evidência</a>
-                  )}
-                  {originalEditable && (
-                    <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => update({ evidencia_url: null })}>
-                      <X className="w-3 h-3" />
-                    </Button>
-                  )}
-                </div>
+                <EvidenciaPreview
+                  anexoId={val.evidencia_anexo_id}
+                  url={val.evidencia_url}
+                  mimeType={val.evidencia_mime_type}
+                  disabled={!originalEditable}
+                  onRemove={originalEditable ? () => update({ evidencia_url: null, evidencia_anexo_id: null, evidencia_mime_type: null }) : undefined}
+                />
               ) : originalEditable ? (
                 <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400/60 rounded p-2 cursor-pointer hover:border-amber-500 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
                   {uploading ? <span className="text-xs text-muted-foreground">Enviando...</span> : (
@@ -588,18 +670,13 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
       {field.exige_evidencia && !["foto", "arquivo", "assinatura"].includes(field.tipo) && (
         <div className="mt-2">
           {val.evidencia_url ? (
-            <div className="space-y-1.5">
-              {/\.(mp3|wav|ogg|m4a|webm)$/i.test(val.evidencia_url) ? (
-                <audio src={val.evidencia_url} controls className="w-full max-w-xs" />
-              ) : /\.(mp4|webm|mov)$/i.test(val.evidencia_url) ? (
-                <video src={val.evidencia_url} controls className="max-h-32 rounded border border-border" />
-              ) : /\.(jpg|jpeg|png|gif|webp)$/i.test(val.evidencia_url) ? (
-                <img src={val.evidencia_url} alt="Evidência" className="max-h-24 rounded border border-border" />
-              ) : (
-                <a href={val.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Evidência anexada</a>
-              )}
-              {isEditableEfetivo && <Button type="button" variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => update({ evidencia_url: null })}><X className="w-3 h-3" /></Button>}
-            </div>
+            <EvidenciaPreview
+              anexoId={val.evidencia_anexo_id}
+              url={val.evidencia_url}
+              mimeType={val.evidencia_mime_type}
+              disabled={!isEditableEfetivo}
+              onRemove={isEditableEfetivo ? () => update({ evidencia_url: null, evidencia_anexo_id: null, evidencia_mime_type: null }) : undefined}
+            />
           ) : originalEditable ? (
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-primary transition-colors">
               <Upload className="w-3.5 h-3.5" /> Anexar evidência
