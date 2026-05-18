@@ -123,7 +123,7 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("operational_assignments")
-        .select("validador_contingencia_id, responsavel_id, avaliado_id, avaliador_id")
+        .select("validador_contingencia_id, responsavel_id, avaliado_id, avaliador_id, numero_tarefa, origem, template:operational_templates(nome)")
         .eq("id", assignmentId)
         .single();
       if (error) throw error;
