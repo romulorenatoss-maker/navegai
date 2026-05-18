@@ -1105,7 +1105,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
               return sum + (f.aprovador_peso || 1);
             }, 0);
 
-            const notaEfetivaTotal = notaMaximaTotal;
+            const notaEfetivaTotal = notaAutoTotal + notaAvaliadorTotal;
 
             let idx = 0;
 
