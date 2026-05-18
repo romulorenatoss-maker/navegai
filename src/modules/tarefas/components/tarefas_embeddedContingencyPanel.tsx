@@ -222,7 +222,11 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
     try {
       let evidenciaUrl: string | undefined;
       if (resolveFile) {
-        evidenciaUrl = await uploadContingencyAttachment(resolveFile, resolveTargetId);
+        evidenciaUrl = await uploadContingencyAttachment(resolveFile, resolveTargetId, {
+          numero_tarefa: assignment?.numero_tarefa ?? "0",
+          nome_tarefa: assignment?.template?.nome,
+          origem: assignment?.origem,
+        });
       }
       cm.resolveContingency.mutate(
         { contingencyId: resolveTargetId, observacao: resolveObs, evidenciaUrl },
