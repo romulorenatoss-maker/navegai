@@ -2968,12 +2968,16 @@ export type Database = {
           avaliado_setor_id: string | null
           bloquear_fechamento_com_contingencia: boolean
           created_at: string
+          created_by: string | null
           data_fim: string | null
           data_inicio: string | null
+          deleted_at: string | null
           descricao: string | null
+          destino_aba: string
           destino_score: string
           dia_fixo_mes: number | null
           dias_da_semana: number[] | null
+          exceto_fds: boolean
           executor_profile_id: string | null
           executor_setor_id: string | null
           exigir_foto: boolean | null
@@ -3022,12 +3026,16 @@ export type Database = {
           avaliado_setor_id?: string | null
           bloquear_fechamento_com_contingencia?: boolean
           created_at?: string
+          created_by?: string | null
           data_fim?: string | null
           data_inicio?: string | null
+          deleted_at?: string | null
           descricao?: string | null
+          destino_aba?: string
           destino_score?: string
           dia_fixo_mes?: number | null
           dias_da_semana?: number[] | null
+          exceto_fds?: boolean
           executor_profile_id?: string | null
           executor_setor_id?: string | null
           exigir_foto?: boolean | null
@@ -3076,12 +3084,16 @@ export type Database = {
           avaliado_setor_id?: string | null
           bloquear_fechamento_com_contingencia?: boolean
           created_at?: string
+          created_by?: string | null
           data_fim?: string | null
           data_inicio?: string | null
+          deleted_at?: string | null
           descricao?: string | null
+          destino_aba?: string
           destino_score?: string
           dia_fixo_mes?: number | null
           dias_da_semana?: number[] | null
+          exceto_fds?: boolean
           executor_profile_id?: string | null
           executor_setor_id?: string | null
           exigir_foto?: boolean | null
@@ -3160,6 +3172,13 @@ export type Database = {
             columns: ["auditor_setor_id"]
             isOneToOne: false
             referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
