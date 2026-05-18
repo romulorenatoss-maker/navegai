@@ -2312,6 +2312,7 @@ export type Database = {
           motivo_devolucao: string | null
           observacao: string | null
           reincidencia_ref: string | null
+          respondido: boolean | null
           rodada: number
           tipo_evidencia_exigida: string | null
         }
@@ -2335,6 +2336,7 @@ export type Database = {
           motivo_devolucao?: string | null
           observacao?: string | null
           reincidencia_ref?: string | null
+          respondido?: boolean | null
           rodada?: number
           tipo_evidencia_exigida?: string | null
         }
@@ -2358,6 +2360,7 @@ export type Database = {
           motivo_devolucao?: string | null
           observacao?: string | null
           reincidencia_ref?: string | null
+          respondido?: boolean | null
           rodada?: number
           tipo_evidencia_exigida?: string | null
         }

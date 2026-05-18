@@ -1331,7 +1331,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                                 const existing = (flow.fieldAnswers as any[]).find((a:any) => a.field_id === perguntaId);
                                 const novoJson = { ...(existing?.valor_json ?? {}), [chave]: { evidencia_url: json.anexo.path_relativo, evidencia_anexo_id: json.anexo.id, evidencia_mime_type: json.anexo.mime_type ?? file.type } };
                                 await (supabase as any).from("operational_field_answers").upsert({ assignment_id: assignment?.id, field_id: perguntaId, valor_json: novoJson }, { onConflict: "assignment_id,field_id" });
-                                flow.scheduleAutoSave && flow.scheduleAutoSave(perguntaId, {} as any);
+                                (flow as any).scheduleAutoSave && (flow as any).scheduleAutoSave(perguntaId, {} as any);
                               }
                             }}
                           />
