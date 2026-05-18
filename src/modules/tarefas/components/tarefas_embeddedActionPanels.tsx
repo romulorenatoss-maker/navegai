@@ -121,11 +121,31 @@ const findExecutorPlanResponse = (field: any, review: any, contingency: any, flo
   const reviewRound = Number(review?.rodada ?? review?.round ?? 1);
   const planResponseFieldId = `${field?.id}__plano_acao__r${reviewRound}`;
 
+  // Primeiro tenta chave sintética direta
   const bySyntheticId = answers.find((answer: any) =>
     sameId(getFieldId(answer), planResponseFieldId)
   );
-
   if (bySyntheticId) return bySyntheticId;
+
+  // Busca no valor_json do campo original — itens do plano salvos como
+  // { __plano_acao__r1__foto: {...}, __plano_acao__r1__video: {...}, ... }
+  const originalAnswer = answers.find((a: any) => sameId(getFieldId(a), field?.id));
+  if (originalAnswer?.valor_json && typeof originalAnswer.valor_json === "object") {
+    const chavePrefix = `__plano_acao__r${reviewRound}__`;
+    const itensJson = originalAnswer.valor_json as Record<string, any>;
+    const itensDoPlano: Record<string, any> = {};
+    let temAlgo = false;
+    for (const [k, v] of Object.entries(itensJson)) {
+      if (k.startsWith(chavePrefix)) {
+        itensDoPlano[k] = v;
+        temAlgo = true;
+      }
+    }
+    if (temAlgo) {
+      // Retorna objeto sintético com todos os itens para renderização
+      return { field_id: planResponseFieldId, _itensPlano: itensDoPlano, _originalAnswer: originalAnswer };
+    }
+  }
 
   // fallback defensivo para dados antigos
   return answers.find((answer: any) => {
@@ -1449,45 +1469,60 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                               );
                             }
                             if (!resp) return null;
+
+                            // Novo formato: itens do plano por tipo no _itensPlano
+                            if (resp._itensPlano) {
+                              const reviewRound2 = Number(r?.rodada ?? 1);
+                              const chavePrefix = `__plano_acao__r${reviewRound2}__`;
+                              return (
+                                <div className="px-3 py-2 bg-muted/10 border-b border-border space-y-2">
+                                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Resposta do executor — R{r.rodada}</p>
+                                  {itens.map((item: any, iIdx: number) => {
+                                    const chave = `${chavePrefix}${item.tipo}`;
+                                    const itemData = resp._itensPlano[chave];
+                                    if (!itemData) return null;
+                                    return (
+                                      <div key={iIdx} className="space-y-1">
+                                        {item.titulo && <p className="text-[10px] text-amber-800 font-medium">{item.titulo}</p>}
+                                        {(item.tipo === "texto" || item.tipo === "descricao") && itemData.valor_texto && (
+                                          <div className="bg-card border border-border rounded p-2">
+                                            <p className="text-xs">{itemData.valor_texto}</p>
+                                          </div>
+                                        )}
+                                        {(item.tipo === "foto" || item.tipo === "video" || item.tipo === "audio") && itemData.evidencia_url && (
+                                          <EvidenciaPreview
+                                            anexoId={itemData.evidencia_anexo_id ?? null}
+                                            url={itemData.evidencia_url}
+                                            mimeType={itemData.evidencia_mime_type ?? null}
+                                            disabled
+                                          />
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            }
+
+                            // Formato legado
                             const respObs = getObservation(resp);
                             const respEvid = getEvidence(resp);
-                            const respStatus = normalizeAnswer(getAnswerValue(resp));
                             const evidUrl = respEvid ? String(respEvid) : "";
                             return (
                               <div className="px-3 py-2 bg-muted/10 border-b border-border space-y-1.5">
                                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Resposta do executor — R{r.rodada}</p>
-                                {respStatus && (
-                                  <p className="text-[10px] text-blue-700 dark:text-blue-400">Status: {respStatus === "conforme" ? "Conforme" : respStatus === "nao_conforme" ? "Não Conforme" : "N/A"}</p>
-                                )}
-                                {respObs && (
-                                  <div className="bg-card border border-border rounded-md p-2">
-                                    <p className="text-[10px] text-muted-foreground mb-1">✏️ {itens.find((i: any) => i.tipo === "texto")?.titulo || "Descrição"}</p>
-                                    <p className="text-xs text-foreground">{respObs}</p>
-                                  </div>
-                                )}
+                                {respObs && <p className="text-xs">{respObs}</p>}
                                 {evidUrl && (
-                                  <div className="bg-card border border-border rounded-md overflow-hidden">
-                                    <div className="px-2 py-1.5 bg-blue-50 dark:bg-blue-950/20 border-b border-border">
-                                      <span className="text-[10px] font-medium text-blue-800 dark:text-blue-400">
-                                        {/\.(jpg|jpeg|png|gif|webp)$/i.test(evidUrl) ? "📷" : /\.(mp4|webm|mov)$/i.test(evidUrl) ? "🎥" : /\.(mp3|wav|ogg|m4a)$/i.test(evidUrl) ? "🎵" : "📎"} {itens.find((i: any) => i.tipo !== "texto")?.titulo || "Evidência"}
-                                      </span>
-                                    </div>
-                                    <div className="p-2">
-                                      {/\.(jpg|jpeg|png|gif|webp)$/i.test(evidUrl) ? (
-                                        <div className="flex gap-2 items-center">
-                                          <img src={evidUrl} alt="Evidência" className="w-12 h-9 rounded border border-border object-cover cursor-pointer" onClick={() => window.open(evidUrl, "_blank")} />
-                                          <a href={evidUrl} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver em tela cheia</a>
-                                        </div>
-                                      ) : /\.(mp4|webm|mov)$/i.test(evidUrl) ? (
-                                        <video src={evidUrl} controls playsInline className="w-full max-h-32 rounded border border-border" />
-                                      ) : /\.(mp3|wav|ogg|m4a)$/i.test(evidUrl) ? (
-                                        <audio src={evidUrl} controls className="w-full" />
-                                      ) : (
-                                        <a href={evidUrl} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver anexo</a>
-                                      )}
-                                    </div>
-                                  </div>
+                                  <EvidenciaPreview
+                                    anexoId={null}
+                                    url={evidUrl}
+                                    mimeType={null}
+                                    disabled
+                                  />
                                 )}
+                              </div>
+                            );
+                          })()}
                                 {resp.respondido_por_nome && (
                                   <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
