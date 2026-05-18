@@ -155,6 +155,8 @@ export function useAssignmentExecution(assignmentId: string | null) {
 
     try {
       for (const fieldId of fieldsToSave) {
+        // Ignorar chaves compostas de itens do plano de ação — não são UUIDs válidos
+        if (fieldId.includes("__plano_acao__")) continue;
         const entry = currentAnswers[fieldId];
         if (!entry) continue;
         const now = new Date().toISOString();
