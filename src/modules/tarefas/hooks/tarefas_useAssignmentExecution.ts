@@ -498,7 +498,18 @@ export function useAssignmentExecution(assignmentId: string | null) {
         // fecha contingências da rodada anterior seguindo fluxo aberta→em_andamento→resolvida
         const veioDeDevolucao =
           assignment.status === "devolvida" || (assignment.rodada_atual ?? 1) > 1;
-        if (veioDeDevolucao) {
+
+        // Double-check buscando rodada_atual fresco do banco (state pode estar stale)
+        const { data: freshAssignment } = await (supabase as any)
+          .from("operational_assignments")
+          .select("rodada_atual, status")
+          .eq("id", assignment.id)
+          .single();
+        const veioDeDevolucaoFinal =
+          veioDeDevolucao ||
+          (freshAssignment?.status === "devolvida") ||
+          ((freshAssignment?.rodada_atual ?? 1) > 1);
+        if (veioDeDevolucaoFinal) {
           const nowTs = new Date().toISOString();
           // Passo 1: aberta → em_andamento
           await (supabase as any)
@@ -523,7 +534,7 @@ export function useAssignmentExecution(assignmentId: string | null) {
           assignmentId: assignment.id,
           action: actionFinal,
           origem: "execucao",
-          extraData: { tempoGasto, atrasado, rodadaAtual: assignment.rodada_atual ?? 1, contingenciesCleanupDone: veioDeDevolucao },
+          extraData: { tempoGasto, atrasado, rodadaAtual: freshAssignment?.rodada_atual ?? assignment.rodada_atual ?? 1, contingenciesCleanupDone: veioDeDevolucaoFinal },
         });
       }
 
