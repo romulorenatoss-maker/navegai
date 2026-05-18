@@ -561,6 +561,7 @@ export type Database = {
           cnpj: string | null
           cpf: string | null
           created_at: string
+          criado_por: string | null
           endereco: string | null
           id: string
           inscricao_estadual: string | null
@@ -584,6 +585,7 @@ export type Database = {
           cnpj?: string | null
           cpf?: string | null
           created_at?: string
+          criado_por?: string | null
           endereco?: string | null
           id?: string
           inscricao_estadual?: string | null
@@ -607,6 +609,7 @@ export type Database = {
           cnpj?: string | null
           cpf?: string | null
           created_at?: string
+          criado_por?: string | null
           endereco?: string | null
           id?: string
           inscricao_estadual?: string | null
