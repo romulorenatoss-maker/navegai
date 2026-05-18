@@ -771,6 +771,9 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
         criticidade: p?.criticidade || "media" as const,
         tipo_evidencia_exigida: p?.tipo_evidencia_exigida || "descricao",
         itens_plano: p?.itens_plano || [],
+        anexo_orientacao_url: p?.anexo_orientacao_url ?? null,
+        anexo_orientacao_anexo_id: p?.anexo_orientacao_anexo_id ?? null,
+        anexo_orientacao_mime_type: p?.anexo_orientacao_mime_type ?? null,
       };
     });
     const invalidoBasico = lista.find(p => !p.descricao_acao || !p.prazo_iso);
@@ -852,6 +855,9 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             criticidade: "media" as const,
             tipo_evidencia_exigida: "descricao" as const,
             itens_plano: [] as ItemPlano[],
+            anexo_orientacao_url: null as string | null,
+            anexo_orientacao_anexo_id: null as string | null,
+            anexo_orientacao_mime_type: null as string | null,
           };
           const prazoAlterado = !!(p.prazo && p.prazo_padrao && (() => {
             try { return new Date(p.prazo).getTime() > new Date(p.prazo_padrao).getTime() + 60000; }
@@ -860,26 +866,6 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           return (
             <div key={f.id} className="border border-border rounded-lg p-3 bg-card space-y-2">
               <div className="text-sm font-medium text-foreground">{f.label}</div>
-              <div className="space-y-1 pb-1">
-                <Label className="text-[11px]">Evidência exigida do executor</Label>
-                <div className="flex gap-1.5 flex-wrap">
-                  {([
-                    { v: "foto", label: "📷 Foto" },
-                    { v: "video", label: "🎥 Vídeo" },
-                    { v: "descricao", label: "✏️ Descrição" },
-                    { v: "nenhuma", label: "Nenhuma" },
-                  ] as const).map(opt => (
-                    <button
-                      key={opt.v}
-                      type="button"
-                      onClick={() => setPlanos(prev => ({ ...prev, [f.id]: { ...p, tipo_evidencia_exigida: opt.v } }))}
-                      className={`px-2 py-1 rounded border text-xs transition-colors ${
-                        (p.tipo_evidencia_exigida ?? "descricao") === opt.v
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "border-border text-muted-foreground hover:bg-muted"
-                      }`}
-                    >{opt.label}</button>
-                  ))}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -938,6 +924,47 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                     >{opt.label}</button>
                   ))}
                 </div>
+              </div>
+              {/* Anexo de orientação do aprovador */}
+              <div className="space-y-1">
+                <Label className="text-[11px]">Anexo de orientação (opcional)</Label>
+                {p.anexo_orientacao_url ? (
+                  <EvidenciaPreview
+                    anexoId={p.anexo_orientacao_anexo_id ?? null}
+                    url={p.anexo_orientacao_url}
+                    mimeType={p.anexo_orientacao_mime_type ?? null}
+                    onRemove={() => setPlanos(prev => ({ ...prev, [f.id]: { ...p, anexo_orientacao_url: null, anexo_orientacao_anexo_id: null, anexo_orientacao_mime_type: null } }))}
+                  />
+                ) : (
+                  <label className="flex items-center gap-2 border border-dashed border-border rounded-lg p-2 cursor-pointer hover:border-primary/50 transition-colors">
+                    <Upload className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Foto, vídeo ou áudio de orientação</span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*,video/*,audio/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          const { data: sess } = await supabase.auth.getSession();
+                          const token = sess.session?.access_token;
+                          if (!token) return;
+                          const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+                          const fd = new FormData();
+                          fd.append('file', file);
+                          fd.append('contexto_tipo', 'aprovacao');
+                          fd.append('contexto_ref_id', f.id);
+                          const res = await fetch(`${FN_BASE}/tarefas-storage-upload`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+                          const json = await res.json();
+                          if (json.ok) {
+                            setPlanos(prev => ({ ...prev, [f.id]: { ...p, anexo_orientacao_url: json.anexo.path_relativo, anexo_orientacao_anexo_id: json.anexo.id, anexo_orientacao_mime_type: json.anexo.mime_type ?? file.type } }));
+                          }
+                        } catch (err) { console.error(err); }
+                      }}
+                    />
+                  </label>
+                )}
               </div>
               {prazoAlterado && (
                 <div className="space-y-1 border-t border-amber-200 pt-2 bg-amber-50/50 dark:bg-amber-950/20 -mx-3 px-3 -mb-3 pb-3 rounded-b-lg">
