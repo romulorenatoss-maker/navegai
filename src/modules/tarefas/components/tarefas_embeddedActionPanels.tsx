@@ -1520,9 +1520,6 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                                     disabled
                                   />
                                 )}
-                              </div>
-                            );
-                          })()}
                                 {resp.respondido_por_nome && (
                                   <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
