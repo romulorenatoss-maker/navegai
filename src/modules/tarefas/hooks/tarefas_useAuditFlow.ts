@@ -194,6 +194,8 @@ export function useAuditFlow(assignmentId: string | null) {
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const getBlockingReasons = useCallback((assignment: any) => {
     const reasons: string[] = [];
     const snapshot = assignment?.template_snapshot;
     const snapshotFields: SnapshotField[] = snapshot?.fields || [];
