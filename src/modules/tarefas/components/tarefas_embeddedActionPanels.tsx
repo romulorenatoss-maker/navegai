@@ -397,6 +397,9 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     criticidade: "baixa" | "media" | "alta";
     tipo_evidencia_exigida: string;
     itens_plano: ItemPlano[];
+    anexo_orientacao_url?: string | null;
+    anexo_orientacao_anexo_id?: string | null;
+    anexo_orientacao_mime_type?: string | null;
   }>>({});
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   // Por NC, o aprovador escolhe se vira plano de ação ou só devolução para refazer
@@ -866,8 +869,6 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           return (
             <div key={f.id} className="border border-border rounded-lg p-3 bg-card space-y-2">
               <div className="text-sm font-medium text-foreground">{f.label}</div>
-                </div>
-              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label className="text-[11px]">
