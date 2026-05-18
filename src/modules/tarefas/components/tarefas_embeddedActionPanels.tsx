@@ -1538,11 +1538,11 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                             <div className="px-3 py-2 flex gap-2">
                               <button type="button" onClick={() => handleResposta(f, "conforme")}
                                 className={`flex-1 text-xs px-2 py-2 rounded border font-medium transition-colors ${value === "conforme" ? "bg-emerald-100 border-emerald-500 text-emerald-800 ring-2 ring-emerald-200" : "border-border text-muted-foreground hover:bg-muted"}`}>
-                                ✓ Conforme
+                                Conforme
                               </button>
                               <button type="button" onClick={() => handleResposta(f, "nao_conforme")}
                                 className={`flex-1 text-xs px-2 py-2 rounded border font-medium transition-colors ${value === "nao_conforme" ? "bg-red-100 border-red-400 text-red-800 ring-2 ring-red-200" : "border-border text-muted-foreground hover:bg-muted"}`}>
-                                ✗ Não Conforme → R{r.rodada + 1}
+                                Nao Conforme - R{r.rodada + 1}
                               </button>
                             </div>
                           )}
