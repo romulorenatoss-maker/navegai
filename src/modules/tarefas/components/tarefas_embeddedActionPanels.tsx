@@ -776,10 +776,9 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
         anexo_orientacao_mime_type: p?.anexo_orientacao_mime_type ?? null,
       };
     });
-    console.log("DEBUG planos:", JSON.stringify(planos));
-    console.log("DEBUG lista:", JSON.stringify(lista));
-    const invalidoBasico = lista.find(p => (!p.descricao_acao && (!p.itens_plano || p.itens_plano.length === 0)) || !p.prazo_iso);
-    if (invalidoBasico) { toast.error("Preencha instrucao ou marque ao menos 1 item"); return; }
+    console.log("🔍 DEBUG submeterPlanos - planos state:", JSON.stringify(planos, null, 2));
+    console.log("🔍 DEBUG submeterPlanos - lista:", JSON.stringify(lista, null, 2));
+    if (invalidoBasico) { toast.error(`Preencha a instrução ou marque ao menos 1 item para "${invalidoBasico.field_label}".`); return; }
     const invalidoJust = lista.find(p => p.prazo_alterado && !p.justificativa_alteracao_prazo);
     if (invalidoJust) { toast.error(`Justifique a alteração do prazo padrão em "${invalidoJust.field_label}".`); return; }
     try {
