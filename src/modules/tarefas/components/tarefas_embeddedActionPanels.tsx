@@ -1568,44 +1568,72 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                               </button>
                             </div>
                           )}
-                          {/* Formulario de novo plano inline (R2+) */}
+                          {/* Formulario de novo plano inline (R2+) - mesmo layout do R1 */}
                           {idx === planosDoField.length - 1 && expandirNovoPlano[f.id] && (() => {
                             const p = planos[f.id] || { descricao_acao: "", prazo: computeDefaultPrazo(), prazo_padrao: computeDefaultPrazo(), justificativa_alteracao_prazo: "", criticidade: "media" as const, tipo_evidencia_exigida: "descricao" as const, itens_plano: [] as ItemPlano[], anexo_orientacao_url: null as string | null, anexo_orientacao_anexo_id: null as string | null, anexo_orientacao_mime_type: null as string | null };
-                            const ITENS_CFG = [
-                              { v: "foto", label: "Foto" },
-                              { v: "video", label: "Video" },
-                              { v: "audio", label: "Audio" },
-                              { v: "texto", label: "Texto" },
-                            ] as const;
+                            const updateP = (patch: any) => setPlanos(prev => { const cur = prev[f.id] ?? p; return { ...prev, [f.id]: { ...cur, ...patch } }; });
+                            const ITENS_R2 = [
+                              { tipo: "foto", label: "Foto", ph: "O que fotografar?" },
+                              { tipo: "video", label: "Video", ph: "O que filmar?" },
+                              { tipo: "audio", label: "Audio", ph: "O que gravar?" },
+                              { tipo: "texto", label: "Texto", ph: "O que descrever?" },
+                            ];
                             return (
-                              <div className="px-3 py-3 border-t border-amber-200 bg-amber-50/40 space-y-3">
-                                <p className="text-xs font-semibold text-amber-900">Novo plano de acao — R{r.rodada + 1}</p>
-                                <Textarea value={p.descricao_acao} onChange={e => setPlanos(prev => ({...prev, [f.id]: {...(prev[f.id]||p), descricao_acao: e.target.value}}))} placeholder="Instrucao geral (opcional)" className="text-xs min-h-[50px]" />
-                                <div className="space-y-1">
-                                  <Label className="text-[11px]">O que quero de volta</Label>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {ITENS_CFG.map(cfg => {
-                                      const ativo = (planos[f.id]?.itens_plano || []).find((i:any) => i.tipo === cfg.v);
-                                      return (
-                                        <button key={cfg.v} type="button"
-                                          onClick={() => setPlanos(prev => { const cur = prev[f.id]||p; const existe = cur.itens_plano.find((i:any)=>i.tipo===cfg.v); return {...prev,[f.id]:{...cur,itens_plano:existe?cur.itens_plano.filter((i:any)=>i.tipo!==cfg.v):[...cur.itens_plano,{tipo:cfg.v,titulo:"",obrigatorio:true}]}};})}
-                                          className={`px-2 py-1 rounded border text-xs ${ativo?"bg-primary text-primary-foreground border-primary":"border-border text-muted-foreground"}`}>
-                                          {cfg.label}
-                                        </button>
-                                      );
-                                    })}
+                              <div className="border border-amber-300 dark:border-amber-800 rounded-lg overflow-hidden mx-3 my-2">
+                                <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200">
+                                  <ClipboardList className="w-3.5 h-3.5 text-amber-700" />
+                                  <span className="text-[11px] font-semibold text-amber-800">Plano de acao — R{r.rodada + 1}</span>
+                                </div>
+                                <div className="p-3 space-y-2.5">
+                                  <div className="space-y-1">
+                                    <Label className="text-[11px]">Instrucao geral (opcional)</Label>
+                                    <Textarea value={p.descricao_acao} onChange={e => updateP({ descricao_acao: e.target.value })} className="text-xs min-h-[44px]" placeholder="Descreva o que precisa ser corrigido..." />
                                   </div>
-                                  {(planos[f.id]?.itens_plano||[]).map((item:any) => (
-                                    <Input key={item.tipo} value={item.titulo} onChange={e => { const t=e.target.value; setPlanos(prev=>{const cur=prev[f.id]||p;return{...prev,[f.id]:{...cur,itens_plano:cur.itens_plano.map((i:any)=>i.tipo===item.tipo?{...i,titulo:t}:i)}};});}} placeholder={`Instrucao para ${item.tipo}...`} className="h-7 text-xs mt-1" />
-                                  ))}
+                                  <div className="space-y-1">
+                                    <Label className="text-[11px]">O que quero de volta (marque ao menos 1)</Label>
+                                    <div className="flex flex-col gap-1.5">
+                                      {ITENS_R2.map(cfg => {
+                                        const ativo = p.itens_plano.find((i: any) => i.tipo === cfg.tipo);
+                                        return (
+                                          <div key={cfg.tipo} className={`border rounded-lg overflow-hidden ${ativo ? "border-primary" : "border-border"}`}>
+                                            <button type="button" onClick={() => {
+                                              const existe = p.itens_plano.find((i: any) => i.tipo === cfg.tipo);
+                                              updateP({ itens_plano: existe ? p.itens_plano.filter((i: any) => i.tipo !== cfg.tipo) : [...p.itens_plano, { tipo: cfg.tipo, titulo: "", obrigatorio: true }] });
+                                            }} className={`w-full flex items-center gap-2 px-3 py-2 ${ativo ? "bg-primary/10" : "hover:bg-muted/50"}`}>
+                                              <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${ativo ? "bg-primary border-primary" : "border-border"}`}>
+                                                {ativo && <span className="text-primary-foreground text-[10px] font-bold">v</span>}
+                                              </div>
+                                              <span className="text-xs font-medium">{cfg.label}</span>
+                                            </button>
+                                            {ativo && (
+                                              <div className="px-3 pb-2 pt-1 border-t border-border bg-muted/10">
+                                                <Input value={ativo.titulo} onChange={e => {
+                                                  const novoTitulo = e.target.value;
+                                                  setPlanos(prev => { const cur = prev[f.id] ?? p; return { ...prev, [f.id]: { ...cur, itens_plano: cur.itens_plano.map((i: any) => i.tipo === cfg.tipo ? { ...i, titulo: novoTitulo } : i) } }; });
+                                                }} placeholder={cfg.ph} className="h-7 text-xs" />
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-[11px]">Prazo ({prazoPadraoHoras}h padrao)</Label>
+                                    <Input type="datetime-local" className="h-8 text-xs" value={p.prazo} onChange={e => updateP({ prazo: e.target.value })} />
+                                  </div>
+                                  <div className="flex gap-1.5">
+                                    {(["baixa","media","alta"] as const).map(c => (
+                                      <button key={c} type="button" onClick={() => updateP({ criticidade: c })}
+                                        className={`flex-1 py-1.5 rounded border text-xs font-medium ${p.criticidade === c ? c === "alta" ? "bg-red-100 border-red-400 text-red-700" : c === "media" ? "bg-amber-100 border-amber-400 text-amber-700" : "bg-emerald-100 border-emerald-400 text-emerald-700" : "border-border text-muted-foreground hover:bg-muted"}`}>
+                                        {c === "baixa" ? "Baixa" : c === "media" ? "Media" : "Alta"}
+                                      </button>
+                                    ))}
+                                  </div>
+                                  <Button type="button" size="sm" onClick={submeterPlanos} disabled={flow.isSaving} className="w-full bg-amber-600 hover:bg-amber-700 text-white">
+                                    {flow.isSaving ? "Enviando..." : `Registrar plano R${r.rodada + 1} e devolver`}
+                                  </Button>
                                 </div>
-                                <div>
-                                  <Label className="text-[11px]">Prazo</Label>
-                                  <Input type="datetime-local" value={p.prazo} onChange={e => setPlanos(prev => ({...prev,[f.id]:{...(prev[f.id]||p),prazo:e.target.value}}))} className="h-8 text-xs mt-1" />
-                                </div>
-                                <Button type="button" size="sm" onClick={submeterPlanos} disabled={flow.isSaving} className="w-full bg-amber-600 hover:bg-amber-700 text-white">
-                                  {flow.isSaving ? "Enviando..." : `Registrar plano R${r.rodada + 1} e devolver`}
-                                </Button>
                               </div>
                             );
                           })()}                        </div>
