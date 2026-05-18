@@ -1541,7 +1541,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                                 className="flex-1 text-xs px-2 py-2 rounded border font-medium transition-colors border-border text-muted-foreground hover:bg-muted">
                                 Conforme
                               </button>
-                              <button type="button" onClick={() => { handleResposta(f, "nao_conforme"); setAcaoPorNC(prev => ({ ...prev, [f.id]: "plano" })); setTimeout(() => irParaPlano(), 50); }}
+                              <button type="button" onClick={() => { handleResposta(f, "nao_conforme"); setAcaoPorNC(prev => ({ ...prev, [f.id]: "plano" })); setStep("plano"); }}
                                 className="flex-1 text-xs px-2 py-2 rounded border font-medium transition-colors border-border text-muted-foreground hover:bg-muted">
                                 Nao Conforme R{r.rodada + 1}
                               </button>
