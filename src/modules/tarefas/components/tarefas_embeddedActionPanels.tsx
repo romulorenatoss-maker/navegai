@@ -649,9 +649,6 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     }),
     [approverFields, acaoPorNC, flow.approverAnswers, flow.existingApprovalAnswers, flow.fieldReviews]
   );
-    () => [] as typeof approverFields,
-    []
-  );
 
   const irParaPlano = () => {
     submeterPlanos();
