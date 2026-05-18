@@ -786,7 +786,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
       })()}
 
       {/* Evidence upload for non-file fields that require evidence */}
-      {field.exige_evidencia && !["foto", "arquivo", "assinatura"].includes(field.tipo) && (
+      {field.exige_evidencia && !["foto", "arquivo", "assinatura"].includes(field.tipo) && !activeRule?.requer_evidencia && (
         <div className="mt-2">
           {val.evidencia_url ? (
             <EvidenciaPreview
