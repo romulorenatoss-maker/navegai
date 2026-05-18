@@ -106,15 +106,11 @@ export function useApprovalFlow(assignmentId: string | null) {
   });
 
   // Reset approverAnswers ao trocar de tarefa (anti-contaminação entre tarefas)
+  // O key={assignmentId} no Sheet já garante isolamento — não cancelar queries
+  // pois cancela a query da tarefa atual que acabou de montar, deixando em branco.
   useEffect(() => {
     setApproverAnswers({});
-    qc.cancelQueries({ queryKey: ["operational_approval_answers"] });
-    qc.cancelQueries({ queryKey: ["operational_approval_field_answers"] });
-    if (assignmentId) {
-      qc.cancelQueries({ queryKey: ["operational_approval_answers", assignmentId] });
-      qc.cancelQueries({ queryKey: ["operational_approval_field_answers", assignmentId] });
-    }
-  }, [assignmentId, qc]);
+  }, [assignmentId]);
 
   // Hidrata approverAnswers a partir de respostas já salvas
   // (auto-save persistente: ao reabrir, toggles/observação/anexo já vêm preenchidos).

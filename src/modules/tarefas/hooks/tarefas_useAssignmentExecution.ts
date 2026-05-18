@@ -67,11 +67,9 @@ export function useAssignmentExecution(assignmentId: string | null) {
     loggedFieldsRef.current.clear();
     answersRef.current = {};
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    // Cancela queries pendentes da tarefa anterior para evitar resposta tardia poluir o estado
-    qc.cancelQueries({ queryKey: ["operational_field_answers"] });
-    if (assignmentId) {
-      qc.cancelQueries({ queryKey: ["operational_field_answers", assignmentId] });
-    }
+    // Não cancelar queries aqui — o cancelamento genérico cancela a query
+    // da tarefa atual que acabou de ser montada, deixando a tela em branco.
+    // O key={assignmentId} no Sheet já garante isolamento entre tarefas.
   }, [assignmentId, qc]);
 
   // Hydrate answers from DB
