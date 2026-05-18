@@ -624,15 +624,29 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
 
   const naoConformesPlano = useMemo(
     () => approverFields.filter(f => {
+      // Campos com planos ja existentes nao entram aqui — sao tratados separadamente
+      const temPlanosAtivos = (flow.fieldReviews as any[]).filter((r: any) => r.field_id === f.id && r.devolvido === true).length > 0;
+      if (temPlanosAtivos) return false;
       // Forcado via botao "Nao Conforme R2+" dentro do bloco de planos
       if (acaoPorNC[f.id] === "plano") return true;
       const v = flow.approverAnswers[f.id]?.resposta ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta;
       const rule = v ? getRuleForResposta(f, v, "aprovador") : null;
       return getAllowedActions(rule).includes("plano") && (acaoPorNC[f.id] ?? getDefaultReviewAction(rule)) === "plano";
     }),
-    [perguntasComAcao, acaoPorNC, flow.approverAnswers, flow.existingApprovalAnswers, approverFields]
+    [perguntasComAcao, acaoPorNC, flow.approverAnswers, flow.existingApprovalAnswers, approverFields, flow.fieldReviews]
   );
-  const naoConformesDevolver = useMemo(
+  // Lista completa para a tela de plano — inclui R2+ forcados
+  const naoConformesPlanoCompleto = useMemo(
+    () => approverFields.filter(f => {
+      if (acaoPorNC[f.id] === "plano") return true;
+      const temPlanosAtivos = (flow.fieldReviews as any[]).filter((r: any) => r.field_id === f.id && r.devolvido === true).length > 0;
+      if (temPlanosAtivos) return false;
+      const v = flow.approverAnswers[f.id]?.resposta ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta;
+      const rule = v ? getRuleForResposta(f, v, "aprovador") : null;
+      return getAllowedActions(rule).includes("plano") && (acaoPorNC[f.id] ?? getDefaultReviewAction(rule)) === "plano";
+    }),
+    [approverFields, acaoPorNC, flow.approverAnswers, flow.existingApprovalAnswers, flow.fieldReviews]
+  );
     () => [] as typeof approverFields,
     []
   );
@@ -779,7 +793,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   };
 
   const submeterPlanos = async () => {
-    const lista = naoConformesPlano.map(f => {
+    const lista = naoConformesPlanoCompleto.map(f => {
       const p = planos[f.id];
       const prazoAlterado = !!(p?.prazo && p?.prazo_padrao && (() => {
         try { return new Date(p.prazo).getTime() > new Date(p.prazo_padrao).getTime() + 60000; }
@@ -871,7 +885,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           </div>
         </div>
 
-        {naoConformesPlano.map((f) => {
+        {naoConformesPlanoCompleto.map((f) => {
           const p = planos[f.id] || {
             descricao_acao: "",
             prazo: computeDefaultPrazo(),
@@ -1030,7 +1044,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             className="bg-amber-600 hover:bg-amber-700 text-white"
           >
             <Send className="w-3.5 h-3.5 mr-1" />
-            {flow.isSaving ? "Enviando..." : `Registrar ${naoConformesPlano.length} plano(s) e devolver ao executor`}
+            {flow.isSaving ? "Enviando..." : `Registrar ${naoConformesPlanoCompleto.length} plano(s) e devolver ao executor`}
           </Button>
         </div>
       </div>
@@ -1541,7 +1555,13 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                                 className="flex-1 text-xs px-2 py-2 rounded border font-medium transition-colors border-border text-muted-foreground hover:bg-muted">
                                 Conforme
                               </button>
-                              <button type="button" onClick={() => { handleResposta(f, "nao_conforme"); setAcaoPorNC(prev => ({ ...prev, [f.id]: "plano" })); setStep("plano"); }}
+                              <button type="button" onClick={() => {
+                                handleResposta(f, "nao_conforme");
+                                // Limpa estado do plano anterior para comecar do zero
+                                setPlanos(prev => { const n = {...prev}; delete n[f.id]; return n; });
+                                setAcaoPorNC(prev => ({ ...prev, [f.id]: "plano" }));
+                                setStep("plano");
+                              }}
                                 className="flex-1 text-xs px-2 py-2 rounded border font-medium transition-colors border-border text-muted-foreground hover:bg-muted">
                                 Nao Conforme R{r.rodada + 1}
                               </button>
@@ -1673,7 +1693,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           <Button
             type="button" size="sm"
             onClick={() => {
-              if (naoConformesPlano.length > 0) {
+              if (naoConformesPlanoCompleto.length > 0) {
                 irParaPlano();
               } else {
                 devolverApenas();
