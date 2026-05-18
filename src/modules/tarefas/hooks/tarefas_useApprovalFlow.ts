@@ -237,12 +237,12 @@ export function useApprovalFlow(assignmentId: string | null) {
     if (snapshot?.bloquear_fechamento_contingencia) {
       const openContingencies = contingencies.filter((c: any) => !["validada", "descartada", "resolvida"].includes(c.status));
       if (openContingencies.length > 0) {
-        reasons.push(`${openContingencies.length} plano(s) de ação aberto(s) impedem a aprovação.`);
+        const nomes = openContingencies.map((c: any) => `"${c.descricao || c.origin_field_id || "sem nome"}"`).join(", ");
+        reasons.push(`Plano(s) de ação ainda aberto(s): ${nomes}`);
       }
     }
 
-    // Block if approval questions are unanswered — exige resposta para TODAS as perguntas
-    // do snapshot (replicadas + manuais), exceto tipos puramente estruturais.
+    // Block if approval questions are unanswered
     const snapshotFields: SnapshotField[] = snapshot?.fields || [];
     const approvalFields = snapshotFields.filter(f => !["secao", "divisor", "titulo"].includes(String((f as any).tipo)));
     const unanswered = approvalFields.filter(f => {
@@ -251,7 +251,8 @@ export function useApprovalFlow(assignmentId: string | null) {
       return !draft?.resposta && !existing?.resposta;
     });
     if (unanswered.length > 0) {
-      reasons.push(`${unanswered.length} pergunta(s) de aprovação sem resposta.`);
+      const nomes = unanswered.map(f => `"${(f as any).label || f.id}"`).join(", ");
+      reasons.push(`Pergunta(s) sem resposta: ${nomes}`);
     }
 
     return reasons;
