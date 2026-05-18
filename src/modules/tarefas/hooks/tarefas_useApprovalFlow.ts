@@ -356,6 +356,8 @@ export function useApprovalFlow(assignmentId: string | null) {
       }
 
       for (const p of planos) {
+        const responsavelPlanoId = p.responsavel_profile_id || assignment.responsavel_id || assignment.avaliado_id || null;
+
         // 1) Cria contingência (workflow operacional existente)
         await (supabase as any).from("operational_contingencies").insert({
           assignment_id: assignmentId,
@@ -365,7 +367,7 @@ export function useApprovalFlow(assignmentId: string | null) {
           prazo_sla: p.prazo_iso,
           prazo_resolucao: p.prazo_iso,
           status: "aberta",
-          responsavel_id: p.responsavel_profile_id ?? null,
+          responsavel_id: responsavelPlanoId,
           motivo_instrucao: `Criticidade: ${p.criticidade}`,
           itens_plano: p.itens_plano || [],
         });

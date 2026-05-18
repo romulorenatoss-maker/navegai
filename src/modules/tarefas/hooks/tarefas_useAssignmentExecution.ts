@@ -476,16 +476,20 @@ export function useAssignmentExecution(assignmentId: string | null) {
       // quando é reenvio pós-devolução (rodada > 1 ou status devolvida)
       if (veioDeDevolucaoFinal) {
         const nowTs = new Date().toISOString();
-        await (supabase as any)
+        const { error: abrirTratamentoError } = await (supabase as any)
           .from("operational_contingencies")
           .update({ status: "em_andamento", updated_at: nowTs })
           .eq("assignment_id", assignment.id)
           .eq("status", "aberta");
-        await (supabase as any)
+        if (abrirTratamentoError) throw abrirTratamentoError;
+
+        const { error: resolverTratamentoError } = await (supabase as any)
           .from("operational_contingencies")
           .update({ status: "resolvida", resolvida_em: nowTs, dentro_prazo: true, updated_at: nowTs })
           .eq("assignment_id", assignment.id)
           .eq("status", "em_andamento");
+        if (resolverTratamentoError) throw resolverTratamentoError;
+
         await qc.invalidateQueries({ queryKey: ["operational_contingencies"] });
         await qc.invalidateQueries({ queryKey: ["operational_contingencies_management"] });
       }
