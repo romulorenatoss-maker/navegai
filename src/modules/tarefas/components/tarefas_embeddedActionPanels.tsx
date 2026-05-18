@@ -2123,7 +2123,12 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between pb-2 border-b border-border">
-          <span className="text-sm font-medium">Criar plano de acao — Auditor</span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowPlanoModal(false)} className="text-muted-foreground hover:text-foreground p-1 rounded">
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <span className="text-sm font-medium">Criar plano de acao — Auditor</span>
+          </div>
           <button onClick={() => setShowPlanoModal(false)} className="text-muted-foreground hover:text-foreground text-xl leading-none px-1">x</button>
         </div>
         {!step2 ? (
@@ -2151,6 +2156,9 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
           </div>
         ) : (
           <div className="space-y-4">
+            <button onClick={() => setPlanosAuditorModal({})} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="w-3.5 h-3.5" /> Voltar para selecao de perguntas
+            </button>
             {Array.from(perguntasSelecionadas).map((fieldId:string) => {
               const f = fields.find((x:any)=>x.id===fieldId);
               if (!f) return null;
@@ -2199,7 +2207,6 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
               );
             })}
             <div className="flex gap-2 pt-2 sticky bottom-0 bg-background pb-1 border-t border-border">
-              <Button type="button" size="default" variant="outline" className="h-11" onClick={()=>setPlanosAuditorModal({})}>Voltar</Button>
               <Button type="button" size="default" className="flex-1 h-11 text-white" style={{background:"#534AB7"}} disabled={flow.isSaving}
                 onClick={async()=>{
                   for (const [fieldId,pl] of Object.entries(planosAuditorModal) as any) {
