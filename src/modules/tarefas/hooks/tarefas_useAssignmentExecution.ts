@@ -523,7 +523,8 @@ export function useAssignmentExecution(assignmentId: string | null) {
         // Decide fluxo: tarefa designada (created_by ≠ executor e sem avaliador padrão) → aguardando_validacao
         // caso contrário → aguardando_avaliacao (fluxo tradicional)
         const isDesignada = !!assignment.created_by
-          && assignment.created_by !== assignment.responsavel_id;
+          && assignment.created_by !== assignment.responsavel_id
+          && !assignment.aprovador_id;
         const actionFinal = assignment.status === "devolvida"
           ? "enviar_avaliacao"
           : isDesignada ? "enviar_validacao_designante" : "enviar_avaliacao";
