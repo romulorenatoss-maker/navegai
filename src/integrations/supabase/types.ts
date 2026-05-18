@@ -2209,6 +2209,8 @@ export type Database = {
         Row: {
           assignment_id: string
           created_at: string
+          evidencia_anexo_id: string | null
+          evidencia_mime_type: string | null
           evidencia_url: string | null
           field_id: string
           historico_alteracoes: Json | null
@@ -2225,6 +2227,8 @@ export type Database = {
         Insert: {
           assignment_id: string
           created_at?: string
+          evidencia_anexo_id?: string | null
+          evidencia_mime_type?: string | null
           evidencia_url?: string | null
           field_id: string
           historico_alteracoes?: Json | null
@@ -2241,6 +2245,8 @@ export type Database = {
         Update: {
           assignment_id?: string
           created_at?: string
+          evidencia_anexo_id?: string | null
+          evidencia_mime_type?: string | null
           evidencia_url?: string | null
           field_id?: string
           historico_alteracoes?: Json | null
@@ -2260,6 +2266,13 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_field_answers_evidencia_anexo_id_fkey"
+            columns: ["evidencia_anexo_id"]
+            isOneToOne: false
+            referencedRelation: "tarefas_anexos"
             referencedColumns: ["id"]
           },
           {
