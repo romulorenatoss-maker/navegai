@@ -1570,7 +1570,13 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                                       </button>
                                       {ativo && (
                                         <div className="px-3 pb-2 pt-1 border-t border-border bg-muted/10">
-                                          <Input value={ativo.titulo} onChange={e => updateP({ itens_plano: p.itens_plano.map((i: any) => i.tipo === cfg.tipo ? { ...i, titulo: e.target.value } : i) })} placeholder={cfg.ph} className="h-7 text-xs" />
+                                          <Input value={ativo.titulo} onChange={e => {
+                                            const novoTitulo = e.target.value;
+                                            setPlanos(prev => {
+                                              const cur = prev[f.id] ?? p;
+                                              return { ...prev, [f.id]: { ...cur, itens_plano: cur.itens_plano.map((i: any) => i.tipo === cfg.tipo ? { ...i, titulo: novoTitulo } : i) } };
+                                            });
+                                          }} placeholder={cfg.ph} className="h-7 text-xs" />
                                         </div>
                                       )}
                                     </div>
