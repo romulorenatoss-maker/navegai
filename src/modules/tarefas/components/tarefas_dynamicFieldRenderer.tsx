@@ -910,7 +910,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                           <input type="file" className="hidden" accept="audio/*" capture="user" onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadPlan(f); }} />
                         </label>
                       )}
-                      {tipoEv === "texto" && (
+                      {(tipoEv === "texto" || tipoEv === "descricao") && (
                         <textarea
                           value={planAnswer.valor_texto ?? ""}
                           onChange={e => updatePlanAnswer({ valor_texto: e.target.value })}
