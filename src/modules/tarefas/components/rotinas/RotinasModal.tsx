@@ -321,6 +321,7 @@ async function loadTemplate(templateId: string) {
     penalidade_sla_contingencia: tmpl.penalidade_sla_contingencia ?? 15,
     penalidade_fora_prazo: tmpl.penalidade_fora_prazo ?? 20,
     habilitar_perguntas_automaticas: tmpl.habilitar_perguntas_automaticas ?? true,
+    exceto_fds: tmpl.exceto_fds ?? false,
   };
 
   return { form, sections: loadedSections, fields: loadedFields, aprovadorItems, auditorItems };
