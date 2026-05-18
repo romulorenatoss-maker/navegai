@@ -402,7 +402,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
       fd.append('contexto_tipo', 'plano_acao');
       fd.append('path_relativo', path_relativo);
       if (assignmentId) fd.append('assignment_id', assignmentId);
-      fd.append('contexto_ref_id', planResponseFieldId);
+      fd.append('contexto_ref_id', field.id); // UUID limpo, sem sufixo __plano_acao__
       const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
       const anexo = await new Promise<any>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
