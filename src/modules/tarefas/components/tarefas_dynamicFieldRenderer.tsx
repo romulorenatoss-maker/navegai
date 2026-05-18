@@ -388,6 +388,41 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
     }
   };
 
+  const handleUploadPlan = async (file: File) => {
+    setUploading(true);
+    setUploadProgress(0);
+    try {
+      const { data: sessData } = await supabase.auth.getSession();
+      const token = sessData.session?.access_token;
+      if (!token) throw new Error("Não autenticado");
+      const { buildStoragePath } = await import('@/modules/tarefas/utils/tarefas_storagePath');
+      const path_relativo = buildStoragePath({ numero_tarefa: numeroTarefa, nome_tarefa: nomeTarefa, origem: origemTarefa, nome_arquivo: file.name });
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('contexto_tipo', 'plano_acao');
+      fd.append('path_relativo', path_relativo);
+      if (assignmentId) fd.append('assignment_id', assignmentId);
+      fd.append('contexto_ref_id', planResponseFieldId);
+      const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+      const anexo = await new Promise<any>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${FN_BASE}/tarefas-storage-upload`);
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100)); };
+        xhr.onload = () => { try { const j = JSON.parse(xhr.responseText); if (xhr.status < 300 && j.ok) resolve(j.anexo); else reject(new Error(j.detail ?? 'upload_failed')); } catch { reject(new Error('Resposta inválida')); } };
+        xhr.onerror = () => reject(new Error('Erro de rede'));
+        xhr.send(fd);
+      });
+      updatePlanAnswer({ evidencia_url: anexo.path_relativo, evidencia_anexo_id: anexo.id, evidencia_mime_type: anexo.mime_type ?? file.type });
+      setUploadProgress(100);
+    } catch (e: any) {
+      console.error("Upload plano failed:", e);
+      setUploadProgress(0);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   // Localiza a regra ativa baseada na opção selecionada (conforme/sim_nao/select)
   const opcoesRegras = Array.isArray(field.opcoes_regras) ? field.opcoes_regras : [];
   const activeRule = (() => {
@@ -836,10 +871,10 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                     </div>
                   )}
 
-                  {/* Campo de resposta do executor (última rodada ativa) */}
+                  {/* Campos de resposta do executor ao plano (última rodada ativa) */}
                   {isReturned && isUltimaRodada && isEditable && (
                     <div className="px-3 py-2 border-t border-border space-y-2">
-                      {tipoEv === "foto" && !val.evidencia_url && (
+                      {tipoEv === "foto" && !planAnswer.evidencia_url && (
                         <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-2.5 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
                           {uploading ? (
                             <div className="flex flex-col items-center gap-1 w-full">
@@ -848,10 +883,10 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                               <div className="w-full bg-muted rounded-full h-1"><div className="bg-amber-500 h-1 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} /></div>
                             </div>
                           ) : <><Camera className="w-3.5 h-3.5 text-amber-600" /><span className="text-xs text-amber-800 font-medium">📷 Tirar foto *</span></>}
-                          <input type="file" className="hidden" accept="image/*" capture="environment" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
+                          <input type="file" className="hidden" accept="image/*" capture="environment" onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadPlan(f); }} />
                         </label>
                       )}
-                      {tipoEv === "video" && !val.evidencia_url && (
+                      {tipoEv === "video" && !planAnswer.evidencia_url && (
                         <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-2.5 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
                           {uploading ? (
                             <div className="flex flex-col items-center gap-1 w-full">
@@ -860,10 +895,10 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                               <div className="w-full bg-muted rounded-full h-1"><div className="bg-amber-500 h-1 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} /></div>
                             </div>
                           ) : <><Upload className="w-3.5 h-3.5 text-amber-600" /><span className="text-xs text-amber-800 font-medium">🎥 Gravar vídeo *</span></>}
-                          <input type="file" className="hidden" accept="video/*" capture="environment" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
+                          <input type="file" className="hidden" accept="video/*" capture="environment" onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadPlan(f); }} />
                         </label>
                       )}
-                      {tipoEv === "audio" && !val.evidencia_url && (
+                      {tipoEv === "audio" && !planAnswer.evidencia_url && (
                         <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-2.5 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
                           {uploading ? (
                             <div className="flex flex-col items-center gap-1 w-full">
@@ -872,24 +907,24 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                               <div className="w-full bg-muted rounded-full h-1"><div className="bg-amber-500 h-1 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} /></div>
                             </div>
                           ) : <><Upload className="w-3.5 h-3.5 text-amber-600" /><span className="text-xs text-amber-800 font-medium">🎵 Gravar áudio *</span></>}
-                          <input type="file" className="hidden" accept="audio/*" capture="user" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
+                          <input type="file" className="hidden" accept="audio/*" capture="user" onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadPlan(f); }} />
                         </label>
                       )}
                       {tipoEv === "texto" && (
                         <textarea
-                          value={val.observacao ?? ""}
-                          onChange={e => update({ observacao: e.target.value })}
+                          value={planAnswer.valor_texto ?? ""}
+                          onChange={e => updatePlanAnswer({ valor_texto: e.target.value })}
                           placeholder="Descreva o que foi corrigido... *"
                           rows={3}
                           className="w-full text-xs rounded border border-amber-300 bg-white dark:bg-amber-950/10 px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400"
                         />
                       )}
-                      {val.evidencia_url && (
+                      {planAnswer.evidencia_url && (
                         <EvidenciaPreview
-                          anexoId={val.evidencia_anexo_id}
-                          url={val.evidencia_url}
-                          mimeType={val.evidencia_mime_type}
-                          onRemove={() => update({ evidencia_url: null, evidencia_anexo_id: null, evidencia_mime_type: null })}
+                          anexoId={(planAnswer as any).evidencia_anexo_id ?? null}
+                          url={planAnswer.evidencia_url}
+                          mimeType={(planAnswer as any).evidencia_mime_type ?? null}
+                          onRemove={() => updatePlanAnswer({ evidencia_url: null, evidencia_anexo_id: null, evidencia_mime_type: null } as any)}
                         />
                       )}
                     </div>
