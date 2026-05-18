@@ -820,8 +820,34 @@ export default function OperationalExecucaoPage() {
       evaluateVisibility(f.condicao_visibilidade, exec.answers)
     );
     const errors = exec.validateAll(fieldsToValidate, selectedAssignment?.status);
+
+    // Validação extra: quando devolvida, verificar se o plano de ação foi preenchido
+    if (selectedAssignment?.status === "devolvida") {
+      for (const f of fieldsToValidate) {
+        const review = exec.getLatestReview(f.id);
+        if (!review?.devolvido) continue;
+        const tipoEv = review.tipo_evidencia_exigida || "nenhuma";
+        const ans = exec.answers[f.id];
+        if (tipoEv === "foto" || tipoEv === "video" || tipoEv === "audio") {
+          if (!ans?.evidencia_url) {
+            const tipoLabel = tipoEv === "foto" ? "foto" : tipoEv === "video" ? "vídeo" : "áudio";
+            errors.push(`"${f.label}": falta anexar ${tipoLabel} do plano de ação`);
+          }
+        } else if (tipoEv === "texto") {
+          if (!ans?.observacao?.trim()) {
+            errors.push(`"${f.label}": falta preencher descrição do plano de ação`);
+          }
+        }
+      }
+    }
+
     if (errors.length > 0) {
-      toast.error(`Corrija ${errors.length} erro(s) antes de enviar`, { description: errors.slice(0, 3).join("; ") });
+      toast.error(
+        errors.length === 1
+          ? errors[0]
+          : `${errors.length} item(ns) precisam ser preenchidos`,
+        { description: errors.length > 1 ? errors.slice(0, 3).join(" • ") : undefined }
+      );
       return;
     }
     exec.submit.mutate(
