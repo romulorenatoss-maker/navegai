@@ -174,12 +174,14 @@ export function useAuditFlow(assignmentId: string | null) {
         destinatario_papel: "aprovador",
         avaliado_em: new Date().toISOString(),
       };
-      await (supabase as any).from("operational_field_reviews").insert(payload);
-      // Muda status para aguardando_aprovador_resposta
-      await (supabase as any)
+      const { error: insertError } = await (supabase as any).from("operational_field_reviews").insert(payload);
+      if (insertError) throw new Error(`Erro ao criar plano: ${insertError.message}`);
+      // Muda status para aguardando_aprovacao
+      const { error: updateError } = await (supabase as any)
         .from("operational_assignments")
         .update({ status: "aguardando_aprovacao", updated_at: new Date().toISOString() })
         .eq("id", assignmentId);
+      if (updateError) throw new Error(`Erro ao atualizar status: ${updateError.message}`);
       await (supabase as any).from("operational_execution_logs").insert({
         assignment_id: assignmentId,
         acao: "auditor_criou_plano",
@@ -189,6 +191,7 @@ export function useAuditFlow(assignmentId: string | null) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["operational_audit_field_reviews", assignmentId] });
+      qc.invalidateQueries({ queryKey: ["operational_auditor_plans", assignmentId] });
       qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
       toast.success("Plano criado e enviado ao aprovador.");
     },

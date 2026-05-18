@@ -691,12 +691,11 @@ export default function OperationalExecucaoPage() {
     && (
       selectedAssignment.auditor_id === profile?.id ||
       isAdmin ||
-      // Auditor por setor: verifica se usuário é membro do setor auditor
       (selectedAssignment.auditor_id === null &&
        selectedAssignment.setor_auditor_id &&
        meusSetorIds.includes(selectedAssignment.setor_auditor_id))
     )
-    && selectedAssignment.status === "aguardando_auditoria";
+    && ["aguardando_auditoria", "aguardando_aprovacao"].includes(selectedAssignment.status);
 
   const isEditable = selectedAssignment && !isAprovadorMode && !isAvaliadorMode && !isAuditorMode && (
     (["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || isAdmin)) ||
