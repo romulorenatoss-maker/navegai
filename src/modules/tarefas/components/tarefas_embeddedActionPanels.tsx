@@ -1761,6 +1761,9 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           <Button
             type="button" size="sm"
             onClick={() => {
+              // Se ha formulario inline R2 expandido, nao abrir step=plano
+              const temInlineAberto = Object.values(expandirNovoPlano).some(Boolean);
+              if (temInlineAberto) return;
               if (naoConformesPlanoCompleto.length > 0) {
                 irParaPlano();
               } else {
