@@ -30,7 +30,7 @@ interface Props {
   createdBy?: string;
 }
 
-type AbaKey = "geral" | "avaliado" | "aprovador" | "auditor" | "rotina";
+type AbaKey = "geral" | "avaliado" | "aprovador" | "auditor" | "rotina" | "informacoes";
 
 // ─── Helpers de save ──────────────────────────────────────────────────────────
 
@@ -345,10 +345,11 @@ export function RotinasModal({ open, onClose, templateId, setores, colaboradores
   );
 
   const [saving, setSaving] = useState<Record<AbaKey, boolean>>({
-    geral: false, avaliado: false, aprovador: false, auditor: false, rotina: false,
+    geral: false, avaliado: false, aprovador: false, auditor: false, rotina: false, informacoes: false,
   });
   const [loading, setLoading] = useState(false);
   const [tarefasAbertas, setTarefasAbertas] = useState(0);
+  const [tmplInfo, setTmplInfo] = useState<{ criador_nome: string | null; created_at: string | null; recorrencia_tipo: string | null; horario_inicio_previsto: string | null; data_inicio: string | null } | null>(null);
 
   const set = useCallback(<K extends keyof TemplateForm>(k: K, v: TemplateForm[K]) => {
     setFormState((prev) => ({ ...prev, [k]: v }));
@@ -376,6 +377,21 @@ export function RotinasModal({ open, onClose, templateId, setores, colaboradores
             .eq("template_id", templateId)
             .in("status", ["pendente", "em_andamento", "devolvida", "aguardando_aprovacao", "aguardando_auditoria"]);
           setTarefasAbertas(count || 0);
+          // Carrega info do criador
+          const { data: rawTmpl } = await (supabase as any)
+            .from("operational_templates")
+            .select("created_at, recorrencia_tipo, horario_inicio_previsto, data_inicio, criador:profiles!operational_templates_created_by_fkey(nome)")
+            .eq("id", templateId)
+            .single();
+          if (rawTmpl) {
+            setTmplInfo({
+              criador_nome: rawTmpl.criador?.nome ?? null,
+              created_at: rawTmpl.created_at ?? null,
+              recorrencia_tipo: rawTmpl.recorrencia_tipo ?? null,
+              horario_inicio_previsto: rawTmpl.horario_inicio_previsto ?? null,
+              data_inicio: rawTmpl.data_inicio ?? null,
+            });
+          }
         })
         .catch((e) => toast.error("Erro ao carregar template: " + e.message))
         .finally(() => setLoading(false));
@@ -502,6 +518,7 @@ export function RotinasModal({ open, onClose, templateId, setores, colaboradores
     { key: "aprovador", label: "Aprovador" },
     { key: "auditor", label: "Auditor" },
     { key: "rotina", label: "Rotina" },
+    ...(currentId ? [{ key: "informacoes" as AbaKey, label: "Informações" }] : []),
   ];
 
   return (
@@ -591,6 +608,42 @@ export function RotinasModal({ open, onClose, templateId, setores, colaboradores
                 {tarefasAbertas === 0 ? (
                   <RotinasTabRotina form={form} set={set} templateId={currentId} onSave={saveRotina} saving={saving.rotina} />
                 ) : null}
+              </TabsContent>
+
+              <TabsContent value="informacoes" className="mt-0 h-full">
+                <div className="space-y-4 py-2">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 rounded border bg-card space-y-1">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Criador</p>
+                      <p className="text-sm font-medium">{tmplInfo?.criador_nome ?? "—"}</p>
+                    </div>
+                    <div className="p-4 rounded border bg-card space-y-1">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Criado em</p>
+                      <p className="text-sm font-medium">
+                        {tmplInfo?.created_at
+                          ? new Date(tmplInfo.created_at).toLocaleString("pt-BR")
+                          : "—"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="p-4 rounded border bg-card space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Próxima execução do cron</p>
+                    <p className="text-sm font-medium">
+                      {tmplInfo?.recorrencia_tipo && tmplInfo?.data_inicio && tmplInfo?.horario_inicio_previsto
+                        ? (() => {
+                            const hoje = new Date();
+                            hoje.setHours(0, 0, 0, 0);
+                            const dataInicio = new Date(tmplInfo.data_inicio + "T00:00:00");
+                            const proxima = dataInicio >= hoje ? dataInicio : hoje;
+                            return `${proxima.toLocaleDateString("pt-BR")} às ${tmplInfo.horario_inicio_previsto.slice(0, 5)}`;
+                          })()
+                        : "Não configurado"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      O cron roda diariamente e gera as tarefas conforme a recorrência configurada na aba Rotina.
+                    </p>
+                  </div>
+                </div>
               </TabsContent>
             </div>
           </Tabs>

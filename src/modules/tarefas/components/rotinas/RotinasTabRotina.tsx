@@ -168,6 +168,22 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
         const d = String(hoje.getDate()).padStart(2, "0");
         dataAlvo = `${y}-${mo}-${d}`;
       }
+
+      // Se exceto_fds estiver ativo e o dia cair em sáb(6) ou dom(0), avança para segunda
+      if (form.exceto_fds) {
+        const dataObj = new Date(dataAlvo + "T00:00:00");
+        const diaSemana = dataObj.getDay();
+        if (diaSemana === 0) { // domingo → segunda
+          dataObj.setDate(dataObj.getDate() + 1);
+        } else if (diaSemana === 6) { // sábado → segunda
+          dataObj.setDate(dataObj.getDate() + 2);
+        }
+        const y2 = dataObj.getFullYear();
+        const mo2 = String(dataObj.getMonth() + 1).padStart(2, "0");
+        const d2 = String(dataObj.getDate()).padStart(2, "0");
+        dataAlvo = `${y2}-${mo2}-${d2}`;
+      }
+
       const dataKey = dataAlvo;
 
       // Verifica se já existe assignment para esta data
