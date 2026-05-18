@@ -365,12 +365,16 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
 
     setPasswordLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke("admin-update-password", {
         body: { target_user_id: collaborator.user_id, new_password: newPassword },
       });
-      if (res.error) throw new Error(res.error.message);
-      if (res.data?.error) throw new Error(res.data.error);
+      // Quando a edge function retorna não-2xx, res.error é genérico ("non-2xx").
+      // A mensagem real do GoTrue está em res.data.error — priorize-a.
+      const realError =
+        (res.data as any)?.error ||
+        (res.error as any)?.context?.error ||
+        res.error?.message;
+      if (realError) throw new Error(realError);
       toast.success("Senha alterada com sucesso!");
       setNewPassword("");
       setConfirmPassword("");
