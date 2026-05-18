@@ -393,6 +393,19 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const flow = useApprovalFlow(assignment?.id || null);
   const [step, setStep] = useState<"perguntas" | "plano">("perguntas");
   const [motivoFinal, setMotivoFinal] = useState("");
+
+  // Bloqueio: se status aguardando_auditoria sem planos do auditor pendentes → somente leitura
+  const emAuditoria = assignment?.status === "aguardando_auditoria";
+  const planosAuditorPendentes = (flow.planosDoAuditor as any[]).filter((p: any) => !p.respondido);
+  if (emAuditoria && planosAuditorPendentes.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-10 text-center px-4">
+        <ShieldCheck className="w-10 h-10 text-blue-400" />
+        <p className="text-sm font-medium text-foreground">Tarefa em auditoria</p>
+        <p className="text-xs text-muted-foreground">Aguardando o auditor concluir a revisao. Nenhuma acao disponivel no momento.</p>
+      </div>
+    );
+  }
   const prazoPadraoHoras: number = Number(
     assignment?.template_snapshot?.prazo_plano_acao_padrao_horas
     ?? assignment?.prazo_plano_acao_padrao_horas
