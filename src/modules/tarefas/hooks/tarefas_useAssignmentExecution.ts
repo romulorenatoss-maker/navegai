@@ -98,6 +98,15 @@ export function useAssignmentExecution(assignmentId: string | null) {
           versao: a.versao || 1,
           historico_alteracoes: a.historico_alteracoes || [],
         };
+        // Reidrata itens do plano de ação salvos no valor_json
+        if (a.valor_json && typeof a.valor_json === "object") {
+          for (const [chave, valor] of Object.entries(a.valor_json as Record<string, any>)) {
+            if (chave.startsWith("__plano_acao__")) {
+              const itemFieldId = `${a.field_id}${chave}`;
+              map[itemFieldId] = { field_id: itemFieldId, ...valor };
+            }
+          }
+        }
       }
     }
     setAnswers(map);
@@ -128,19 +137,35 @@ export function useAssignmentExecution(assignmentId: string | null) {
   }, []);
 
   const updateAnswer = useCallback((fieldId: string, patch: Partial<FieldAnswer>) => {
+    // Chaves compostas de itens do plano: persistir no valor_json do campo pai
+    if (fieldId.includes("__plano_acao__")) {
+      const campoId = fieldId.split("__plano_acao__")[0];
+      const chaveItem = fieldId.substring(campoId.length); // "__plano_acao__r1__audio"
+      setAnswers(prev => {
+        const pai = prev[campoId] || { field_id: campoId };
+        const planosJson = (pai.valor_json as any) || {};
+        const novoJson = { ...planosJson, [chaveItem]: { ...(planosJson[chaveItem] || {}), ...patch } };
+        return {
+          ...prev,
+          [fieldId]: { ...prev[fieldId], field_id: fieldId, ...patch },
+          [campoId]: { ...pai, field_id: campoId, valor_json: novoJson },
+        };
+      });
+      setDirty(true);
+      pendingFieldsRef.current.add(campoId);
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => saveFieldsNow().catch(console.error), 800);
+      return;
+    }
     setAnswers(prev => ({
       ...prev,
       [fieldId]: { ...prev[fieldId], field_id: fieldId, ...patch },
     }));
     setDirty(true);
     pendingFieldsRef.current.add(fieldId);
-
-    // Auto-save with short debounce (800ms)
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      saveFieldsNow().catch((e) => {
-        console.error("Auto-save failed:", e);
-      });
+      saveFieldsNow().catch((e) => { console.error("Auto-save failed:", e); });
     }, 800);
   }, [assignmentId, profile?.id]);
 
@@ -291,6 +316,35 @@ export function useAssignmentExecution(assignmentId: string | null) {
       if (assignmentStatus === "devolvida") {
         const review = getLatestReview(f.id);
         if (!review?.devolvido) continue;
+
+        // Validar itens do plano de ação
+        const itens: Array<{tipo: string; titulo: string; obrigatorio: boolean}> =
+          Array.isArray(review.itens_plano) && review.itens_plano.length > 0
+            ? review.itens_plano
+            : review.tipo_evidencia_exigida && review.tipo_evidencia_exigida !== "nenhuma"
+              ? [{ tipo: review.tipo_evidencia_exigida, titulo: "", obrigatorio: true }]
+              : [];
+
+        const planRound = Number(review.rodada ?? 1);
+        const planResponseFieldId = `${f.id}__plano_acao__r${planRound}`;
+
+        for (const item of itens) {
+          if (!item.obrigatorio) continue;
+          const itemFieldId = `${planResponseFieldId}__${item.tipo}`;
+          const itemAnswer = answers[itemFieldId];
+          const nomeItem = item.titulo || item.tipo;
+          if (item.tipo === "texto" || item.tipo === "descricao") {
+            if (!(itemAnswer as any)?.valor_texto?.trim()) {
+              errors.push(`${f.label} → Plano de ação: falta preencher "${nomeItem}"`);
+            }
+          } else {
+            if (!(itemAnswer as any)?.evidencia_url) {
+              const tipoLabel = item.tipo === "foto" ? "foto" : item.tipo === "video" ? "vídeo" : "áudio";
+              errors.push(`${f.label} → Plano de ação: falta anexar ${tipoLabel} em "${nomeItem}"`);
+            }
+          }
+        }
+        continue;
       }
       const err = validateField(f, answers[f.id]);
       if (err) {
