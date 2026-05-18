@@ -866,8 +866,6 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           return (
             <div key={f.id} className="border border-border rounded-lg p-3 bg-card space-y-2">
               <div className="text-sm font-medium text-foreground">{f.label}</div>
-                </div>
-              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label className="text-[11px]">
