@@ -157,7 +157,11 @@ export function ContingencyDetailDialog({ contingency, open, onOpenChange }: Pro
     setUploading(true);
     try {
       let evidenciaUrl: string | undefined;
-      if (resolveFile) evidenciaUrl = await uploadContingencyAttachment(resolveFile, selected.id);
+      if (resolveFile) evidenciaUrl = await uploadContingencyAttachment(resolveFile, selected.id, {
+        numero_tarefa: selected.assignment?.numero_tarefa ?? "0",
+        nome_tarefa: selected.assignment?.template?.nome,
+        origem: selected.assignment?.origem,
+      });
       cm.resolveContingency.mutate(
         { contingencyId: selected.id, observacao: resolveObs, evidenciaUrl },
         { onSuccess: () => { setResolveOpen(false); close(); }, onSettled: () => setUploading(false) }

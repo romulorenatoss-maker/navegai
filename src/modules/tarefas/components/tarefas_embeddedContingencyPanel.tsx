@@ -123,7 +123,7 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("operational_assignments")
-        .select("validador_contingencia_id, responsavel_id, avaliado_id, avaliador_id")
+        .select("validador_contingencia_id, responsavel_id, avaliado_id, avaliador_id, numero_tarefa, origem, template:operational_templates(nome)")
         .eq("id", assignmentId)
         .single();
       if (error) throw error;
@@ -222,7 +222,11 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
     try {
       let evidenciaUrl: string | undefined;
       if (resolveFile) {
-        evidenciaUrl = await uploadContingencyAttachment(resolveFile, resolveTargetId);
+        evidenciaUrl = await uploadContingencyAttachment(resolveFile, resolveTargetId, {
+          numero_tarefa: assignment?.numero_tarefa ?? "0",
+          nome_tarefa: assignment?.template?.nome,
+          origem: assignment?.origem,
+        });
       }
       cm.resolveContingency.mutate(
         { contingencyId: resolveTargetId, observacao: resolveObs, evidenciaUrl },
