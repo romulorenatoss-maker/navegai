@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -380,7 +381,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
       });
       setUploadProgress(100);
     } catch (e: any) {
-      console.error("Upload failed:", e);
+      toast.error("Erro no upload: " + (e.message || "falha desconhecida"));
       setUploadProgress(0);
     } finally {
       setUploading(false);
@@ -417,7 +418,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
       onChange(planItemFieldId, { field_id: planItemFieldId, evidencia_url: anexo.path_relativo, evidencia_anexo_id: anexo.id, evidencia_mime_type: anexo.mime_type ?? file.type } as any);
       setUploadProgressPlano(prev => ({ ...prev, [itemTipo]: 100 }));
     } catch (e: any) {
-      console.error("Upload plano failed:", e);
+      toast.error("Erro no upload: " + (e.message || "falha desconhecida"));
       setUploadProgressPlano(prev => ({ ...prev, [itemTipo]: 0 }));
     } finally {
       setUploadingPlano(prev => ({ ...prev, [itemTipo]: false }));
