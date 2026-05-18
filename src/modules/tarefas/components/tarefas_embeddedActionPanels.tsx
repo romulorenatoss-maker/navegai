@@ -51,6 +51,9 @@ const getAnswerValue = (item: any) => {
   if (item.valor_booleano === true) return "conforme";
   if (item.valor_booleano === false) return "nao_conforme";
 
+  // N/A salvo como valor_texto = "na" (para distinguir de null = não respondido)
+  if (item.valor_texto === "na") return "na";
+
   const direct =
     item?.resposta ??
     item?.answer ??

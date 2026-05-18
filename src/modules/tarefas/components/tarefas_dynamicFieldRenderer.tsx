@@ -370,49 +370,69 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
           ? opcoesRegras.map(r => ({
               label: r.label,
               val: r.valor === "conforme" ? true : r.valor === "nao_conforme" ? false : null,
+              valorTexto: r.valor === "na" ? "na" : null, // N/A salva como valor_texto para distinguir de "não respondido"
               cls: r.cor === "success" ? "bg-green-100 text-green-800 border-green-300"
                 : r.cor === "destructive" ? "bg-red-100 text-red-800 border-red-300"
                 : "bg-muted text-muted-foreground border-border",
             }))
           : [
-              { label: "Conforme", val: true, cls: "bg-green-100 text-green-800 border-green-300" },
-              { label: "Não Conforme", val: false, cls: "bg-red-100 text-red-800 border-red-300" },
+              { label: "Conforme", val: true, valorTexto: null, cls: "bg-green-100 text-green-800 border-green-300" },
+              { label: "Não Conforme", val: false, valorTexto: null, cls: "bg-red-100 text-red-800 border-red-300" },
             ];
+        const isNaSelected = val.valor_texto === "na" && val.valor_booleano == null;
         return (
           <div className="flex gap-2 flex-wrap">
-            {opts.map(opt => (
-              <button key={String(opt.val) + opt.label} type="button" disabled={!originalEditable}
-                onClick={() => update({ valor_booleano: opt.val })}
-                className={`flex-1 min-w-[100px] px-3 py-2 rounded-md border text-sm font-medium transition-colors ${val.valor_booleano === opt.val ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditableEfetivo ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
-                {opt.label}
-              </button>
-            ))}
+            {opts.map(opt => {
+              const selected = opt.valorTexto === "na"
+                ? isNaSelected
+                : val.valor_booleano === opt.val && !isNaSelected;
+              return (
+                <button key={String(opt.val) + opt.label} type="button" disabled={!originalEditable}
+                  onClick={() => opt.valorTexto === "na"
+                    ? update({ valor_booleano: null, valor_texto: "na" })
+                    : update({ valor_booleano: opt.val, valor_texto: null })
+                  }
+                  className={`flex-1 min-w-[100px] px-3 py-2 rounded-md border text-sm font-medium transition-colors ${selected ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditableEfetivo ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
+                  {opt.label}
+                </button>
+              );
+            })}
           </div>
         );
       }
 
       case "sim_nao": {
-        const opts = opcoesRegras.length
+        const optsSimNao = opcoesRegras.length
           ? opcoesRegras.map(r => ({
               label: r.label,
               val: r.valor === "sim" ? true : r.valor === "nao" ? false : null,
+              valorTexto: r.valor === "na" ? "na" : null,
               cls: r.cor === "success" ? "bg-green-100 text-green-800 border-green-300"
                 : r.cor === "destructive" ? "bg-red-100 text-red-800 border-red-300"
                 : "bg-muted text-muted-foreground border-border",
             }))
           : [
-              { label: "Sim", val: true, cls: "bg-green-100 text-green-800 border-green-300" },
-              { label: "Não", val: false, cls: "bg-red-100 text-red-800 border-red-300" },
+              { label: "Sim", val: true, valorTexto: null, cls: "bg-green-100 text-green-800 border-green-300" },
+              { label: "Não", val: false, valorTexto: null, cls: "bg-red-100 text-red-800 border-red-300" },
             ];
+        const isNaSelectedSN = val.valor_texto === "na" && val.valor_booleano == null;
         return (
           <div className="flex gap-2 flex-wrap">
-            {opts.map(opt => (
-              <button key={String(opt.val) + opt.label} type="button" disabled={!originalEditable}
-                onClick={() => update({ valor_booleano: opt.val })}
-                className={`flex-1 min-w-[100px] px-3 py-2 rounded-md border text-sm font-medium transition-colors ${val.valor_booleano === opt.val ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditableEfetivo ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
-                {opt.label}
-              </button>
-            ))}
+            {optsSimNao.map(opt => {
+              const selected = opt.valorTexto === "na"
+                ? isNaSelectedSN
+                : val.valor_booleano === opt.val && !isNaSelectedSN;
+              return (
+                <button key={String(opt.val) + opt.label} type="button" disabled={!originalEditable}
+                  onClick={() => opt.valorTexto === "na"
+                    ? update({ valor_booleano: null, valor_texto: "na" })
+                    : update({ valor_booleano: opt.val, valor_texto: null })
+                  }
+                  className={`flex-1 min-w-[100px] px-3 py-2 rounded-md border text-sm font-medium transition-colors ${selected ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditableEfetivo ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
+                  {opt.label}
+                </button>
+              );
+            })}
           </div>
         );
       }
