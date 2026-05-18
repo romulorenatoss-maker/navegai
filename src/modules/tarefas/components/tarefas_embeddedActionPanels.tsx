@@ -1250,32 +1250,63 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     <div className="space-y-3">
       {/* Instrução do auditor — aparece no topo quando auditor criou plano para o aprovador */}
       {(() => {
-        const auditPlan = (flow.fieldReviews as any[])?.find(
-          (r: any) => r.tipo_review === "auditor_para_aprovador" && r.status_plano !== "resolvido"
-        );
-        if (!auditPlan) return null;
+        const auditPlans = (flow.planosDoAuditor as any[]) ?? [];
+        if (auditPlans.length === 0) return null;
         return (
-          <div className="border border-purple-300 dark:border-purple-800 rounded-lg overflow-hidden mb-1">
-            <div className="flex items-center justify-between px-3 py-2 bg-purple-50 dark:bg-purple-950/30 border-b border-purple-200 dark:border-purple-800">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-3.5 h-3.5 text-purple-700 dark:text-purple-400 shrink-0" />
-                <span className="text-[11px] font-semibold text-purple-800 dark:text-purple-300">Instrução do Auditor</span>
-              </div>
-              <span className="text-[10px] text-muted-foreground">{auditPlan.avaliado_em ? new Date(auditPlan.avaliado_em).toLocaleDateString("pt-BR") : ""}</span>
-            </div>
-            <div className="px-3 py-2 space-y-1">
-              <p className="text-xs text-foreground">{auditPlan.instrucao_aprovador || auditPlan.motivo_devolucao}</p>
-              {auditPlan.plano_acao_prazo && (
-                <p className="text-[10px] text-purple-700 dark:text-purple-400 font-medium">
-                  Prazo para responder: {new Date(auditPlan.plano_acao_prazo).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" })}
-                </p>
-              )}
-              {auditPlan.tipo_evidencia_exigida && auditPlan.tipo_evidencia_exigida !== "nenhuma" && (
-                <p className="text-[10px] text-purple-700 dark:text-purple-400">
-                  Evidência exigida: {auditPlan.tipo_evidencia_exigida === "foto" ? "📷 Foto" : auditPlan.tipo_evidencia_exigida === "video" ? "🎥 Vídeo" : auditPlan.tipo_evidencia_exigida === "audio" ? "🎵 Áudio" : "✏️ Descrição"}
-                </p>
-              )}
-            </div>
+          <div className="space-y-2 mb-2">
+            {auditPlans.map((auditPlan: any, idx: number) => {
+              const itens: Array<{tipo:string;titulo:string;obrigatorio:boolean}> = Array.isArray(auditPlan.itens_plano) ? auditPlan.itens_plano : [];
+              // Respostas do aprovador a este plano — salvas no valor_json do campo original
+              // Usa perguntaId como field_id do plano
+              const perguntaId = auditPlan.field_id;
+              const rodada = auditPlan.rodada ?? 1;
+              const fieldAnswer = (flow.fieldAnswers as any[]).find((a: any) => a.field_id === perguntaId);
+              const valorJson = fieldAnswer?.valor_json ?? {};
+              return (
+                <div key={idx} className="border border-purple-300 dark:border-purple-800 rounded-lg overflow-hidden">
+                  <div className="flex items-center justify-between px-3 py-2 bg-purple-50 dark:bg-purple-950/30 border-b border-purple-200">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-3.5 h-3.5 text-purple-700 shrink-0" />
+                      <span className="text-[11px] font-semibold text-purple-800">Plano do Auditor — {auditPlan.instrucao_aprovador ? `"${auditPlan.instrucao_aprovador.slice(0,30)}"` : `R${rodada}`}</span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">{auditPlan.avaliado_em ? new Date(auditPlan.avaliado_em).toLocaleString("pt-BR", {day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : ""}</span>
+                  </div>
+                  <div className="px-3 py-2 space-y-2">
+                    {auditPlan.instrucao_aprovador && <p className="text-xs text-foreground">{auditPlan.instrucao_aprovador}</p>}
+                    {itens.length > 0 && (
+                      <div className="space-y-2">
+                        {itens.map((item, iIdx) => {
+                          const chave = `__auditor_plano__r${rodada}__${item.tipo}`;
+                          const dado = valorJson[chave];
+                          const temResposta = !!(dado?.evidencia_url || dado?.valor_texto);
+                          return (
+                            <div key={iIdx} className="space-y-1">
+                              {item.titulo && <p className="text-[11px] text-purple-800 font-medium">{item.titulo}</p>}
+                              {temResposta ? (
+                                (item.tipo === "texto" || item.tipo === "descricao") ? (
+                                  <div className="bg-card border border-border rounded p-2">
+                                    <p className="text-xs">{dado.valor_texto}</p>
+                                  </div>
+                                ) : (
+                                  <EvidenciaPreview
+                                    anexoId={dado.evidencia_anexo_id ?? null}
+                                    url={dado.evidencia_url}
+                                    mimeType={dado.evidencia_mime_type ?? null}
+                                    disabled
+                                  />
+                                )
+                              ) : (
+                                <p className="text-[10px] text-muted-foreground italic">Aguardando resposta...</p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         );
       })()}
@@ -1819,6 +1850,18 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
   const [motivoFinal, setMotivoFinal] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [respostasAuto, setRespostasAuto] = useState<Record<string, { na: boolean; justificativa: string }>>({});
+  // Plano do auditor por pergunta
+  const [expandirPlanoAuditor, setExpandirPlanoAuditor] = useState<Record<string, boolean>>({});
+  const [planosAuditor, setPlanosAuditor] = useState<Record<string, {
+    instrucao: string;
+    itens: Array<{tipo: string; titulo: string; obrigatorio: boolean}>;
+    prazo: string;
+  }>>({});
+  const computePrazoAuditor = () => {
+    const d = new Date(Date.now() + 24 * 3600 * 1000);
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
 
   // Perguntas AUTO do auditor — vêm do ada_config_snapshot.checklists.validador
   const perguntasAutoAuditor = useMemo(() => {
@@ -1992,6 +2035,103 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
                       className="text-xs min-h-[36px]" />
                   </div>
                 )}
+                {/* Botao abrir plano do auditor para o aprovador */}
+                {auto.tiraPonto && !r.na && (() => {
+                  const planoAberto = expandirPlanoAuditor[key];
+                  const pl = planosAuditor[key] ?? { instrucao: "", itens: [], prazo: computePrazoAuditor() };
+                  const ITENS_AUDIT = [
+                    { tipo: "foto", label: "Foto" },
+                    { tipo: "video", label: "Video" },
+                    { tipo: "audio", label: "Audio" },
+                    { tipo: "texto", label: "Texto" },
+                  ];
+                  return (
+                    <div className="mt-1">
+                      {!planoAberto ? (
+                        <button type="button"
+                          onClick={() => setExpandirPlanoAuditor(prev => ({ ...prev, [key]: true }))}
+                          className="text-[11px] px-2 py-1 rounded border border-amber-400 text-amber-800 bg-amber-50 hover:bg-amber-100 transition-colors">
+                          Abrir plano de acao para o aprovador
+                        </button>
+                      ) : (
+                        <div className="border border-amber-300 rounded-lg overflow-hidden">
+                          <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border-b border-amber-200">
+                            <ClipboardList className="w-3.5 h-3.5 text-amber-700" />
+                            <span className="text-[11px] font-semibold text-amber-800">Plano para o aprovador — {p.pergunta}</span>
+                          </div>
+                          <div className="p-3 space-y-2.5">
+                            <div>
+                              <Label className="text-[11px]">Instrucao geral (opcional)</Label>
+                              <Textarea value={pl.instrucao}
+                                onChange={e => setPlanosAuditor(prev => ({ ...prev, [key]: { ...(prev[key] ?? pl), instrucao: e.target.value } }))}
+                                className="text-xs min-h-[44px]" placeholder="O que o aprovador deve corrigir..." />
+                            </div>
+                            <div>
+                              <Label className="text-[11px]">O que quero de volta (marque ao menos 1)</Label>
+                              <div className="flex flex-col gap-1.5 mt-1">
+                                {ITENS_AUDIT.map(cfg => {
+                                  const ativo = pl.itens.find(i => i.tipo === cfg.tipo);
+                                  return (
+                                    <div key={cfg.tipo} className={`border rounded-lg overflow-hidden ${ativo ? "border-primary" : "border-border"}`}>
+                                      <button type="button" onClick={() => {
+                                        const existe = pl.itens.find(i => i.tipo === cfg.tipo);
+                                        const novosItens = existe ? pl.itens.filter(i => i.tipo !== cfg.tipo) : [...pl.itens, { tipo: cfg.tipo, titulo: "", obrigatorio: true }];
+                                        setPlanosAuditor(prev => ({ ...prev, [key]: { ...(prev[key] ?? pl), itens: novosItens } }));
+                                      }} className={`w-full flex items-center gap-2 px-3 py-2 ${ativo ? "bg-primary/10" : "hover:bg-muted/50"}`}>
+                                        <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${ativo ? "bg-primary border-primary" : "border-border"}`}>
+                                          {ativo && <span className="text-primary-foreground text-[10px] font-bold">v</span>}
+                                        </div>
+                                        <span className="text-xs font-medium">{cfg.label}</span>
+                                      </button>
+                                      {ativo && (
+                                        <div className="px-3 pb-2 pt-1 border-t border-border bg-muted/10">
+                                          <Input value={ativo.titulo}
+                                            onChange={e => {
+                                              const t = e.target.value;
+                                              setPlanosAuditor(prev => { const cur = prev[key] ?? pl; return { ...prev, [key]: { ...cur, itens: cur.itens.map(i => i.tipo === cfg.tipo ? { ...i, titulo: t } : i) } }; });
+                                            }}
+                                            placeholder={`Instrucao para ${cfg.tipo}...`} className="h-7 text-xs" />
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                            <div>
+                              <Label className="text-[11px]">Prazo</Label>
+                              <Input type="datetime-local" value={pl.prazo}
+                                onChange={e => setPlanosAuditor(prev => ({ ...prev, [key]: { ...(prev[key] ?? pl), prazo: e.target.value } }))}
+                                className="h-8 text-xs mt-1" />
+                            </div>
+                            <div className="flex gap-2">
+                              <Button type="button" size="sm" variant="outline"
+                                onClick={() => setExpandirPlanoAuditor(prev => ({ ...prev, [key]: false }))}>
+                                Cancelar
+                              </Button>
+                              <Button type="button" size="sm"
+                                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                                disabled={flow.isSaving || pl.itens.length === 0}
+                                onClick={async () => {
+                                  await flow.criarPlanoAuditor.mutateAsync({
+                                    perguntaId: key,
+                                    perguntaLabel: p.pergunta,
+                                    instrucao: pl.instrucao,
+                                    itensPlano: pl.itens,
+                                    prazoIso: pl.prazo ? new Date(pl.prazo).toISOString() : new Date(Date.now() + 86400000).toISOString(),
+                                  });
+                                  setExpandirPlanoAuditor(prev => ({ ...prev, [key]: false }));
+                                  onClose();
+                                }}>
+                                {flow.isSaving ? "Enviando..." : "Registrar plano e enviar ao aprovador"}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}

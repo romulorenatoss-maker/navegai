@@ -67,6 +67,24 @@ export function useApprovalFlow(assignmentId: string | null) {
     enabled: !!assignmentId,
   });
 
+  // Planos do auditor para o aprovador responder
+  const { data: planosDoAuditor = [] } = useQuery({
+    queryKey: ["operational_auditor_plans", assignmentId],
+    queryFn: async () => {
+      if (!assignmentId) return [];
+      const { data, error } = await (supabase as any).from("operational_field_reviews")
+        .select("*")
+        .eq("assignment_id", assignmentId)
+        .eq("criado_por_papel", "auditor")
+        .eq("destinatario_papel", "aprovador")
+        .order("rodada", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!assignmentId,
+    staleTime: 0,
+  });
+
   // Load contingencies
   const { data: contingencies = [] } = useQuery({
     queryKey: ["operational_approval_contingencies", assignmentId],
@@ -576,6 +594,7 @@ export function useApprovalFlow(assignmentId: string | null) {
   return {
     fieldAnswers,
     fieldReviews,
+    planosDoAuditor,
     contingencies,
     existingApprovalAnswers,
     auditTrail,

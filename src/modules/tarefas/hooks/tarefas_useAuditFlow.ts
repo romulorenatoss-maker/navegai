@@ -130,7 +130,70 @@ export function useAuditFlow(assignmentId: string | null) {
     onError: (e: any) => toast.error(`Erro ao salvar: ${e.message}`),
   });
 
-  const getBlockingReasons = useCallback((assignment: any): string[] => {
+  // Planos do auditor para o aprovador
+  const { data: fieldReviewsAuditor = [] } = useQuery({
+    queryKey: ["operational_audit_field_reviews", assignmentId],
+    queryFn: async () => {
+      if (!assignmentId) return [];
+      const { data, error } = await (supabase as any)
+        .from("operational_field_reviews")
+        .select("*")
+        .eq("assignment_id", assignmentId)
+        .eq("criado_por_papel", "auditor");
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!assignmentId,
+    staleTime: 0,
+  });
+
+  type ItemPlano = { tipo: string; titulo: string; obrigatorio: boolean };
+
+  const criarPlanoAuditor = useMutation({
+    mutationFn: async ({ perguntaId, perguntaLabel, instrucao, itensPlano, prazoIso }: {
+      perguntaId: string;
+      perguntaLabel: string;
+      instrucao: string;
+      itensPlano: ItemPlano[];
+      prazoIso: string;
+    }) => {
+      if (!profile?.id || !assignmentId) throw new Error("Nao autenticado");
+      const rodadaAtual = (fieldReviewsAuditor as any[])
+        .filter((r: any) => r.field_id === perguntaId && r.criado_por_papel === "auditor")
+        .reduce((max: number, r: any) => Math.max(max, r.rodada ?? 1), 0) + 1;
+
+      const payload = {
+        assignment_id: assignmentId,
+        field_id: perguntaId,
+        avaliador_id: profile.id,
+        instrucao_aprovador: instrucao,
+        itens_plano: itensPlano,
+        devolvido: true,
+        rodada: rodadaAtual,
+        criado_por_papel: "auditor",
+        destinatario_papel: "aprovador",
+        avaliado_em: new Date().toISOString(),
+      };
+      await (supabase as any).from("operational_field_reviews").insert(payload);
+      // Muda status para aguardando_aprovador_resposta
+      await (supabase as any)
+        .from("operational_assignments")
+        .update({ status: "aguardando_aprovacao", updated_at: new Date().toISOString() })
+        .eq("id", assignmentId);
+      await (supabase as any).from("operational_execution_logs").insert({
+        assignment_id: assignmentId,
+        acao: "auditor_criou_plano",
+        executado_por: profile.id,
+        detalhes: { pergunta_id: perguntaId, pergunta_label: perguntaLabel, rodada: rodadaAtual },
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["operational_audit_field_reviews", assignmentId] });
+      qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
+      toast.success("Plano criado e enviado ao aprovador.");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
     const reasons: string[] = [];
     const snapshot = assignment?.template_snapshot;
     const snapshotFields: SnapshotField[] = snapshot?.fields || [];
@@ -188,10 +251,12 @@ export function useAuditFlow(assignmentId: string | null) {
     existingAuditAnswers,
     approvalAnswers,
     auditorAnswers,
+    fieldReviewsAuditor,
     updateAuditorAnswer,
     autoSaveAuditorAnswer,
     getBlockingReasons,
     finalDecision,
-    isSaving: finalDecision.isPending,
+    criarPlanoAuditor,
+    isSaving: finalDecision.isPending || criarPlanoAuditor.isPending,
   };
 }
