@@ -306,7 +306,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
   const planRound = Number(review?.rodada ?? 1);
   const planResponseFieldId = `${field.id}__plano_acao__r${planRound}`;
   const planAnswer: FieldAnswer = allAnswers?.[planResponseFieldId] || { field_id: planResponseFieldId };
-  const isOriginalLockedByPlan = hasApproverPlan;
+  const isOriginalLockedByPlan = isReturned; // Campo bloqueado sempre que devolvido — evidência original preservada
   const [openRodada, setOpenRodada] = useState<number | null>(review?.rodada ?? null);
   const error = showValidation ? validateField(field, answer) : null;
   const val: FieldAnswer = answer || { field_id: field.id };
