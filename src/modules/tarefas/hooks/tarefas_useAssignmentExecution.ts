@@ -459,7 +459,38 @@ export function useAssignmentExecution(assignmentId: string | null) {
 
       // Quando devolvida: não gera contingência nova — vai direto para aprovação
       const isDevolvida = assignment.status === "devolvida";
-      if (contingencyFields.length > 0 && !isDevolvida) {
+
+      // Busca rodada_atual fresco do banco (state pode estar stale)
+      const { data: freshAssignment } = await (supabase as any)
+        .from("operational_assignments")
+        .select("rodada_atual, status")
+        .eq("id", assignment.id)
+        .single();
+      const veioDeDevolucaoFinal =
+        isDevolvida ||
+        (freshAssignment?.status === "devolvida") ||
+        ((freshAssignment?.rodada_atual ?? 1) > 1) ||
+        ((assignment.rodada_atual ?? 1) > 1);
+
+      // SEMPRE fechar contingências abertas antes de qualquer verificação
+      // quando é reenvio pós-devolução (rodada > 1 ou status devolvida)
+      if (veioDeDevolucaoFinal) {
+        const nowTs = new Date().toISOString();
+        await (supabase as any)
+          .from("operational_contingencies")
+          .update({ status: "em_andamento", updated_at: nowTs })
+          .eq("assignment_id", assignment.id)
+          .eq("status", "aberta");
+        await (supabase as any)
+          .from("operational_contingencies")
+          .update({ status: "resolvida", resolvida_em: nowTs, dentro_prazo: true, updated_at: nowTs })
+          .eq("assignment_id", assignment.id)
+          .eq("status", "em_andamento");
+        await qc.invalidateQueries({ queryKey: ["operational_contingencies"] });
+        await qc.invalidateQueries({ queryKey: ["operational_contingencies_management"] });
+      }
+
+      if (contingencyFields.length > 0 && !isDevolvida && !veioDeDevolucaoFinal) {
         // Create contingencies and set status to contingenciado
         await transition.mutateAsync({
           assignmentId: assignment.id,
@@ -493,39 +524,6 @@ export function useAssignmentExecution(assignmentId: string | null) {
         // caso contrário → aguardando_avaliacao (fluxo tradicional)
         const isDesignada = !!assignment.created_by
           && assignment.created_by !== assignment.responsavel_id
-          && !assignment.aprovador_id;
-        // Quando devolvida (ou reaberta após devolução: rodada > 1):
-        // fecha contingências da rodada anterior seguindo fluxo aberta→em_andamento→resolvida
-        const veioDeDevolucao =
-          assignment.status === "devolvida" || (assignment.rodada_atual ?? 1) > 1;
-
-        // Double-check buscando rodada_atual fresco do banco (state pode estar stale)
-        const { data: freshAssignment } = await (supabase as any)
-          .from("operational_assignments")
-          .select("rodada_atual, status")
-          .eq("id", assignment.id)
-          .single();
-        const veioDeDevolucaoFinal =
-          veioDeDevolucao ||
-          (freshAssignment?.status === "devolvida") ||
-          ((freshAssignment?.rodada_atual ?? 1) > 1);
-        if (veioDeDevolucaoFinal) {
-          const nowTs = new Date().toISOString();
-          // Passo 1: aberta → em_andamento
-          await (supabase as any)
-            .from("operational_contingencies")
-            .update({ status: "em_andamento", updated_at: nowTs })
-            .eq("assignment_id", assignment.id)
-            .eq("status", "aberta");
-          // Passo 2: em_andamento → resolvida
-          await (supabase as any)
-            .from("operational_contingencies")
-            .update({ status: "resolvida", resolvida_em: nowTs, dentro_prazo: true, updated_at: nowTs })
-            .eq("assignment_id", assignment.id)
-            .eq("status", "em_andamento");
-          // Invalida cache para garantir que hasOpenContingencies leia do banco
-          await qc.invalidateQueries({ queryKey: ["operational_contingencies"] });
-          await qc.invalidateQueries({ queryKey: ["operational_contingencies_management"] });
         }
         const actionFinal = assignment.status === "devolvida"
           ? "enviar_avaliacao"
