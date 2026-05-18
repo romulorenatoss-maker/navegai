@@ -200,8 +200,9 @@ export function EvidenciaPreview({
 
   const mt = (mimeType ?? url ?? "").toLowerCase();
   const isImage = mt.includes("image/") || /\.(jpg|jpeg|png|gif|webp)$/i.test(url ?? "");
-  const isVideo = mt.includes("video/") || /\.(mp4|webm|mov)$/i.test(url ?? "");
-  const isAudio = mt.includes("audio/") || /\.(mp3|wav|ogg|m4a)$/i.test(url ?? "");
+  // audio/mp4 e audio/mpeg também são áudio — checar antes de isVideo
+  const isAudio = mt.includes("audio/") || /\.(mp3|wav|ogg|m4a)$/i.test(url ?? "") || mt === "audio/mp4";
+  const isVideo = !isAudio && (mt.includes("video/") || /\.(mp4|webm|mov)$/i.test(url ?? ""));
 
   // Se tem anexo_id, busca signed URL para o preview inline
   React.useEffect(() => {
@@ -214,6 +215,28 @@ export function EvidenciaPreview({
   }, [anexoId, url]);
 
   return (
+    <div className="flex flex-col gap-1 mt-1 w-full">
+      {/* Player inline para áudio */}
+      {isAudio && signedUrl && (
+        <div className="flex items-center gap-2 p-2 rounded border border-border bg-muted/30">
+          <span className="text-sm shrink-0">🎵</span>
+          <audio src={signedUrl} controls className="w-full h-8" style={{ minWidth: 0 }} />
+          {!disabled && onRemove && (
+            <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0" onClick={onRemove}>
+              <X className="w-3 h-3" />
+            </Button>
+          )}
+        </div>
+      )}
+      {isAudio && loadingPreview && (
+        <div className="flex items-center gap-2 p-2 rounded border border-border bg-muted/30">
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Carregando áudio...</span>
+        </div>
+      )}
+
+      {/* Thumbnail para imagem/vídeo/outros */}
+      {!isAudio && (
     <div className="flex items-center gap-2 mt-1">
       {/* Thumbnail / preview inline */}
       <div
@@ -269,6 +292,8 @@ export function EvidenciaPreview({
           </div>
         )
       ) : null}
+    </div>
+      )}
     </div>
   );
 }
