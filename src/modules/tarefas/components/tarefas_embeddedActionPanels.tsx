@@ -623,12 +623,14 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   }, [approverFields, flow.approverAnswers, flow.existingApprovalAnswers]);
 
   const naoConformesPlano = useMemo(
-    () => perguntasComAcao.filter(f => {
+    () => approverFields.filter(f => {
+      // Forcado via botao "Nao Conforme R2+" dentro do bloco de planos
+      if (acaoPorNC[f.id] === "plano") return true;
       const v = flow.approverAnswers[f.id]?.resposta ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta;
       const rule = v ? getRuleForResposta(f, v, "aprovador") : null;
       return getAllowedActions(rule).includes("plano") && (acaoPorNC[f.id] ?? getDefaultReviewAction(rule)) === "plano";
     }),
-    [perguntasComAcao, acaoPorNC, flow.approverAnswers, flow.existingApprovalAnswers]
+    [perguntasComAcao, acaoPorNC, flow.approverAnswers, flow.existingApprovalAnswers, approverFields]
   );
   const naoConformesDevolver = useMemo(
     () => [] as typeof approverFields,
@@ -1545,39 +1547,6 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                               </button>
                             </div>
                           )}
-                          {/* Plano inline ao clicar Nao Conforme */}
-                          {idx === planos.length - 1 && acaoPorNC[f.id] === "plano" && (() => {
-                            const p2 = planos[f.id] ?? { descricao_acao: "", prazo: computeDefaultPrazo(), prazo_padrao: computeDefaultPrazo(), justificativa_alteracao_prazo: "", criticidade: "media", tipo_evidencia_exigida: "descricao", itens_plano: [], anexo_orientacao_url: null, anexo_orientacao_anexo_id: null, anexo_orientacao_mime_type: null };
-                            const ITENS2 = [{tipo:"foto",label:"Foto",ph:"O que fotografar?"},{tipo:"video",label:"Video",ph:"O que filmar?"},{tipo:"audio",label:"Audio",ph:"O que gravar?"},{tipo:"texto",label:"Texto",ph:"O que descrever?"}];
-                            return (
-                              <div className="px-3 py-3 border-t border-amber-200 bg-amber-50/40 space-y-3">
-                                <p className="text-xs font-semibold text-amber-900">Plano de acao R{r.rodada + 1}</p>
-                                <textarea value={p2.descricao_acao} onChange={e => setPlanos(prev => ({...prev, [f.id]: {...(prev[f.id]??p2), descricao_acao: e.target.value}}))} placeholder="Instrucao geral" rows={2} className="w-full text-xs rounded border border-amber-300 bg-white px-2 py-1.5 resize-none" />
-                                <div className="space-y-1">
-                                  {ITENS2.map(cfg => {
-                                    const ativo2 = (planos[f.id]?.itens_plano ?? []).find((i:any) => i.tipo === cfg.tipo);
-                                    return (
-                                      <div key={cfg.tipo} className={`rounded border ${ativo2 ? "border-amber-400" : "border-border"}`}>
-                                        <button type="button" onClick={() => setPlanos(prev => { const cur = prev[f.id]??p2; const existe = cur.itens_plano.find((i:any)=>i.tipo===cfg.tipo); return {...prev,[f.id]:{...cur,itens_plano:existe?cur.itens_plano.filter((i:any)=>i.tipo!==cfg.tipo):[...cur.itens_plano,{tipo:cfg.tipo,titulo:"",obrigatorio:true}]}};})} className="w-full flex items-center gap-2 px-3 py-1.5 text-left">
-                                          <span className="text-xs">{ativo2?"[x]":"[ ]"} {cfg.label}</span>
-                                        </button>
-                                        {ativo2 && <div className="px-3 pb-2"><input value={ativo2.titulo} onChange={e => { const t=e.target.value; setPlanos(prev=>{const cur=prev[f.id]??p2;return{...prev,[f.id]:{...cur,itens_plano:cur.itens_plano.map((i:any)=>i.tipo===cfg.tipo?{...i,titulo:t}:i)}};});}} placeholder={cfg.ph} className="w-full text-xs border border-amber-200 rounded px-2 py-1" /></div>}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                                <input type="datetime-local" value={p2.prazo} onChange={e => setPlanos(prev=>({...prev,[f.id]:{...(prev[f.id]??p2),prazo:e.target.value}}))} className="w-full text-xs border border-amber-300 rounded px-2 py-1" />
-                              </div>
-                            );
-                          })()}
-
-
-
-
-
-
-
-
 
 
                         </div>
