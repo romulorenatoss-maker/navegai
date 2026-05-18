@@ -409,6 +409,7 @@ export function useApprovalFlow(assignmentId: string | null) {
           observacao: p.descricao_acao,
           instrucao_aprovador: p.descricao_acao,
           tipo_evidencia_exigida: (p as any).tipo_evidencia_exigida || "nenhuma",
+          itens_plano: (p as any).itens_plano || [],
           anexo_orientacao_url: (p as any).anexo_orientacao_url ?? null,
           anexo_orientacao_anexo_id: (p as any).anexo_orientacao_anexo_id ?? null,
           anexo_orientacao_mime_type: (p as any).anexo_orientacao_mime_type ?? null,

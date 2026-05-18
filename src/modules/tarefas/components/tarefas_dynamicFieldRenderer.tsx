@@ -872,63 +872,79 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                   )}
 
                   {/* Campos de resposta do executor ao plano (última rodada ativa) */}
-                  {isReturned && isUltimaRodada && (
-                    <div className="px-3 py-2 border-t border-border space-y-2">
-                      {tipoEv === "foto" && !planAnswer.evidencia_url && (
-                        <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-2.5 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
-                          {uploading ? (
-                            <div className="flex flex-col items-center gap-1 w-full">
-                              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
-                              <span className="text-xs text-amber-700">{uploadProgress}%</span>
-                              <div className="w-full bg-muted rounded-full h-1"><div className="bg-amber-500 h-1 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} /></div>
-                            </div>
-                          ) : <><Camera className="w-3.5 h-3.5 text-amber-600" /><span className="text-xs text-amber-800 font-medium">📷 Tirar foto *</span></>}
-                          <input type="file" className="hidden" accept="image/*" capture="environment" onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadPlan(f); }} />
-                        </label>
-                      )}
-                      {tipoEv === "video" && !planAnswer.evidencia_url && (
-                        <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-2.5 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
-                          {uploading ? (
-                            <div className="flex flex-col items-center gap-1 w-full">
-                              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
-                              <span className="text-xs text-amber-700">{uploadProgress}%</span>
-                              <div className="w-full bg-muted rounded-full h-1"><div className="bg-amber-500 h-1 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} /></div>
-                            </div>
-                          ) : <><Upload className="w-3.5 h-3.5 text-amber-600" /><span className="text-xs text-amber-800 font-medium">🎥 Gravar vídeo *</span></>}
-                          <input type="file" className="hidden" accept="video/*" capture="environment" onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadPlan(f); }} />
-                        </label>
-                      )}
-                      {tipoEv === "audio" && !planAnswer.evidencia_url && (
-                        <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-2.5 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
-                          {uploading ? (
-                            <div className="flex flex-col items-center gap-1 w-full">
-                              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
-                              <span className="text-xs text-amber-700">{uploadProgress}%</span>
-                              <div className="w-full bg-muted rounded-full h-1"><div className="bg-amber-500 h-1 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} /></div>
-                            </div>
-                          ) : <><Upload className="w-3.5 h-3.5 text-amber-600" /><span className="text-xs text-amber-800 font-medium">🎵 Gravar áudio *</span></>}
-                          <input type="file" className="hidden" accept="audio/*" capture="user" onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadPlan(f); }} />
-                        </label>
-                      )}
-                      {(tipoEv === "texto" || tipoEv === "descricao") && (
-                        <textarea
-                          value={planAnswer.valor_texto ?? ""}
-                          onChange={e => updatePlanAnswer({ valor_texto: e.target.value })}
-                          placeholder="Descreva o que foi corrigido... *"
-                          rows={3}
-                          className="w-full text-xs rounded border border-amber-300 bg-white dark:bg-amber-950/10 px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400"
-                        />
-                      )}
-                      {planAnswer.evidencia_url && (
-                        <EvidenciaPreview
-                          anexoId={(planAnswer as any).evidencia_anexo_id ?? null}
-                          url={planAnswer.evidencia_url}
-                          mimeType={(planAnswer as any).evidencia_mime_type ?? null}
-                          onRemove={() => updatePlanAnswer({ evidencia_url: null, evidencia_anexo_id: null, evidencia_mime_type: null } as any)}
-                        />
-                      )}
-                    </div>
-                  )}
+                  {isReturned && isUltimaRodada && (() => {
+                    const itens: Array<{tipo: string; titulo: string; obrigatorio: boolean}> =
+                      Array.isArray(r.itens_plano) && r.itens_plano.length > 0
+                        ? r.itens_plano
+                        : tipoEv !== "nenhuma" ? [{ tipo: tipoEv, titulo: "", obrigatorio: true }] : [];
+
+                    if (itens.length === 0) return null;
+
+                    return (
+                      <div className="px-3 py-2 border-t border-border space-y-3">
+                        {itens.map((item, iIdx) => (
+                          <div key={iIdx} className="space-y-1.5">
+                            {item.titulo && (
+                              <p className="text-xs text-amber-800 font-medium">{item.titulo}</p>
+                            )}
+                            {item.tipo === "foto" && !planAnswer.evidencia_url && (
+                              <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-2.5 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
+                                {uploading ? (
+                                  <div className="flex flex-col items-center gap-1 w-full">
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                                    <span className="text-xs text-amber-700">{uploadProgress}%</span>
+                                    <div className="w-full bg-muted rounded-full h-1"><div className="bg-amber-500 h-1 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} /></div>
+                                  </div>
+                                ) : <><Camera className="w-3.5 h-3.5 text-amber-600" /><span className="text-xs text-amber-800 font-medium">📷 Tirar foto{item.obrigatorio ? " *" : ""}</span></>}
+                                <input type="file" className="hidden" accept="image/*" capture="environment" onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadPlan(f); }} />
+                              </label>
+                            )}
+                            {item.tipo === "video" && !planAnswer.evidencia_url && (
+                              <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-2.5 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
+                                {uploading ? (
+                                  <div className="flex flex-col items-center gap-1 w-full">
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                                    <span className="text-xs text-amber-700">{uploadProgress}%</span>
+                                    <div className="w-full bg-muted rounded-full h-1"><div className="bg-amber-500 h-1 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} /></div>
+                                  </div>
+                                ) : <><Upload className="w-3.5 h-3.5 text-amber-600" /><span className="text-xs text-amber-800 font-medium">🎥 Gravar vídeo{item.obrigatorio ? " *" : ""}</span></>}
+                                <input type="file" className="hidden" accept="video/*" capture="environment" onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadPlan(f); }} />
+                              </label>
+                            )}
+                            {item.tipo === "audio" && !planAnswer.evidencia_url && (
+                              <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-2.5 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
+                                {uploading ? (
+                                  <div className="flex flex-col items-center gap-1 w-full">
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                                    <span className="text-xs text-amber-700">{uploadProgress}%</span>
+                                    <div className="w-full bg-muted rounded-full h-1"><div className="bg-amber-500 h-1 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} /></div>
+                                  </div>
+                                ) : <><Upload className="w-3.5 h-3.5 text-amber-600" /><span className="text-xs text-amber-800 font-medium">🎵 Gravar áudio{item.obrigatorio ? " *" : ""}</span></>}
+                                <input type="file" className="hidden" accept="audio/*" capture="user" onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadPlan(f); }} />
+                              </label>
+                            )}
+                            {(item.tipo === "texto" || item.tipo === "descricao") && (
+                              <textarea
+                                value={planAnswer.valor_texto ?? ""}
+                                onChange={e => updatePlanAnswer({ valor_texto: e.target.value })}
+                                placeholder={`${item.titulo || "Descreva o que foi corrigido"}${item.obrigatorio ? " *" : ""}...`}
+                                rows={3}
+                                className="w-full text-xs rounded border border-amber-300 bg-white dark:bg-amber-950/10 px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400"
+                              />
+                            )}
+                            {planAnswer.evidencia_url && (item.tipo === "foto" || item.tipo === "video" || item.tipo === "audio") && (
+                              <EvidenciaPreview
+                                anexoId={(planAnswer as any).evidencia_anexo_id ?? null}
+                                url={planAnswer.evidencia_url}
+                                mimeType={(planAnswer as any).evidencia_mime_type ?? null}
+                                onRemove={() => updatePlanAnswer({ evidencia_url: null, evidencia_anexo_id: null, evidencia_mime_type: null } as any)}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
 
                   {/* Aguardando resposta */}
                   {aguardando && !isEditable && (
