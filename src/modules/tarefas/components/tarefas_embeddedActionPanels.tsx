@@ -1316,7 +1316,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                           }}
                         />
                       ) : (
-                        <label className="flex items-center justify-center gap-2 border border-dashed border-purple-400 rounded-lg p-2.5 cursor-pointer hover:border-purple-600 transition-colors">
+                        <label className="flex items-center justify-center gap-2 border border-dashed border-purple-400 rounded-lg p-4 cursor-pointer hover:border-purple-600 transition-colors min-h-[52px]">
                           <Upload className="w-3.5 h-3.5 text-purple-600" />
                           <span className="text-xs text-purple-800 font-medium">
                             {item.tipo === "foto" ? "Tirar foto" : item.tipo === "video" ? "Gravar video" : "Gravar audio"} *
@@ -2382,15 +2382,15 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
         </div>
       </div>
 
-      <div className="flex gap-2 pt-2 sticky bottom-0 bg-background pb-1">
-        <Button type="button" size="sm" variant="outline" disabled={flow.isSaving}
+      <div className="flex gap-2 pt-2 sticky bottom-0 bg-background pb-2">
+        <Button type="button" size="default" variant="outline" disabled={flow.isSaving}
           onClick={() => { setPerguntasSelecionadas(new Set()); setPlanosAuditorModal({}); setShowPlanoModal(true); }}
-          className="border-amber-300 text-amber-700 hover:bg-amber-50">
-          <ClipboardList className="w-3.5 h-3.5 mr-1" /> Criar plano de acao
+          className="border-amber-300 text-amber-700 hover:bg-amber-50 h-11">
+          <ClipboardList className="w-4 h-4 mr-1" /> Criar plano de acao
         </Button>
         <div className="flex-1" />
-        <Button type="button" size="sm" onClick={aprovar} disabled={flow.isSaving}
-          className="bg-blue-600 hover:bg-blue-700 text-white">
+        <Button type="button" size="default" onClick={aprovar} disabled={flow.isSaving}
+          className="bg-blue-600 hover:bg-blue-700 text-white h-11">
           <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Confirmar Auditoria
         </Button>
       </div>
@@ -2402,8 +2402,8 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
         const ITENS_TIPOS = [{tipo:"foto",label:"Foto"},{tipo:"video",label:"Video"},{tipo:"audio",label:"Audio"},{tipo:"texto",label:"Texto"}];
         const step1 = perguntasSelecionadas.size === 0;
         return (
-          <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,minHeight:"100%",background:"rgba(0,0,0,0.6)",zIndex:50,overflowY:"auto",padding:"20px 0"}} onClick={e => { if (e.target === e.currentTarget) setShowPlanoModal(false); }}>
-            <div style={{maxWidth:480,margin:"0 auto",background:"var(--color-background-primary)",borderRadius:12,overflow:"hidden",border:"0.5px solid var(--color-border-tertiary)"}}>
+          <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,minHeight:"100%",background:"rgba(0,0,0,0.6)",zIndex:50,overflowY:"auto",padding:"12px 8px"}} onClick={e => { if (e.target === e.currentTarget) setShowPlanoModal(false); }}>
+            <div style={{maxWidth:480,width:"100%",margin:"0 auto",background:"var(--color-background-primary)",borderRadius:12,overflow:"hidden",border:"0.5px solid var(--color-border-tertiary)"}}>
               <div style={{padding:"12px 16px",borderBottom:"0.5px solid var(--color-border-tertiary)",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#EEEDFE"}}>
                 <span style={{fontSize:13,fontWeight:500,color:"#3C3489"}}>Criar plano de acao — Auditor</span>
                 <button onClick={() => setShowPlanoModal(false)} style={{background:"none",border:"none",cursor:"pointer",color:"#534AB7",fontSize:18}}>x</button>
@@ -2433,7 +2433,7 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
                     const init: any = {};
                     perguntasSelecionadas.forEach(id => { init[id] = { instrucao:"", itens:[], prazo:computePrazo() }; });
                     setPlanosAuditorModal(init);
-                  }} style={{marginTop:12,width:"100%",padding:10,background:perguntasSelecionadas.size===0?"#ccc":"#534AB7",color:"white",border:"none",borderRadius:8,fontSize:12,cursor:perguntasSelecionadas.size===0?"not-allowed":"pointer",fontWeight:500}}>
+                  }} style={{marginTop:12,width:"100%",padding:14,background:perguntasSelecionadas.size===0?"#ccc":"#534AB7",color:"white",border:"none",borderRadius:8,fontSize:14,cursor:perguntasSelecionadas.size===0?"not-allowed":"pointer",fontWeight:500}}>
                     Continuar ({perguntasSelecionadas.size} pergunta{perguntasSelecionadas.size!==1?"s":""} selecionada{perguntasSelecionadas.size!==1?"s":""})
                   </button>
                 </div>
@@ -2492,7 +2492,7 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
                     );
                   })}
                   <div style={{display:"flex",gap:8}}>
-                    <button onClick={() => setPlanosAuditorModal({})} style={{flex:1,padding:9,border:"0.5px solid var(--color-border-secondary)",borderRadius:8,background:"transparent",color:"var(--color-text-secondary)",fontSize:12,cursor:"pointer"}}>Voltar</button>
+                    <button onClick={() => setPlanosAuditorModal({})} style={{flex:1,padding:12,border:"0.5px solid var(--color-border-secondary)",borderRadius:8,background:"transparent",color:"var(--color-text-secondary)",fontSize:13,cursor:"pointer"}}>Voltar</button>
                     <button disabled={flow.isSaving} onClick={async () => {
                       for (const [fieldId, pl] of Object.entries(planosAuditorModal)) {
                         if (!pl.itens.length && !pl.instrucao) continue;
@@ -2507,7 +2507,7 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
                       }
                       setShowPlanoModal(false);
                       onClose();
-                    }} style={{flex:2,padding:9,border:"none",borderRadius:8,background:"#534AB7",color:"white",fontSize:12,cursor:flow.isSaving?"not-allowed":"pointer",fontWeight:500}}>
+                    }} style={{flex:2,padding:12,border:"none",borderRadius:8,background:"#534AB7",color:"white",fontSize:13,cursor:flow.isSaving?"not-allowed":"pointer",fontWeight:500}}>
                       {flow.isSaving ? "Enviando..." : `Registrar ${Object.keys(planosAuditorModal).length} plano(s) e enviar ao aprovador`}
                     </button>
                   </div>
