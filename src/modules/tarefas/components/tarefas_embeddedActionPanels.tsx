@@ -424,6 +424,8 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   // Por NC, o aprovador escolhe se vira plano de ação ou só devolução para refazer
   const [acaoPorNC, setAcaoPorNC] = useState<Record<string, "plano" | "devolver">>({});
+  // Controla expansao do formulario de novo plano inline (R2+)
+  const [expandirNovoPlano, setExpandirNovoPlano] = useState<Record<string, boolean>>({});
   // Modal de confirmação de aprovação com perguntas AUTO do template
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
@@ -1408,7 +1410,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
 
                 {/* Histórico de planos de ação R1, R2... */}
                 {(() => {
-                  const planos = (flow.fieldReviews as any[])
+                  const planosDoField = (flow.fieldReviews as any[])
                     .filter((r: any) => r.field_id === f.id && r.devolvido === true)
                     .sort((a: any, b: any) => (a.rodada || 0) - (b.rodada || 0));
 
@@ -1430,7 +1432,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                       : { ok: true, label: `⏳ ${Math.round((prazoMs - agora) / 60000)}min restantes`, corBorda: "#ba7517", corHeader: "#faeeda", corTexto: "#854f0b", bgBadge: "#ef9f27" };
                   };
 
-                  return planos.map((r: any, idx: number) => {
+                  return planosDoField.map((r: any, idx: number) => {
                     const isReincidencia = idx > 0;
                     const st = calcStatus(r);
                     const corBorda = st?.corBorda || (isReincidencia ? "#ba7517" : "#e24b4a");
@@ -1549,7 +1551,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                           {/* Botões Conforme / Não Conforme no plano — só no último plano */}
 
 
-                          {idx === planos.length - 1 && (
+                          {idx === planosDoField.length - 1 && (
                             <div className="px-3 py-2 flex gap-2">
                               <button type="button" onClick={() => handleResposta(f, "conforme")}
                                 className="flex-1 text-xs px-2 py-2 rounded border font-medium transition-colors border-border text-muted-foreground hover:bg-muted">
@@ -1557,19 +1559,56 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                               </button>
                               <button type="button" onClick={() => {
                                 handleResposta(f, "nao_conforme");
-                                // Limpa estado do plano anterior para comecar do zero
                                 setPlanos(prev => { const n = {...prev}; delete n[f.id]; return n; });
                                 setAcaoPorNC(prev => ({ ...prev, [f.id]: "plano" }));
-                                setStep("plano");
+                                setExpandirNovoPlano(prev => ({ ...prev, [f.id]: true }));
                               }}
                                 className="flex-1 text-xs px-2 py-2 rounded border font-medium transition-colors border-border text-muted-foreground hover:bg-muted">
                                 Nao Conforme R{r.rodada + 1}
                               </button>
                             </div>
                           )}
-
-
-                        </div>
+                          {/* Formulario de novo plano inline (R2+) */}
+                          {idx === planosDoField.length - 1 && expandirNovoPlano[f.id] && (() => {
+                            const p = planos[f.id] || { descricao_acao: "", prazo: computeDefaultPrazo(), prazo_padrao: computeDefaultPrazo(), justificativa_alteracao_prazo: "", criticidade: "media" as const, tipo_evidencia_exigida: "descricao" as const, itens_plano: [] as ItemPlano[], anexo_orientacao_url: null as string | null, anexo_orientacao_anexo_id: null as string | null, anexo_orientacao_mime_type: null as string | null };
+                            const ITENS_CFG = [
+                              { v: "foto", label: "Foto" },
+                              { v: "video", label: "Video" },
+                              { v: "audio", label: "Audio" },
+                              { v: "texto", label: "Texto" },
+                            ] as const;
+                            return (
+                              <div className="px-3 py-3 border-t border-amber-200 bg-amber-50/40 space-y-3">
+                                <p className="text-xs font-semibold text-amber-900">Novo plano de acao — R{r.rodada + 1}</p>
+                                <Textarea value={p.descricao_acao} onChange={e => setPlanos(prev => ({...prev, [f.id]: {...(prev[f.id]||p), descricao_acao: e.target.value}}))} placeholder="Instrucao geral (opcional)" className="text-xs min-h-[50px]" />
+                                <div className="space-y-1">
+                                  <Label className="text-[11px]">O que quero de volta</Label>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {ITENS_CFG.map(cfg => {
+                                      const ativo = (planos[f.id]?.itens_plano || []).find((i:any) => i.tipo === cfg.v);
+                                      return (
+                                        <button key={cfg.v} type="button"
+                                          onClick={() => setPlanos(prev => { const cur = prev[f.id]||p; const existe = cur.itens_plano.find((i:any)=>i.tipo===cfg.v); return {...prev,[f.id]:{...cur,itens_plano:existe?cur.itens_plano.filter((i:any)=>i.tipo!==cfg.v):[...cur.itens_plano,{tipo:cfg.v,titulo:"",obrigatorio:true}]}};})}
+                                          className={`px-2 py-1 rounded border text-xs ${ativo?"bg-primary text-primary-foreground border-primary":"border-border text-muted-foreground"}`}>
+                                          {cfg.label}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                  {(planos[f.id]?.itens_plano||[]).map((item:any) => (
+                                    <Input key={item.tipo} value={item.titulo} onChange={e => { const t=e.target.value; setPlanos(prev=>{const cur=prev[f.id]||p;return{...prev,[f.id]:{...cur,itens_plano:cur.itens_plano.map((i:any)=>i.tipo===item.tipo?{...i,titulo:t}:i)}};});}} placeholder={`Instrucao para ${item.tipo}...`} className="h-7 text-xs mt-1" />
+                                  ))}
+                                </div>
+                                <div>
+                                  <Label className="text-[11px]">Prazo</Label>
+                                  <Input type="datetime-local" value={p.prazo} onChange={e => setPlanos(prev => ({...prev,[f.id]:{...(prev[f.id]||p),prazo:e.target.value}}))} className="h-8 text-xs mt-1" />
+                                </div>
+                                <Button type="button" size="sm" onClick={submeterPlanos} disabled={flow.isSaving} className="w-full bg-amber-600 hover:bg-amber-700 text-white">
+                                  {flow.isSaving ? "Enviando..." : `Registrar plano R${r.rodada + 1} e devolver`}
+                                </Button>
+                              </div>
+                            );
+                          })()}                        </div>
                       </div>
                     );
                   });
