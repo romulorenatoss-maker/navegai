@@ -783,7 +783,8 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
           {allReviews.map((r: any, idx: number) => {
             const isPlano = !!(approverPlan?.plano_acao_descricao) || !!(r.instrucao_aprovador && r.instrucao_aprovador !== r.motivo_devolucao);
             const isReincidencia = idx > 0;
-            const tipoLabel = isPlano ? `Plano de ação — R${r.rodada}` : `Devolução — R${r.rodada}`;
+            const rodadaLabel = idx + 1;
+            const tipoLabel = isPlano ? `Plano de ação — R${rodadaLabel}` : `Devolução — R${rodadaLabel}`;
             const corBorda = isReincidencia ? "#ba7517" : "#e24b4a";
             const corHeader = isReincidencia ? "#faeeda" : "#fcebeb";
             const corTexto = isReincidencia ? "#854f0b" : "#a32d2d";
@@ -829,17 +830,12 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                       <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Resposta do executor</p>
                       {val.observacao && <p className="text-xs text-foreground">{val.observacao}</p>}
                       {val.evidencia_url && (
-                        <div>
-                          {/\.(jpg|jpeg|png|gif|webp)$/i.test(val.evidencia_url) ? (
-                            <img src={val.evidencia_url} alt="Evidência" className="max-h-32 rounded border border-border cursor-pointer w-full object-cover" onClick={() => window.open(val.evidencia_url!, "_blank")} />
-                          ) : /\.(mp4|webm|mov)$/i.test(val.evidencia_url) ? (
-                            <video src={val.evidencia_url} controls playsInline className="w-full max-h-40 rounded border border-border" />
-                          ) : /\.(mp3|wav|ogg|m4a)$/i.test(val.evidencia_url) ? (
-                            <audio src={val.evidencia_url} controls className="w-full" />
-                          ) : (
-                            <a href={val.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver evidência</a>
-                          )}
-                        </div>
+                        <EvidenciaPreview
+                          anexoId={val.evidencia_anexo_id}
+                          url={val.evidencia_url}
+                          mimeType={val.evidencia_mime_type}
+                          disabled
+                        />
                       )}
                       {val.respondido_por_nome && (
                         <p className="text-[10px] text-muted-foreground">{val.respondido_por_nome} · {val.respondido_em ? format(new Date(val.respondido_em), "dd/MM HH:mm") : ""}</p>
@@ -855,30 +851,64 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                   {/* Campos para o executor preencher (última rodada ativa) */}
                   {isReturned && idx === allReviews.length - 1 && isEditable && (
                     <div className="px-3 py-2 border-t border-border space-y-2">
-                      {tipoEv !== "nenhuma" && !val.evidencia_url && (
+                      {/* Foto */}
+                      {tipoEv === "foto" && !val.evidencia_url && (
                         <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-2.5 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
-                          {uploading ? <span className="text-xs text-amber-700">Enviando...</span> : (
-                            <>
-                              <Upload className="w-3.5 h-3.5 text-amber-600" />
-                              <span className="text-xs text-amber-800 font-medium">
-                                {tipoEv === "foto" ? "📷 Abrir câmera" : tipoEv === "video" ? "🎥 Gravar vídeo" : tipoEv === "audio" ? "🎵 Gravar áudio" : "Anexar arquivo"} *
-                              </span>
-                            </>
-                          )}
-                          <input type="file" className="hidden"
-                            accept={tipoEv === "foto" ? "image/*" : tipoEv === "video" ? "video/*" : tipoEv === "audio" ? "audio/*" : "*"}
-                            capture={tipoEv === "foto" || tipoEv === "video" ? "environment" : tipoEv === "audio" ? "user" : undefined}
-                            onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
-                          />
+                          {uploading ? (
+                            <div className="flex flex-col items-center gap-1 w-full">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                              <span className="text-xs text-amber-700">{uploadProgress}%</span>
+                              <div className="w-full bg-muted rounded-full h-1"><div className="bg-amber-500 h-1 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} /></div>
+                            </div>
+                          ) : <><Camera className="w-3.5 h-3.5 text-amber-600" /><span className="text-xs text-amber-800 font-medium">📷 Tirar foto *</span></>}
+                          <input type="file" className="hidden" accept="image/*" capture="environment" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
                         </label>
                       )}
-                      <textarea
-                        value={val.observacao ?? ""}
-                        onChange={e => update({ observacao: e.target.value })}
-                        placeholder="Descreva o que foi corrigido..."
-                        rows={2}
-                        className="w-full text-xs rounded border border-amber-300 bg-white dark:bg-amber-950/10 px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400"
-                      />
+                      {/* Vídeo */}
+                      {tipoEv === "video" && !val.evidencia_url && (
+                        <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-2.5 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
+                          {uploading ? (
+                            <div className="flex flex-col items-center gap-1 w-full">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                              <span className="text-xs text-amber-700">{uploadProgress}%</span>
+                              <div className="w-full bg-muted rounded-full h-1"><div className="bg-amber-500 h-1 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} /></div>
+                            </div>
+                          ) : <><Upload className="w-3.5 h-3.5 text-amber-600" /><span className="text-xs text-amber-800 font-medium">🎥 Gravar vídeo *</span></>}
+                          <input type="file" className="hidden" accept="video/*" capture="environment" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
+                        </label>
+                      )}
+                      {/* Áudio */}
+                      {tipoEv === "audio" && !val.evidencia_url && (
+                        <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-2.5 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
+                          {uploading ? (
+                            <div className="flex flex-col items-center gap-1 w-full">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                              <span className="text-xs text-amber-700">{uploadProgress}%</span>
+                              <div className="w-full bg-muted rounded-full h-1"><div className="bg-amber-500 h-1 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} /></div>
+                            </div>
+                          ) : <><Upload className="w-3.5 h-3.5 text-amber-600" /><span className="text-xs text-amber-800 font-medium">🎵 Gravar áudio *</span></>}
+                          <input type="file" className="hidden" accept="audio/*" capture="user" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
+                        </label>
+                      )}
+                      {/* Texto */}
+                      {tipoEv === "texto" && (
+                        <textarea
+                          value={val.observacao ?? ""}
+                          onChange={e => update({ observacao: e.target.value })}
+                          placeholder="Descreva o que foi corrigido... *"
+                          rows={3}
+                          className="w-full text-xs rounded border border-amber-300 bg-white dark:bg-amber-950/10 px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400"
+                        />
+                      )}
+                      {/* Preview após upload */}
+                      {val.evidencia_url && (
+                        <EvidenciaPreview
+                          anexoId={val.evidencia_anexo_id}
+                          url={val.evidencia_url}
+                          mimeType={val.evidencia_mime_type}
+                          onRemove={() => update({ evidencia_url: null, evidencia_anexo_id: null, evidencia_mime_type: null })}
+                        />
+                      )}
                     </div>
                   )}
                 </div>
