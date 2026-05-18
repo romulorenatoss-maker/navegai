@@ -397,6 +397,9 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     criticidade: "baixa" | "media" | "alta";
     tipo_evidencia_exigida: string;
     itens_plano: ItemPlano[];
+    anexo_orientacao_url?: string | null;
+    anexo_orientacao_anexo_id?: string | null;
+    anexo_orientacao_mime_type?: string | null;
   }>>({});
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   // Por NC, o aprovador escolhe se vira plano de ação ou só devolução para refazer
