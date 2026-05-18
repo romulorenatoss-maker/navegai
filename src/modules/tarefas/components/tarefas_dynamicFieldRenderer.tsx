@@ -855,9 +855,15 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                             {prazoAlterado ? "⚑ " : ""}Prazo: {format(new Date(prazo), "dd/MM HH:mm")}
                           </span>
                         )}
-                        {tipoEv !== "nenhuma" && (
+                        {Array.isArray(r.itens_plano) && r.itens_plano.length > 0 ? (
+                          r.itens_plano.map((item: any, i: number) => (
+                            <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-800">
+                              {item.tipo === "foto" ? "Foto" : item.tipo === "video" ? "Video" : item.tipo === "audio" ? "Audio" : "Texto"}{item.titulo ? `: ${item.titulo}` : ""}
+                            </span>
+                          ))
+                        ) : tipoEv !== "nenhuma" && (
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-800">
-                            {tipoEv === "foto" ? "📷 Foto" : tipoEv === "video" ? "🎥 Vídeo" : tipoEv === "audio" ? "🎵 Áudio" : "✏️ Descrição"}
+                            {tipoEv === "foto" ? "Foto" : tipoEv === "video" ? "Video" : tipoEv === "audio" ? "Audio" : "Descricao"}
                           </span>
                         )}
                       </div>
