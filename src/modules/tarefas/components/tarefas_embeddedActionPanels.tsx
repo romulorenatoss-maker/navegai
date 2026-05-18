@@ -1487,7 +1487,14 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                                 </div>
                               );
                             }
-                            if (!resp) return null;
+                            if (!resp) {
+                              return (
+                                <div className="px-3 py-2 bg-muted/10 flex items-center gap-2">
+                                  <Clock className="w-3 h-3 text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground italic">Resposta enviada pelo executor</span>
+                                </div>
+                              );
+                            }
 
                             // Novo formato: itens do plano por tipo no _itensPlano
                             if (resp._itensPlano) {
