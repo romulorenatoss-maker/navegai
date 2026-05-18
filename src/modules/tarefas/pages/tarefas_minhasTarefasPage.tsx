@@ -1251,10 +1251,13 @@ export default function OperationalExecucaoPage() {
               <>
                 {snapshotSections.length === 0 ? (
                   <div className="space-y-3">
-                    {effectiveFields.map(f => (
+                    {effectiveFields.map(f => {
+                      const latestReview = exec.getLatestReview(f.id);
+                      const fieldDevolvido = latestReview?.devolvido === true;
+                      return (
                       <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
-                        review={exec.getLatestReview(f.id)} userRole="executor"
-                        disabled={isDevolvida && exec.getLatestReview(f.id)?.devolvido !== true}
+                        review={latestReview} userRole="executor"
+                        disabled={fieldDevolvido ? false : (isDevolvida && !fieldDevolvido)}
                         allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id}
                         numeroTarefa={selectedAssignment.numero_tarefa ?? 0}
                         nomeTarefa={selectedAssignment.template_snapshot?.nome ?? "tarefa"}
@@ -1270,7 +1273,8 @@ export default function OperationalExecucaoPage() {
                         meusSetorIds={meusSetorIds}
                         isAdmin={isAdmin}
                       />
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   snapshotSections.filter(s => !activeSection || s.id === activeSection).map((section: any) => {
