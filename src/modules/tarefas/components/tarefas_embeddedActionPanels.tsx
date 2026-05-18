@@ -2114,6 +2114,111 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
     catch (e: any) { toast.error(e.message); }
   };
 
+  const computePrazoAud = () => { const d = new Date(Date.now()+24*3600*1000); const p=(n:number)=>n.toString().padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+  const ITENS_AUDIT = [{tipo:"foto",label:"Foto"},{tipo:"video",label:"Video"},{tipo:"audio",label:"Audio"},{tipo:"texto",label:"Texto"}];
+  const camposDisponiveis = fields.filter((f:any) => (flow.fieldAnswers as any[]).find((a:any) => a.field_id === f.id));
+  const step2 = Object.keys(planosAuditorModal).length > 0;
+
+  if (showPlanoModal) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between pb-2 border-b border-border">
+          <span className="text-sm font-medium">Criar plano de acao — Auditor</span>
+          <button onClick={() => setShowPlanoModal(false)} className="text-muted-foreground hover:text-foreground text-xl leading-none px-1">x</button>
+        </div>
+        {!step2 ? (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">Selecione as perguntas que deseja criar plano de acao:</p>
+            <div className="space-y-2">
+              {camposDisponiveis.map((f:any) => {
+                const sel = perguntasSelecionadas.has(f.id);
+                return (
+                  <div key={f.id} onClick={() => { const next = new Set(perguntasSelecionadas); sel ? next.delete(f.id) : next.add(f.id); setPerguntasSelecionadas(next); }}
+                    className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer ${sel?"bg-purple-50 dark:bg-purple-950/20 border-purple-400":"bg-card border-border hover:bg-muted"}`}>
+                    <div className={`w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center ${sel?"bg-purple-600 border-purple-600":"border-border"}`}>
+                      {sel && <span className="text-white text-xs font-bold">v</span>}
+                    </div>
+                    <span className="text-sm">{f.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <Button type="button" className="w-full h-11" disabled={perguntasSelecionadas.size===0}
+              style={{background:perguntasSelecionadas.size===0?"#ccc":"#534AB7",color:"white",border:"none"}}
+              onClick={() => { const init:any={}; perguntasSelecionadas.forEach((id:string)=>{init[id]={instrucao:"",itens:[],prazo:computePrazoAud()};}); setPlanosAuditorModal(init); }}>
+              Continuar ({perguntasSelecionadas.size} selecionada{perguntasSelecionadas.size!==1?"s":""})
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {Array.from(perguntasSelecionadas).map((fieldId:string) => {
+              const f = fields.find((x:any)=>x.id===fieldId);
+              if (!f) return null;
+              const answer = (flow.fieldAnswers as any[]).find((a:any)=>a.field_id===fieldId);
+              const pl = planosAuditorModal[fieldId] ?? {instrucao:"",itens:[],prazo:computePrazoAud()};
+              const updatePl = (patch:any) => setPlanosAuditorModal((prev:any)=>({...prev,[fieldId]:{...(prev[fieldId]??pl),...patch}}));
+              return (
+                <div key={fieldId} className="border border-purple-300 rounded-lg overflow-hidden">
+                  <div className="px-3 py-2 bg-purple-50 dark:bg-purple-950/20 border-b border-purple-200">
+                    <span className="text-xs font-semibold text-purple-800 dark:text-purple-300">{f.label}</span>
+                    <span className="text-[10px] text-muted-foreground ml-2">Resposta: {answer?.valor_booleano===true?"Sim":answer?.valor_booleano===false?"Nao":answer?.valor_texto==="na"?"N/A":answer?.valor_texto??"—"}</span>
+                  </div>
+                  <div className="p-3 space-y-3">
+                    <div>
+                      <Label className="text-[11px]">Instrucao geral (opcional)</Label>
+                      <Textarea value={pl.instrucao} onChange={e=>updatePl({instrucao:e.target.value})} rows={2} className="text-xs mt-1 min-h-[44px]" placeholder="O que o aprovador deve corrigir..." />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px]">O que quero de volta (marque ao menos 1)</Label>
+                      {ITENS_AUDIT.map(cfg => {
+                        const ativo = pl.itens.find((i:any)=>i.tipo===cfg.tipo);
+                        return (
+                          <div key={cfg.tipo} className={`border rounded-lg overflow-hidden ${ativo?"border-purple-400":"border-border"}`}>
+                            <button type="button" onClick={()=>{const existe=pl.itens.find((i:any)=>i.tipo===cfg.tipo);updatePl({itens:existe?pl.itens.filter((i:any)=>i.tipo!==cfg.tipo):[...pl.itens,{tipo:cfg.tipo,titulo:"",obrigatorio:true}]});}}
+                              className={`w-full flex items-center gap-2 px-3 py-2.5 text-left ${ativo?"bg-purple-50 dark:bg-purple-950/20":"hover:bg-muted/50"}`}>
+                              <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${ativo?"bg-purple-600 border-purple-600":"border-border"}`}>
+                                {ativo && <span className="text-white text-[10px] font-bold">v</span>}
+                              </div>
+                              <span className="text-xs font-medium">{cfg.label}</span>
+                            </button>
+                            {ativo && (
+                              <div className="px-3 pb-2 pt-1 border-t border-border bg-muted/10">
+                                <Input value={ativo.titulo} onChange={e=>{const t=e.target.value;updatePl({itens:pl.itens.map((i:any)=>i.tipo===cfg.tipo?{...i,titulo:t}:i)});}} placeholder={`Instrucao para ${cfg.label}...`} className="h-8 text-xs" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div>
+                      <Label className="text-[11px]">Prazo</Label>
+                      <Input type="datetime-local" value={pl.prazo} onChange={e=>updatePl({prazo:e.target.value})} className="h-9 text-xs mt-1" />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            <div className="flex gap-2 pt-2 sticky bottom-0 bg-background pb-1 border-t border-border">
+              <Button type="button" size="default" variant="outline" className="h-11" onClick={()=>setPlanosAuditorModal({})}>Voltar</Button>
+              <Button type="button" size="default" className="flex-1 h-11 text-white" style={{background:"#534AB7"}} disabled={flow.isSaving}
+                onClick={async()=>{
+                  for (const [fieldId,pl] of Object.entries(planosAuditorModal) as any) {
+                    if (!pl.itens.length && !pl.instrucao) continue;
+                    const f = fields.find((x:any)=>x.id===fieldId);
+                    await flow.criarPlanoAuditor.mutateAsync({perguntaId:fieldId,perguntaLabel:(f as any)?.label??fieldId,instrucao:pl.instrucao,itensPlano:pl.itens,prazoIso:pl.prazo?new Date(pl.prazo).toISOString():new Date(Date.now()+86400000).toISOString()});
+                  }
+                  setShowPlanoModal(false);
+                  onClose();
+                }}>
+                {flow.isSaving?"Enviando...":`Registrar ${Object.keys(planosAuditorModal).length} plano(s) e enviar ao aprovador`}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (showConfirmModal) {
     return (
       <div className="space-y-4" style={{position:"relative"}}>
@@ -2395,128 +2500,6 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
         </Button>
       </div>
 
-      {/* Modal de criacao de plano do auditor */}
-      {showPlanoModal && (() => {
-        const camposDisponiveis = fields.filter(f => (flow.fieldAnswers as any[]).find((a: any) => a.field_id === f.id));
-        const computePrazo = () => { const d = new Date(Date.now() + 24*3600*1000); const p = (n: number) => n.toString().padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
-        const ITENS_TIPOS = [{tipo:"foto",label:"Foto"},{tipo:"video",label:"Video"},{tipo:"audio",label:"Audio"},{tipo:"texto",label:"Texto"}];
-        const step1 = perguntasSelecionadas.size === 0;
-        return (
-          <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,minHeight:"100%",background:"rgba(0,0,0,0.6)",zIndex:50,overflowY:"auto",padding:"12px 8px"}} onClick={e => { if (e.target === e.currentTarget) setShowPlanoModal(false); }}>
-            <div style={{maxWidth:480,width:"100%",margin:"0 auto",background:"var(--color-background-primary)",borderRadius:12,overflow:"hidden",border:"0.5px solid var(--color-border-tertiary)"}}>
-              <div style={{padding:"12px 16px",borderBottom:"0.5px solid var(--color-border-tertiary)",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#EEEDFE"}}>
-                <span style={{fontSize:13,fontWeight:500,color:"#3C3489"}}>Criar plano de acao — Auditor</span>
-                <button onClick={() => setShowPlanoModal(false)} style={{background:"none",border:"none",cursor:"pointer",color:"#534AB7",fontSize:18}}>x</button>
-              </div>
-
-              {step1 ? (
-                <div style={{padding:16}}>
-                  <p style={{fontSize:12,color:"var(--color-text-secondary)",marginBottom:10}}>Selecione as perguntas para criar plano de acao:</p>
-                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                    {camposDisponiveis.map((f: any) => {
-                      const sel = perguntasSelecionadas.has(f.id);
-                      return (
-                        <div key={f.id} onClick={() => {
-                          const next = new Set(perguntasSelecionadas);
-                          if (sel) next.delete(f.id); else next.add(f.id);
-                          setPerguntasSelecionadas(next);
-                        }} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",border:`0.5px solid ${sel?"#534AB7":"var(--color-border-tertiary)"}`,borderRadius:8,background:sel?"#EEEDFE":"var(--color-background-primary)",cursor:"pointer"}}>
-                          <div style={{width:16,height:16,borderRadius:3,border:`0.5px solid ${sel?"#534AB7":"var(--color-border-tertiary)"}`,background:sel?"#534AB7":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                            {sel && <span style={{color:"white",fontSize:10,fontWeight:"bold"}}>v</span>}
-                          </div>
-                          <span style={{fontSize:12,color:"var(--color-text-primary)"}}>{(f as any).label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <button disabled={perguntasSelecionadas.size === 0} onClick={() => {
-                    const init: any = {};
-                    perguntasSelecionadas.forEach(id => { init[id] = { instrucao:"", itens:[], prazo:computePrazo() }; });
-                    setPlanosAuditorModal(init);
-                  }} style={{marginTop:12,width:"100%",padding:14,background:perguntasSelecionadas.size===0?"#ccc":"#534AB7",color:"white",border:"none",borderRadius:8,fontSize:14,cursor:perguntasSelecionadas.size===0?"not-allowed":"pointer",fontWeight:500}}>
-                    Continuar ({perguntasSelecionadas.size} pergunta{perguntasSelecionadas.size!==1?"s":""} selecionada{perguntasSelecionadas.size!==1?"s":""})
-                  </button>
-                </div>
-              ) : (
-                <div style={{padding:16,display:"flex",flexDirection:"column",gap:16}}>
-                  {Array.from(perguntasSelecionadas).map(fieldId => {
-                    const f = fields.find((x: any) => x.id === fieldId);
-                    if (!f) return null;
-                    const answer = (flow.fieldAnswers as any[]).find((a: any) => a.field_id === fieldId);
-                    const reviews = (flow.fieldReviewsAuditor ? [] : ([] as any[]));
-                    const pl = planosAuditorModal[fieldId] ?? { instrucao:"", itens:[], prazo:computePrazo() };
-                    const updatePl = (patch: any) => setPlanosAuditorModal(prev => ({...prev,[fieldId]:{...(prev[fieldId]??pl),...patch}}));
-                    return (
-                      <div key={fieldId} style={{border:"0.5px solid #AFA9EC",borderRadius:10,overflow:"hidden"}}>
-                        <div style={{padding:"8px 12px",background:"#EEEDFE",borderBottom:"0.5px solid #AFA9EC",fontSize:12,fontWeight:500,color:"#3C3489"}}>{(f as any).label}</div>
-                        <div style={{padding:"10px 12px",background:"var(--color-background-secondary)",fontSize:11,color:"var(--color-text-secondary)",marginBottom:2}}>
-                          Resposta: {answer?.valor_booleano === true ? "Sim" : answer?.valor_booleano === false ? "Nao" : answer?.valor_texto === "na" ? "N/A" : answer?.valor_texto ?? "—"}
-                        </div>
-                        <div style={{padding:"10px 12px",display:"flex",flexDirection:"column",gap:8}}>
-                          <div>
-                            <label style={{fontSize:11,color:"var(--color-text-secondary)"}}>Instrucao geral (opcional)</label>
-                            <textarea value={pl.instrucao} onChange={e => updatePl({instrucao:e.target.value})} rows={2} style={{width:"100%",marginTop:4,border:"0.5px solid var(--color-border-secondary)",borderRadius:6,padding:"6px 8px",fontSize:12,background:"var(--color-background-primary)",resize:"none"}} placeholder="O que o aprovador deve corrigir..." />
-                          </div>
-                          <div>
-                            <label style={{fontSize:11,color:"var(--color-text-secondary)"}}>O que quero de volta (marque ao menos 1)</label>
-                            <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:4}}>
-                              {ITENS_TIPOS.map(cfg => {
-                                const ativo = pl.itens.find((i: any) => i.tipo === cfg.tipo);
-                                return (
-                                  <div key={cfg.tipo} style={{border:`0.5px solid ${ativo?"#534AB7":"var(--color-border-tertiary)"}`,borderRadius:8,overflow:"hidden"}}>
-                                    <button type="button" onClick={() => {
-                                      const existe = pl.itens.find((i: any) => i.tipo === cfg.tipo);
-                                      updatePl({itens: existe ? pl.itens.filter((i: any)=>i.tipo!==cfg.tipo) : [...pl.itens,{tipo:cfg.tipo,titulo:"",obrigatorio:true}]});
-                                    }} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:ativo?"#EEEDFE":"transparent",border:"none",cursor:"pointer",textAlign:"left"}}>
-                                      <div style={{width:14,height:14,borderRadius:3,border:`0.5px solid ${ativo?"#534AB7":"var(--color-border-tertiary)"}`,background:ativo?"#534AB7":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                                        {ativo && <span style={{color:"white",fontSize:9,fontWeight:"bold"}}>v</span>}
-                                      </div>
-                                      <span style={{fontSize:12}}>{cfg.label}</span>
-                                    </button>
-                                    {ativo && (
-                                      <div style={{padding:"4px 10px 8px",borderTop:"0.5px solid var(--color-border-tertiary)",background:"var(--color-background-secondary)"}}>
-                                        <input value={ativo.titulo} onChange={e => {const t=e.target.value; updatePl({itens:pl.itens.map((i:any)=>i.tipo===cfg.tipo?{...i,titulo:t}:i)});}} placeholder={`Instrucao para ${cfg.label}...`} style={{width:"100%",border:"0.5px solid var(--color-border-tertiary)",borderRadius:5,padding:"4px 8px",fontSize:11,background:"var(--color-background-primary)"}} />
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                          <div>
-                            <label style={{fontSize:11,color:"var(--color-text-secondary)"}}>Prazo</label>
-                            <input type="datetime-local" value={pl.prazo} onChange={e => updatePl({prazo:e.target.value})} style={{width:"100%",marginTop:4,border:"0.5px solid var(--color-border-tertiary)",borderRadius:6,padding:"5px 8px",fontSize:12,background:"var(--color-background-primary)"}} />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <div style={{display:"flex",gap:8}}>
-                    <button onClick={() => setPlanosAuditorModal({})} style={{flex:1,padding:12,border:"0.5px solid var(--color-border-secondary)",borderRadius:8,background:"transparent",color:"var(--color-text-secondary)",fontSize:13,cursor:"pointer"}}>Voltar</button>
-                    <button disabled={flow.isSaving} onClick={async () => {
-                      for (const [fieldId, pl] of Object.entries(planosAuditorModal)) {
-                        if (!pl.itens.length && !pl.instrucao) continue;
-                        const f = fields.find((x: any) => x.id === fieldId);
-                        await flow.criarPlanoAuditor.mutateAsync({
-                          perguntaId: fieldId,
-                          perguntaLabel: (f as any)?.label ?? fieldId,
-                          instrucao: pl.instrucao,
-                          itensPlano: pl.itens,
-                          prazoIso: pl.prazo ? new Date(pl.prazo).toISOString() : new Date(Date.now()+86400000).toISOString(),
-                        });
-                      }
-                      setShowPlanoModal(false);
-                      onClose();
-                    }} style={{flex:2,padding:12,border:"none",borderRadius:8,background:"#534AB7",color:"white",fontSize:13,cursor:flow.isSaving?"not-allowed":"pointer",fontWeight:500}}>
-                      {flow.isSaving ? "Enviando..." : `Registrar ${Object.keys(planosAuditorModal).length} plano(s) e enviar ao aprovador`}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })()}
     </div>
   );
 }
