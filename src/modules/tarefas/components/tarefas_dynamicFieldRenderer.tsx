@@ -872,7 +872,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                   )}
 
                   {/* Campos de resposta do executor ao plano (última rodada ativa) */}
-                  {isReturned && isUltimaRodada && isEditable && (
+                  {isReturned && isUltimaRodada && (
                     <div className="px-3 py-2 border-t border-border space-y-2">
                       {tipoEv === "foto" && !planAnswer.evidencia_url && (
                         <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-2.5 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
