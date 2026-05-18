@@ -275,6 +275,7 @@ function EvidenciaPreview({
 
 export function DynamicFieldRenderer({ field, answer, review, userRole, disabled, allAnswers, onChange, assignmentId, numeroTarefa, nomeTarefa, origemTarefa, showValidation = true, approverPlan, allReviews = [], horarioLimite, dataPrevista, profileId, responsavelId, setorExecutorId, meusSetorIds = [], isAdmin = false }: Props) {
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const isVisible = field.visivel_para.includes(userRole) && evaluateVisibility(field.condicao_visibilidade, allAnswers);
   if (!isVisible) return null;
@@ -320,24 +321,68 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
 
   const handleUpload = async (file: File) => {
     setUploading(true);
+    setUploadProgress(0);
     try {
-      const { uploadAnexo } = await import('@/modules/tarefas/services/tarefas_storage_service');
-      const anexo = await uploadAnexo({
-        file,
-        contexto_tipo: 'evidencia',
-        assignment_id: assignmentId,
-        contexto_ref_id: field.id,
+      // Busca token de autenticação
+      const { data: sessData } = await supabase.auth.getSession();
+      const token = sessData.session?.access_token;
+      if (!token) throw new Error("Não autenticado");
+
+      const { buildStoragePath } = await import('@/modules/tarefas/utils/tarefas_storagePath');
+      const path_relativo = buildStoragePath({
         numero_tarefa: numeroTarefa,
         nome_tarefa: nomeTarefa,
         origem: origemTarefa,
+        nome_arquivo: file.name,
       });
+
+      // Upload com XHR para acompanhar progresso
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('contexto_tipo', 'evidencia');
+      fd.append('path_relativo', path_relativo);
+      if (assignmentId) fd.append('assignment_id', assignmentId);
+      fd.append('contexto_ref_id', field.id);
+
+      const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+
+      const anexo = await new Promise<any>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${FN_BASE}/tarefas-storage-upload`);
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            setUploadProgress(Math.round((e.loaded / e.total) * 100));
+          }
+        };
+
+        xhr.onload = () => {
+          try {
+            const json = JSON.parse(xhr.responseText);
+            if (xhr.status >= 200 && xhr.status < 300 && json.ok) {
+              resolve(json.anexo);
+            } else {
+              reject(new Error(json.detail ?? json.error ?? 'upload_failed'));
+            }
+          } catch {
+            reject(new Error('Resposta inválida do servidor'));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error('Erro de rede ao enviar arquivo'));
+        xhr.send(fd);
+      });
+
       update({
         evidencia_url: anexo.path_relativo,
         evidencia_anexo_id: anexo.id,
         evidencia_mime_type: anexo.mime_type ?? file.type,
       });
+      setUploadProgress(100);
     } catch (e: any) {
       console.error("Upload failed:", e);
+      setUploadProgress(0);
     } finally {
       setUploading(false);
     }
@@ -495,8 +540,19 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                 onRemove={originalEditable ? () => update({ evidencia_url: null, evidencia_anexo_id: null, evidencia_mime_type: null }) : undefined}
               />
             ) : originalEditable ? (
-              <label className={`flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg p-4 cursor-pointer hover:border-primary/50 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
-                {uploading ? <span className="text-sm text-muted-foreground">Enviando...</span> : (
+              <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg p-4 cursor-pointer hover:border-primary/50 transition-colors ${uploading ? "opacity-80 pointer-events-none" : ""}`}>
+                {uploading ? (
+                  <div className="flex flex-col items-center gap-2 w-full">
+                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                    <span className="text-sm text-muted-foreground">Enviando... {uploadProgress}%</span>
+                    <div className="w-full bg-muted rounded-full h-1.5">
+                      <div
+                        className="bg-primary h-1.5 rounded-full transition-all duration-200"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : (
                   <>
                     <Camera className="w-5 h-5 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">Toque para {field.tipo === "foto" ? "fotografar" : "enviar arquivo"}</span>
@@ -609,8 +665,16 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                   onRemove={originalEditable ? () => update({ evidencia_url: null, evidencia_anexo_id: null, evidencia_mime_type: null }) : undefined}
                 />
               ) : originalEditable ? (
-                <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400/60 rounded p-2 cursor-pointer hover:border-amber-500 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
-                  {uploading ? <span className="text-xs text-muted-foreground">Enviando...</span> : (
+                <label className={`flex flex-col items-center justify-center gap-1 border border-dashed border-amber-400/60 rounded p-2 cursor-pointer hover:border-amber-500 transition-colors ${uploading ? "opacity-80 pointer-events-none" : ""}`}>
+                  {uploading ? (
+                    <div className="flex flex-col items-center gap-1 w-full">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                      <span className="text-xs text-amber-700">{uploadProgress}%</span>
+                      <div className="w-full bg-muted rounded-full h-1">
+                        <div className="bg-amber-500 h-1 rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
+                      </div>
+                    </div>
+                  ) : (
                     <>
                       <Upload className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
                       <span className="text-xs text-amber-800 dark:text-amber-300">
@@ -698,8 +762,15 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
               onRemove={isEditableEfetivo ? () => update({ evidencia_url: null, evidencia_anexo_id: null, evidencia_mime_type: null }) : undefined}
             />
           ) : originalEditable ? (
-            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-primary transition-colors">
-              <Upload className="w-3.5 h-3.5" /> Anexar evidência
+            <label className={`flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-primary transition-colors ${uploading ? "pointer-events-none" : ""}`}>
+              {uploading ? (
+                <div className="flex items-center gap-1.5">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>{uploadProgress}%</span>
+                </div>
+              ) : (
+                <><Upload className="w-3.5 h-3.5" /> Anexar evidência</>
+              )}
               <input type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
             </label>
           ) : null}

@@ -185,6 +185,8 @@ export function useAssignmentExecution(assignmentId: string | null) {
               valor_data: entry.valor_data ?? null,
               valor_json: entry.valor_json ?? null,
               evidencia_url: entry.evidencia_url ?? null,
+              evidencia_anexo_id: entry.evidencia_anexo_id ?? null,
+              evidencia_mime_type: entry.evidencia_mime_type ?? null,
               respondido_em: now,
               versao: newVersao,
               historico_alteracoes: newHistory,
@@ -209,6 +211,8 @@ export function useAssignmentExecution(assignmentId: string | null) {
               valor_data: entry.valor_data ?? null,
               valor_json: entry.valor_json ?? null,
               evidencia_url: entry.evidencia_url ?? null,
+              evidencia_anexo_id: entry.evidencia_anexo_id ?? null,
+              evidencia_mime_type: entry.evidencia_mime_type ?? null,
               respondido_por: profile.id,
               historico_alteracoes: initialHistory,
             });
