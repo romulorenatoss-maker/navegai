@@ -407,7 +407,7 @@ export function useApprovalFlow(assignmentId: string | null) {
           devolvido: true,
           motivo_devolucao: p.descricao_acao,
           observacao: p.descricao_acao,
-          instrucao_aprovador: p.descricao_acao,
+          instrucao_aprovador: p.descricao_acao || (p.itens_plano?.map((i: any) => `${i.tipo}: ${i.titulo}`).join(" | ") ?? ""),
           tipo_evidencia_exigida: (p as any).tipo_evidencia_exigida || "nenhuma",
           itens_plano: (p as any).itens_plano || [],
           anexo_orientacao_url: (p as any).anexo_orientacao_url ?? null,
