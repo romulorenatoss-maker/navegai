@@ -1530,7 +1530,10 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                     {/* Plano de ação inline — abre quando Não Conforme */}
                     {allowedActions.length > 0 && (() => {
                       const p = planos[f.id] ?? { descricao_acao: "", prazo: computeDefaultPrazo(), prazo_padrao: computeDefaultPrazo(), justificativa_alteracao_prazo: "", criticidade: "media" as const, tipo_evidencia_exigida: "descricao", itens_plano: [] as any[] };
-                      const updateP = (patch: any) => setPlanos(prev => ({ ...prev, [f.id]: { ...p, ...patch } }));
+                      const updateP = (patch: any) => setPlanos(prev => {
+                        const cur = prev[f.id] ?? p;
+                        return { ...prev, [f.id]: { ...cur, ...patch } };
+                      });
                       const ITENS = [
                         { tipo: "foto", icon: "📷", label: "Foto", ph: "O que fotografar?" },
                         { tipo: "video", icon: "🎥", label: "Vídeo", ph: "O que filmar?" },
