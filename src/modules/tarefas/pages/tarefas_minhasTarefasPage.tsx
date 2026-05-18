@@ -559,13 +559,9 @@ export default function OperationalExecucaoPage() {
   }, [effectiveFields]);
 
   const openExecution = useCallback((a: any) => {
-    // Anti-contaminação: troca o assignment diretamente.
-    // O key={selectedAssignment?.id} no Sheet garante unmount/remount completo ao trocar de tarefa,
-    // zerando todos os estados internos (answers, logs, reviews) sem depender de setTimeout.
-    // Invalida cache das queries da tarefa anterior para evitar dados fantasma.
-    qc.removeQueries({ queryKey: ["operational_field_answers"] });
-    qc.removeQueries({ queryKey: ["operational_field_reviews"] });
-    qc.removeQueries({ queryKey: ["operational_execution_logs"] });
+    // Anti-contaminação: o key={selectedAssignment?.id} no Sheet garante
+    // unmount/remount completo ao trocar de tarefa, zerando estados internos.
+    // Não remover cache aqui — apagaria dados antes do fetch completar.
     setSelectedAssignment(a);
     setExecDialogOpen(true);
     setShowHistory(false);
@@ -613,10 +609,11 @@ export default function OperationalExecucaoPage() {
     setSelectedAssignment(null);
     setSubmitAttempted(false);
     setShowHistory(false);
-    // Limpa cache das queries da tarefa encerrada para não vazar para a próxima
-    qc.removeQueries({ queryKey: ["operational_field_answers"] });
-    qc.removeQueries({ queryKey: ["operational_field_reviews"] });
-    qc.removeQueries({ queryKey: ["operational_execution_logs"] });
+    // Invalida cache ao fechar para que a próxima abertura busque dados frescos
+    // Não usar removeQueries — apagaria antes do fetch e deixaria tela vazia
+    qc.invalidateQueries({ queryKey: ["operational_field_answers"] });
+    qc.invalidateQueries({ queryKey: ["operational_field_reviews"] });
+    qc.invalidateQueries({ queryKey: ["operational_execution_logs"] });
   };
 
   const visibleFields = useMemo(() =>
