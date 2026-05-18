@@ -185,7 +185,7 @@ export { evaluateVisibility, validateField };
 // ── EvidenciaPreview ──────────────────────────────────────────────────────────
 // Renderiza preview inline + loading + tela cheia via AnexoViewer (signed URL).
 // Suporta dados novos (anexo_id) e legados (url direta).
-function EvidenciaPreview({
+export function EvidenciaPreview({
   anexoId, url, mimeType, onRemove, disabled,
 }: {
   anexoId?: string | null;
