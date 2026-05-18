@@ -692,10 +692,18 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     const notaAvaliadorFinal = approverFields.reduce((sum: number, f: any) => {
       const keyNA = `avaliado_na_${f.id}`;
       const rNA = respostasAuto[keyNA] ?? { na: false };
-      const tevePlano = fieldsComPlano.has(f.id);
-      if (tevePlano && !rNA.na) return sum;
+      if (rNA.na) return sum + (f.aprovador_peso || 1);
+      const resposta = flow.approverAnswers[f.id]?.resposta ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta;
+      if (resposta === "nao_conforme") return sum;
       return sum + (f.aprovador_peso || 1);
     }, 0);
+
+
+
+
+
+
+
 
     const notaFinalTotal = notaAutoFinal + notaAvaliadorFinal;
     const notaMaximaAutoCalc = perguntasAutoTemplate.reduce((s: number, p: any) => s + (p.peso || 0), 0);
