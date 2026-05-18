@@ -198,13 +198,11 @@ export function EvidenciaPreview({
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
 
-  const mt = (mimeType ?? url ?? "").toLowerCase();
-  const isImage = mt.includes("image/") || /\.(jpg|jpeg|png|gif|webp)$/i.test(url ?? "");
-  // audio/mp4 e audio/mpeg também são áudio — checar antes de isVideo
-  const isAudio = mt.includes("audio/") || /\.(mp3|wav|ogg|m4a)$/i.test(url ?? "") || mt === "audio/mp4";
-  const isVideo = !isAudio && (mt.includes("video/") || /\.(mp4|webm|mov)$/i.test(url ?? ""));
+  const mt = (mimeType ?? "").toLowerCase();
+  const isAudio = mt.startsWith("audio/") || /\.(mp3|wav|ogg|m4a)$/i.test(url ?? "");
+  const isVideo = !isAudio && (mt.startsWith("video/") || /\.(mp4|webm|mov)$/i.test(url ?? ""));
+  const isImage = mt.startsWith("image/") || /\.(jpg|jpeg|png|gif|webp)$/i.test(url ?? "");
 
-  // Se tem anexo_id, busca signed URL para o preview inline
   React.useEffect(() => {
     if (!anexoId) { setSignedUrl(url ?? null); return; }
     setLoadingPreview(true);
@@ -214,86 +212,60 @@ export function EvidenciaPreview({
       .finally(() => setLoadingPreview(false));
   }, [anexoId, url]);
 
-  return (
-    <div className="flex flex-col gap-1 mt-1 w-full">
-      {/* Player inline para áudio */}
-      {isAudio && signedUrl && (
-        <div className="flex items-center gap-2 p-2 rounded border border-border bg-muted/30">
-          <span className="text-sm shrink-0">🎵</span>
-          <audio src={signedUrl} controls className="w-full h-8" style={{ minWidth: 0 }} />
-          {!disabled && onRemove && (
-            <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0" onClick={onRemove}>
-              <X className="w-3 h-3" />
-            </Button>
-          )}
-        </div>
-      )}
-      {isAudio && loadingPreview && (
-        <div className="flex items-center gap-2 p-2 rounded border border-border bg-muted/30">
-          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Carregando áudio...</span>
-        </div>
-      )}
+  const RemoveBtn = () => !disabled && onRemove ? (
+    <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0" onClick={onRemove}>
+      <X className="w-3 h-3" />
+    </Button>
+  ) : null;
 
-      {/* Thumbnail para imagem/vídeo/outros */}
-      {!isAudio && (
+  if (loadingPreview) {
+    return (
+      <div className="flex items-center gap-2 p-2 rounded border border-border bg-muted/30 mt-1">
+        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">Carregando...</span>
+      </div>
+    );
+  }
+
+  if (isAudio && signedUrl) {
+    return (
+      <div className="flex items-center gap-2 p-2 rounded border border-border bg-muted/30 mt-1 w-full">
+        <span className="text-sm shrink-0">🎵</span>
+        <audio src={signedUrl} controls className="flex-1 h-8" style={{ minWidth: 0 }} />
+        <RemoveBtn />
+      </div>
+    );
+  }
+
+  return (
     <div className="flex items-center gap-2 mt-1">
-      {/* Thumbnail / preview inline */}
       <div
         className="relative w-16 h-16 rounded border border-border bg-muted flex items-center justify-center overflow-hidden cursor-pointer shrink-0"
         onClick={() => setViewerOpen(true)}
       >
-        {loadingPreview ? (
-          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-        ) : signedUrl && isImage ? (
+        {signedUrl && isImage ? (
           <img src={signedUrl} alt="Evidência" className="w-full h-full object-cover" />
         ) : signedUrl && isVideo ? (
           <video src={signedUrl} className="w-full h-full object-cover" muted />
         ) : (
           <Eye className="w-5 h-5 text-muted-foreground" />
         )}
-        {/* Overlay de clique */}
-        <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center">
-          <Eye className="w-4 h-4 text-white opacity-0 group-hover:opacity-100" />
-        </div>
       </div>
-
-      <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-        <span>{isImage ? "📷 Foto anexada" : isVideo ? "🎥 Vídeo anexado" : isAudio ? "🎵 Áudio anexado" : "📎 Arquivo anexado"}</span>
-        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setViewerOpen(true)}>
+      <div className="flex flex-col gap-1 text-xs text-muted-foreground flex-1">
+        <span>{isImage ? "📷 Foto anexada" : isVideo ? "🎥 Vídeo anexado" : "📎 Arquivo anexado"}</span>
+        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs w-fit" onClick={() => setViewerOpen(true)}>
           <Eye className="w-3 h-3 mr-1" /> Ver em tela cheia
         </Button>
       </div>
-
-      {!disabled && onRemove && (
-        <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 ml-auto shrink-0" onClick={onRemove}>
-          <X className="w-3 h-3" />
-        </Button>
-      )}
-
-      {/* Viewer em tela cheia via signed URL */}
+      <RemoveBtn />
       {anexoId ? (
-        <AnexoViewer
-          anexoId={anexoId}
-          mimeType={mimeType}
-          open={viewerOpen}
-          onOpenChange={setViewerOpen}
-        />
-      ) : signedUrl ? (
-        // Fallback para dados legados: abre a URL diretamente
-        viewerOpen && (
-          <div
-            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
-            onClick={() => setViewerOpen(false)}
-          >
-            {isImage && <img src={signedUrl} alt="Evidência" className="max-h-[90vh] max-w-[90vw] object-contain" />}
-            {isVideo && <video src={signedUrl} controls className="max-h-[90vh] max-w-[90vw]" autoPlay />}
-            {isAudio && <audio src={signedUrl} controls autoPlay />}
-          </div>
-        )
+        <AnexoViewer anexoId={anexoId} mimeType={mimeType} open={viewerOpen} onOpenChange={setViewerOpen} />
+      ) : signedUrl && viewerOpen ? (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center" onClick={() => setViewerOpen(false)}>
+          {isImage && <img src={signedUrl} alt="Evidência" className="max-h-[90vh] max-w-[90vw] object-contain" />}
+          {isVideo && <video src={signedUrl} controls className="max-h-[90vh] max-w-[90vw]" autoPlay />}
+        </div>
       ) : null}
-    </div>
-      )}
     </div>
   );
 }
