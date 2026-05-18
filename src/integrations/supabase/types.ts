@@ -2293,6 +2293,9 @@ export type Database = {
       }
       operational_field_reviews: {
         Row: {
+          anexo_orientacao_anexo_id: string | null
+          anexo_orientacao_mime_type: string | null
+          anexo_orientacao_url: string | null
           answer_id: string | null
           assignment_id: string
           avaliado_em: string
@@ -2311,6 +2314,9 @@ export type Database = {
           tipo_evidencia_exigida: string | null
         }
         Insert: {
+          anexo_orientacao_anexo_id?: string | null
+          anexo_orientacao_mime_type?: string | null
+          anexo_orientacao_url?: string | null
           answer_id?: string | null
           assignment_id: string
           avaliado_em?: string
@@ -2329,6 +2335,9 @@ export type Database = {
           tipo_evidencia_exigida?: string | null
         }
         Update: {
+          anexo_orientacao_anexo_id?: string | null
+          anexo_orientacao_mime_type?: string | null
+          anexo_orientacao_url?: string | null
           answer_id?: string | null
           assignment_id?: string
           avaliado_em?: string
@@ -2347,6 +2356,13 @@ export type Database = {
           tipo_evidencia_exigida?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "operational_field_reviews_anexo_orientacao_anexo_id_fkey"
+            columns: ["anexo_orientacao_anexo_id"]
+            isOneToOne: false
+            referencedRelation: "tarefas_anexos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "operational_field_reviews_answer_id_fkey"
             columns: ["answer_id"]
