@@ -2302,6 +2302,8 @@ export type Database = {
           avaliador_id: string
           conforme: boolean | null
           created_at: string
+          criado_por_papel: string | null
+          destinatario_papel: string | null
           devolvido: boolean
           field_id: string
           id: string
@@ -2323,6 +2325,8 @@ export type Database = {
           avaliador_id: string
           conforme?: boolean | null
           created_at?: string
+          criado_por_papel?: string | null
+          destinatario_papel?: string | null
           devolvido?: boolean
           field_id: string
           id?: string
@@ -2344,6 +2348,8 @@ export type Database = {
           avaliador_id?: string
           conforme?: boolean | null
           created_at?: string
+          criado_por_papel?: string | null
+          destinatario_papel?: string | null
           devolvido?: boolean
           field_id?: string
           id?: string
