@@ -5739,6 +5739,10 @@ export type Database = {
         Returns: undefined
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_lead_owner_of_cliente: {
+        Args: { _cliente_id: string }
+        Returns: boolean
+      }
       normalize_cpf: { Args: { cpf_input: string }; Returns: string }
       propostas_categoria_em_uso: {
         Args: { _codigo: string }
