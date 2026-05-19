@@ -399,10 +399,45 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const planosAuditorPendentes = (flow.planosDoAuditor as any[]).filter((p: any) => !p.respondido);
   if (emAuditoria && planosAuditorPendentes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 py-10 text-center px-4">
-        <ShieldCheck className="w-10 h-10 text-blue-400" />
-        <p className="text-sm font-medium text-foreground">Tarefa em auditoria</p>
-        <p className="text-xs text-muted-foreground">Aguardando o auditor concluir a revisao. Nenhuma acao disponivel no momento.</p>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 rounded-lg">
+          <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+          <div>
+            <p className="text-xs font-medium text-blue-800">Aguardando auditoria</p>
+            <p className="text-xs text-blue-600">Somente leitura — o auditor esta revisando</p>
+          </div>
+        </div>
+        {approverFields.map((f: any) => {
+          const existing = flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
+          const planosDoField = (flow.fieldReviews as any[])
+            .filter((r: any) => r.field_id === f.id && r.devolvido === true)
+            .sort((a: any, b: any) => (a.rodada||0) - (b.rodada||0));
+          return (
+            <div key={f.id} className="border border-border rounded-lg overflow-hidden opacity-80">
+              <div className="px-3 py-2 bg-muted/30 border-b border-border flex items-center justify-between">
+                <span className="text-xs font-medium text-foreground">{f.label}</span>
+                {existing?.resposta && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${existing.resposta === "conforme" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
+                    {existing.resposta === "conforme" ? "Conforme" : "Nao Conforme"}
+                  </span>
+                )}
+              </div>
+              {planosDoField.map((r: any, idx: number) => (
+                <div key={idx} className="px-3 py-2 border-b border-border last:border-0 bg-card">
+                  <p className="text-[10px] text-muted-foreground font-medium mb-1">Plano R{r.rodada}</p>
+                  {r.instrucao_aprovador && <p className="text-xs text-foreground">{r.instrucao_aprovador}</p>}
+                  {Array.isArray(r.itens_plano) && r.itens_plano.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {r.itens_plano.map((item: any, i: number) => (
+                        <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-800">{item.titulo || item.tipo}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        })}
       </div>
     );
   }
