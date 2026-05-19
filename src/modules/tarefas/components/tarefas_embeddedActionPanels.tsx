@@ -403,16 +403,16 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const emAuditoria = assignment?.status === "aguardando_auditoria";
   const planosAuditorPendentes = (flow.planosDoAuditor as any[]).filter((p: any) => !p.respondido);
 
-  if (auditPlanosPendentes.length > 0) {
+  if (planosAuditorPendentes.length > 0) {
     return (
       <div className="space-y-3">
         <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 rounded-lg p-3 flex items-start gap-2">
           <ShieldCheck className="w-4 h-4 text-purple-700 shrink-0 mt-0.5" />
           <div className="text-xs text-purple-800">
-            O auditor criou {auditPlanosPendentes.length} plano(s) de acao. Responda antes de continuar.
+            O auditor criou {planosAuditorPendentes.length} plano(s) de acao. Responda antes de continuar.
           </div>
         </div>
-        {auditPlanosPendentes.map((auditPlan: any, idx: number) => {
+        {planosAuditorPendentes.map((auditPlan: any, idx: number) => {
           const itens: Array<{tipo:string;titulo:string;obrigatorio:boolean}> = Array.isArray(auditPlan.itens_plano) ? auditPlan.itens_plano : [];
           const rodada = auditPlan.rodada ?? 1;
           const perguntaId = auditPlan.field_id;
@@ -504,7 +504,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             // Marca planos do auditor como respondidos e muda status para aguardando_auditoria
             await (supabase as any).from("operational_field_reviews")
               .update({ respondido: true, updated_at: new Date().toISOString() })
-              .in("id", auditPlanosPendentes.map((p:any) => p.id));
+              .in("id", planosAuditorPendentes.map((p:any) => p.id));
             await (supabase as any).from("operational_assignments")
               .update({ status: "aguardando_auditoria", updated_at: new Date().toISOString() })
               .eq("id", assignment?.id);
