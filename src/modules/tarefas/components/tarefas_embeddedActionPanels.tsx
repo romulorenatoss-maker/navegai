@@ -573,10 +573,6 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const saveTimers = useRef<Record<string, any>>({});
 
   const baseBlockReasons = flow.getBlockingReasons(assignment);
-  const approverFields = useMemo(
-    () => fields.filter((f) => !["secao", "divisor", "titulo"].includes(String(f.tipo))),
-    [fields]
-  );
 
   const totalNotaAvaliado = useMemo(() =>
     approverFields.reduce((sum, f) => sum + (f.aprovador_peso || 1), 0),
