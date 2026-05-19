@@ -158,9 +158,14 @@ export function useAuditFlow(assignmentId: string | null) {
       prazoIso: string;
     }) => {
       if (!profile?.id || !assignmentId) throw new Error("Nao autenticado");
-      const rodadaAtual = (fieldReviewsAuditor as any[])
-        .filter((r: any) => r.field_id === perguntaId && r.criado_por_papel === "auditor")
-        .reduce((max: number, r: any) => Math.max(max, r.rodada ?? 1), 0) + 1;
+      // Rodada maxima entre TODOS os reviews do campo (aprovador + auditor)
+      const { data: todosReviews } = await (supabase as any)
+        .from("operational_field_reviews")
+        .select("rodada")
+        .eq("assignment_id", assignmentId)
+        .eq("field_id", perguntaId);
+      const rodadaAtual = ((todosReviews as any[]) ?? [])
+        .reduce((max: number, r: any) => Math.max(max, r.rodada ?? 0), 0) + 1;
 
       const payload = {
         assignment_id: assignmentId,
