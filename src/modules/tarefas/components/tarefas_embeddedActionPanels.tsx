@@ -402,81 +402,6 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   // Bloqueio: se status aguardando_auditoria sem planos do auditor pendentes → somente leitura
   const emAuditoria = assignment?.status === "aguardando_auditoria";
   const planosAuditorPendentes = (flow.planosDoAuditor as any[]).filter((p: any) => !p.respondido);
-  if (emAuditoria && planosAuditorPendentes.length === 0) {
-    // Trava a tela mas mantem o mesmo visual — apenas pointer-events desativado
-    return (
-      <div style={{pointerEvents:"none", opacity:0.75, userSelect:"none"}}>
-        <div className="mb-3 flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 rounded-lg" style={{pointerEvents:"auto", opacity:1, userSelect:"auto"}}>
-          <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
-          <div>
-            <p className="text-xs font-medium text-blue-800">Aguardando auditoria</p>
-            <p className="text-xs text-blue-600">O auditor esta revisando — nenhuma acao disponivel</p>
-          </div>
-        </div>
-        {approverFields.map((f: any) => {
-          const existing = flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
-          const draft = flow.approverAnswers[f.id];
-          const value = draft?.resposta ?? existing?.resposta ?? "";
-          const execAnswer = findOriginalFieldAnswer(f, flow);
-          const execAnswerStatus = normalizeAnswer(getAnswerValue(execAnswer));
-          const execObservation = getObservation(execAnswer);
-          const selectedRule = value ? getRuleForResposta(f, value, "aprovador") : null;
-          const planosDoField = (flow.fieldReviews as any[])
-            .filter((r: any) => r.field_id === f.id && r.devolvido === true)
-            .sort((a: any, b: any) => (a.rodada||0) - (b.rodada||0));
-          const corBorda = "#e24b4a";
-          return (
-            <div key={f.id} className="bg-card border border-border rounded-lg overflow-hidden mb-3">
-              <div className="px-3 py-2.5 border-b border-border flex items-center justify-between">
-                <span className="text-xs font-medium text-foreground">{f.label}</span>
-                {value && <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${value === "conforme" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>{value === "conforme" ? "Conforme" : "Nao Conforme"}</span>}
-              </div>
-              {execAnswerStatus && (
-                <div className="px-3 py-2 border-b border-border bg-muted/10">
-                  <p className="text-[10px] text-muted-foreground mb-1">Resposta do executor: {execAnswerStatus === "conforme" ? "Sim" : execAnswerStatus === "nao_conforme" ? "Nao" : "N/A"}</p>
-                  {execObservation && <p className="text-xs">{String(execObservation)}</p>}
-                  {execAnswer && (execAnswer as any).evidencia_url && (
-                    <EvidenciaPreview
-                      anexoId={(execAnswer as any).evidencia_anexo_id ?? null}
-                      url={(execAnswer as any).evidencia_url}
-                      mimeType={(execAnswer as any).evidencia_mime_type ?? null}
-                      disabled
-                    />
-                  )}
-                </div>
-              )}
-              {planosDoField.map((r: any, idx: number) => {
-                const itens: any[] = Array.isArray(r.itens_plano) && r.itens_plano.length > 0
-                  ? r.itens_plano
-                  : r.tipo_evidencia_exigida && r.tipo_evidencia_exigida !== "nenhuma"
-                    ? [{ tipo: r.tipo_evidencia_exigida, titulo: "", obrigatorio: true }] : [];
-                return (
-                  <div key={idx} style={{borderLeft:`3px solid ${idx > 0 ? "#ba7517" : corBorda}`}} className="mx-3 my-2 rounded-r-lg overflow-hidden">
-                    <div className="flex items-center gap-1.5 px-2 py-1.5 bg-red-50 dark:bg-red-950/20 border-b border-red-100">
-                      <span className="text-[11px] font-medium text-red-800">Plano de acao — R{r.rodada}{idx > 0 ? " (Reincidencia)" : ""}</span>
-                    </div>
-                    <div className="px-2 py-2 bg-card">
-                      {r.instrucao_aprovador && <p className="text-xs mb-1">{r.instrucao_aprovador}</p>}
-                      {itens.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {itens.map((item: any, i: number) => (
-                            <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-800">
-                              {item.tipo === "foto" ? "Foto" : item.tipo === "video" ? "Video" : item.tipo === "audio" ? "Audio" : "Texto"}{item.titulo ? `: ${item.titulo}` : ""}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
 
   if (auditPlanosPendentes.length > 0) {
     return (
@@ -593,7 +518,13 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" style={emAuditoria ? {pointerEvents:"none",opacity:0.65} : undefined}>
+      {emAuditoria && (
+        <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 rounded-lg" style={{pointerEvents:"auto",opacity:1}}>
+          <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+          <p className="text-xs text-blue-800 font-medium">Aguardando auditoria — somente leitura</p>
+        </div>
+      )}
       {/* Instrução do auditor — aparece no topo quando auditor criou plano para o aprovador */}
       {(() => {
         const auditPlans = (flow.planosDoAuditor as any[]) ?? [];
