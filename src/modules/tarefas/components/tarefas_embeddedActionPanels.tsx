@@ -320,6 +320,26 @@ type ReviewRule = {
   permite_devolucao?: boolean;
 };
 
+type ItemPlano = { tipo: "foto" | "video" | "audio" | "texto"; titulo: string; obrigatorio: boolean };
+
+type PlanoDraft = {
+  descricao_acao: string;
+  prazo: string;
+  prazo_padrao: string;
+  justificativa_alteracao_prazo: string;
+  criticidade: "baixa" | "media" | "alta";
+  tipo_evidencia_exigida: string;
+  itens_plano: ItemPlano[];
+  anexo_orientacao_url?: string | null;
+  anexo_orientacao_anexo_id?: string | null;
+  anexo_orientacao_mime_type?: string | null;
+};
+
+const toDatetimeLocal = (date: Date) => {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+};
+
 const normalizeOptionKey = (value: unknown) =>
   String(value ?? "")
     .normalize("NFD")
@@ -393,11 +413,137 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const flow = useApprovalFlow(assignment?.id || null);
   const [step, setStep] = useState<"perguntas" | "plano">("perguntas");
   const [motivoFinal, setMotivoFinal] = useState("");
+  const [acaoPorNC, setAcaoPorNC] = useState<Record<string, "plano" | "devolver">>({});
+  const [planos, setPlanos] = useState<Record<string, PlanoDraft>>({});
+  const [expandirNovoPlano, setExpandirNovoPlano] = useState<Record<string, boolean>>({});
 
   const approverFields = useMemo(
     () => fields.filter((f) => !["secao", "divisor", "titulo"].includes(String(f.tipo))),
     [fields]
   );
+
+  const prazoPadraoHoras = Number(
+    assignment?.template_snapshot?.prazo_sla_correcao_horas
+    ?? assignment?.operational_templates?.prazo_sla_correcao_horas
+    ?? 24
+  );
+
+  const computeDefaultPrazo = () => toDatetimeLocal(new Date(Date.now() + prazoPadraoHoras * 60 * 60 * 1000));
+
+  const getRespostaAprovador = (f: SnapshotField) =>
+    flow.approverAnswers[f.id]?.resposta
+    ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta
+    ?? "";
+
+  const perguntasComAcao = useMemo(() => approverFields.filter((f) => {
+    const resposta = flow.approverAnswers[f.id]?.resposta
+      ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta
+      ?? "";
+    if (!resposta) return false;
+    return getAllowedActions(getRuleForResposta(f, resposta, "aprovador")).length > 0;
+  }), [approverFields, flow.approverAnswers, flow.existingApprovalAnswers]);
+
+  const naoConformesPlanoCompleto = useMemo(() => perguntasComAcao.filter((f) => {
+    const rule = getRuleForResposta(f, getRespostaAprovador(f), "aprovador");
+    return (acaoPorNC[f.id] ?? getDefaultReviewAction(rule)) === "plano";
+  }), [perguntasComAcao, acaoPorNC, flow.approverAnswers, flow.existingApprovalAnswers]);
+
+  const blockReasons = flow.getBlockingReasons(assignment);
+
+  const handleResposta = (f: SnapshotField, resposta: string) => {
+    const rule = getRuleForResposta(f, resposta, "aprovador");
+    flow.updateApproverAnswer(f.id, { resposta, peso: (f as any).aprovador_peso || 1 });
+    if (getAllowedActions(rule).includes("plano")) {
+      setAcaoPorNC(prev => ({ ...prev, [f.id]: "plano" }));
+    } else {
+      setAcaoPorNC(prev => { const next = { ...prev }; delete next[f.id]; return next; });
+      setPlanos(prev => { const next = { ...prev }; delete next[f.id]; return next; });
+      setExpandirNovoPlano(prev => ({ ...prev, [f.id]: false }));
+    }
+  };
+
+  const submeterPlanos = async () => {
+    const perguntasPlano = perguntasComAcao.filter((f) => {
+      const rule = getRuleForResposta(f, getRespostaAprovador(f), "aprovador");
+      return (acaoPorNC[f.id] ?? getDefaultReviewAction(rule)) === "plano";
+    });
+    if (perguntasPlano.length === 0) return;
+
+    try {
+      const planosPayload = perguntasPlano.map((f) => {
+        const prazoPadrao = computeDefaultPrazo();
+        const p = planos[f.id] ?? {
+          descricao_acao: "",
+          prazo: prazoPadrao,
+          prazo_padrao: prazoPadrao,
+          justificativa_alteracao_prazo: "",
+          criticidade: "media" as const,
+          tipo_evidencia_exigida: "descricao",
+          itens_plano: [] as ItemPlano[],
+        };
+        if (!p.prazo) throw new Error(`Informe o prazo do plano para "${f.label}".`);
+        if (!Array.isArray(p.itens_plano) || p.itens_plano.length === 0) {
+          throw new Error(`Marque ao menos uma evidência para "${f.label}".`);
+        }
+        const prazoMs = new Date(p.prazo).getTime();
+        const padraoMs = p.prazo_padrao ? new Date(p.prazo_padrao).getTime() : prazoMs;
+        return {
+          field_id: f.id,
+          field_label: f.label || f.id,
+          descricao_acao: p.descricao_acao?.trim() || p.itens_plano.map(i => `${i.tipo}: ${i.titulo || i.tipo}`).join(" | "),
+          prazo_iso: new Date(p.prazo).toISOString(),
+          prazo_padrao_iso: p.prazo_padrao ? new Date(p.prazo_padrao).toISOString() : null,
+          prazo_alterado: prazoMs > padraoMs + 60000,
+          justificativa_alteracao_prazo: p.justificativa_alteracao_prazo || null,
+          anexo_url: p.anexo_orientacao_url ?? null,
+          criticidade: p.criticidade,
+          tipo_evidencia_exigida: p.tipo_evidencia_exigida,
+          itens_plano: p.itens_plano,
+          anexo_orientacao_url: p.anexo_orientacao_url ?? null,
+          anexo_orientacao_anexo_id: p.anexo_orientacao_anexo_id ?? null,
+          anexo_orientacao_mime_type: p.anexo_orientacao_mime_type ?? null,
+        };
+      });
+      await flow.criarPlanosAcaoEDevolver.mutateAsync({ assignment, planos: planosPayload as any, motivoGeral: motivoFinal });
+      onClose();
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao registrar plano de ação.");
+    }
+  };
+
+  const devolverApenas = async () => {
+    const perguntas = perguntasComAcao.filter((f) => {
+      const rule = getRuleForResposta(f, getRespostaAprovador(f), "aprovador");
+      return (acaoPorNC[f.id] ?? getDefaultReviewAction(rule)) === "devolver";
+    }).map((f) => ({
+      field_id: f.id,
+      field_label: f.label || f.id,
+      motivo: flow.approverAnswers[f.id]?.observacao
+        ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.observacao
+        ?? motivoFinal
+        ?? "Devolvido pelo aprovador",
+    }));
+    try {
+      await flow.devolverPerguntasParaRefazer.mutateAsync({ assignment, perguntas, motivoGeral: motivoFinal });
+      onClose();
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao devolver perguntas.");
+    }
+  };
+
+  const irParaPlano = () => {
+    setStep("plano");
+    void submeterPlanos();
+  };
+
+  const aprovarDireto = async () => {
+    try {
+      await flow.finalDecision.mutateAsync({ assignment, action: "aprovar" });
+      onClose();
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao aprovar.");
+    }
+  };
 
   // Bloqueio: se status aguardando_auditoria sem planos do auditor pendentes → somente leitura
   const emAuditoria = assignment?.status === "aguardando_auditoria";
@@ -1125,9 +1271,16 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
   const { profile } = useAuth();
   const qc = useQueryClient();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [motivoFinal, setMotivoFinal] = useState("");
   const [respostasAuto, setRespostasAuto] = useState<Record<string, { na: boolean; justificativa: string }>>({});
   const [showPlanoModal, setShowPlanoModal] = useState(false);
   const [perguntasSelecionadas, setPerguntasSelecionadas] = useState<Set<string>>(new Set());
+  const [expandirPlanoAuditor, setExpandirPlanoAuditor] = useState<Record<string, boolean>>({});
+  const [planosAuditor, setPlanosAuditor] = useState<Record<string, {
+    instrucao: string;
+    itens: Array<{tipo: string; titulo: string; obrigatorio: boolean}>;
+    prazo: string;
+  }>>({});
   const [planosAuditorModal, setPlanosAuditorModal] = useState<Record<string, {
     instrucao: string;
     itens: Array<{tipo: string; titulo: string; obrigatorio: boolean}>;
