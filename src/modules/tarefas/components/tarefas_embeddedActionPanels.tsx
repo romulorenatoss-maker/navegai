@@ -436,11 +436,19 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
               </div>
               <div className="px-3 py-2 space-y-1 border-b border-border bg-muted/10">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">Resposta do executor</p>
-                {execAnswerStatus && <p className="text-xs text-foreground">{execAnswerStatus === "conforme" ? "Sim" : execAnswerStatus === "nao_conforme" ? "Nao" : "N/A"}</p>}
+                <p className="text-xs text-foreground">{execAnswerStatus === "conforme" ? "Sim" : execAnswerStatus === "nao_conforme" ? "Nao" : execAnswerStatus === "na" ? "N/A" : "—"}</p>
                 {execObservation && <p className="text-xs text-muted-foreground">{String(execObservation)}</p>}
-                {execEvidence && typeof execEvidence === "string" && (
-                  <EvidenciaPreview anexoId={null} url={execEvidence} mimeType={null} disabled />
-                )}
+                {execAnswer && getEvidence(execAnswer) && (() => {
+                  const ev = execAnswer;
+                  return (
+                    <EvidenciaPreview
+                      anexoId={(ev as any).evidencia_anexo_id ?? null}
+                      url={(ev as any).evidencia_url ?? String(getEvidence(ev) ?? "")}
+                      mimeType={(ev as any).evidencia_mime_type ?? null}
+                      disabled
+                    />
+                  );
+                })()}
               </div>
               {planosDoField.map((r: any, idx: number) => {
                 const itens: any[] = Array.isArray(r.itens_plano) && r.itens_plano.length > 0
