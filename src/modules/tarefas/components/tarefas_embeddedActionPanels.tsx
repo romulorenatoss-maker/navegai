@@ -403,43 +403,72 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const emAuditoria = assignment?.status === "aguardando_auditoria";
   const planosAuditorPendentes = (flow.planosDoAuditor as any[]).filter((p: any) => !p.respondido);
   if (emAuditoria && planosAuditorPendentes.length === 0) {
+    // Usa o mesmo layout do aprovador mas somente leitura
     return (
       <div className="space-y-3">
         <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 rounded-lg">
           <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
           <div>
-            <p className="text-xs font-medium text-blue-800">Aguardando auditoria</p>
-            <p className="text-xs text-blue-600">Somente leitura — o auditor esta revisando</p>
+            <p className="text-xs font-medium text-blue-800">Aguardando auditoria — Somente leitura</p>
+            <p className="text-xs text-blue-600">O auditor esta revisando. Nenhuma acao disponivel.</p>
           </div>
         </div>
         {approverFields.map((f: any) => {
           const existing = flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
+          const draft = flow.approverAnswers[f.id];
+          const value = draft?.resposta ?? existing?.resposta ?? "";
+          const execAnswer = findOriginalFieldAnswer(f, flow);
+          const execAnswerStatus = normalizeAnswer(getAnswerValue(execAnswer));
+          const execObservation = getObservation(execAnswer);
+          const execEvidence = getEvidence(execAnswer);
           const planosDoField = (flow.fieldReviews as any[])
             .filter((r: any) => r.field_id === f.id && r.devolvido === true)
             .sort((a: any, b: any) => (a.rodada||0) - (b.rodada||0));
           return (
-            <div key={f.id} className="border border-border rounded-lg overflow-hidden opacity-80">
-              <div className="px-3 py-2 bg-muted/30 border-b border-border flex items-center justify-between">
+            <div key={f.id} className="bg-card border border-border rounded-lg overflow-hidden">
+              <div className="px-3 py-2.5 border-b border-border flex items-center justify-between">
                 <span className="text-xs font-medium text-foreground">{f.label}</span>
-                {existing?.resposta && (
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${existing.resposta === "conforme" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
-                    {existing.resposta === "conforme" ? "Conforme" : "Nao Conforme"}
+                {value && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${value === "conforme" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
+                    {value === "conforme" ? "Conforme" : "Nao Conforme"}
                   </span>
                 )}
               </div>
-              {planosDoField.map((r: any, idx: number) => (
-                <div key={idx} className="px-3 py-2 border-b border-border last:border-0 bg-card">
-                  <p className="text-[10px] text-muted-foreground font-medium mb-1">Plano R{r.rodada}</p>
-                  {r.instrucao_aprovador && <p className="text-xs text-foreground">{r.instrucao_aprovador}</p>}
-                  {Array.isArray(r.itens_plano) && r.itens_plano.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {r.itens_plano.map((item: any, i: number) => (
-                        <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-800">{item.titulo || item.tipo}</span>
-                      ))}
+              <div className="px-3 py-2 space-y-1 border-b border-border bg-muted/10">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">Resposta do executor</p>
+                {execAnswerStatus && <p className="text-xs text-foreground">{execAnswerStatus === "conforme" ? "Sim" : execAnswerStatus === "nao_conforme" ? "Nao" : "N/A"}</p>}
+                {execObservation && <p className="text-xs text-muted-foreground">{String(execObservation)}</p>}
+                {execEvidence && typeof execEvidence === "string" && (
+                  <EvidenciaPreview anexoId={null} url={execEvidence} mimeType={null} disabled />
+                )}
+              </div>
+              {planosDoField.map((r: any, idx: number) => {
+                const itens: any[] = Array.isArray(r.itens_plano) && r.itens_plano.length > 0
+                  ? r.itens_plano
+                  : r.tipo_evidencia_exigida && r.tipo_evidencia_exigida !== "nenhuma"
+                    ? [{ tipo: r.tipo_evidencia_exigida, titulo: "", obrigatorio: true }] : [];
+                const isUltima = idx === planosDoField.length - 1;
+                const corBorda = idx > 0 ? "#ba7517" : "#e24b4a";
+                return (
+                  <div key={idx} style={{borderLeft:`3px solid ${corBorda}`}} className="mx-3 my-2 rounded-r-lg overflow-hidden">
+                    <div className="flex items-center justify-between px-2 py-1.5 bg-red-50 dark:bg-red-950/20">
+                      <span className="text-[11px] font-medium text-red-800">Plano R{r.rodada}{idx > 0 ? " — Reincidencia" : ""}</span>
                     </div>
-                  )}
-                </div>
-              ))}
+                    <div className="px-2 py-2 bg-card space-y-1">
+                      {r.instrucao_aprovador && <p className="text-xs text-foreground">{r.instrucao_aprovador}</p>}
+                      {itens.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {itens.map((item: any, i: number) => (
+                            <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-800">
+                              {item.tipo === "foto" ? "Foto" : item.tipo === "video" ? "Video" : item.tipo === "audio" ? "Audio" : "Texto"}{item.titulo ? `: ${item.titulo}` : ""}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           );
         })}
