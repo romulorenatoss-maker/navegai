@@ -1271,9 +1271,16 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
   const { profile } = useAuth();
   const qc = useQueryClient();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [motivoFinal, setMotivoFinal] = useState("");
   const [respostasAuto, setRespostasAuto] = useState<Record<string, { na: boolean; justificativa: string }>>({});
   const [showPlanoModal, setShowPlanoModal] = useState(false);
   const [perguntasSelecionadas, setPerguntasSelecionadas] = useState<Set<string>>(new Set());
+  const [expandirPlanoAuditor, setExpandirPlanoAuditor] = useState<Record<string, boolean>>({});
+  const [planosAuditor, setPlanosAuditor] = useState<Record<string, {
+    instrucao: string;
+    itens: Array<{tipo: string; titulo: string; obrigatorio: boolean}>;
+    prazo: string;
+  }>>({});
   const [planosAuditorModal, setPlanosAuditorModal] = useState<Record<string, {
     instrucao: string;
     itens: Array<{tipo: string; titulo: string; obrigatorio: boolean}>;
