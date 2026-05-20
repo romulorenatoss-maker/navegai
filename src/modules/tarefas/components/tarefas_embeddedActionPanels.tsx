@@ -782,7 +782,8 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                                   onClick={() => setAuditorRespostas(prev => { const n = {...prev, [ap.id]: {...(prev[ap.id]??{})} }; delete n[ap.id][item.tipo]; return n; })}>✕</button>
                               </div>
                             ) : (
-                              <EvidenciaPreview anexoId={val?.evidencia_anexo_id ?? null} url={val?.evidencia_url ?? ""} mimeType={val?.evidencia_mime_type ?? null} disabled />
+                              <EvidenciaPreview anexoId={val?.evidencia_anexo_id ?? null} url={val?.evidencia_url ?? ""} mimeType={val?.evidencia_mime_type ?? null}
+                                onRemove={() => setAuditorRespostas(prev => { const n = {...prev, [ap.id]: {...(prev[ap.id]??{})}}; delete n[ap.id][item.tipo]; return n; })} />
                             )
                           ) : (item.tipo === "texto" || item.tipo === "descricao") ? (
                             <textarea
