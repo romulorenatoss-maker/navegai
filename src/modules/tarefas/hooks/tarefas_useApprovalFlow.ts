@@ -65,6 +65,9 @@ export function useApprovalFlow(assignmentId: string | null) {
       return data;
     },
     enabled: !!assignmentId,
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   // Planos do auditor para o aprovador responder
