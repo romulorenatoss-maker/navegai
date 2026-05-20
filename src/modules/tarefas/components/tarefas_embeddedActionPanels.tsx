@@ -27,6 +27,8 @@ import { ReviewFieldCard } from "@/modules/tarefas/components/tarefas_reviewFiel
 import { EvidenciaPreview } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import { SnapshotField, evaluateVisibility } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import { calculateOperationalScore } from "@/modules/tarefas/hooks/tarefas_useScoring";
+import { ResumoConclusaoPanel } from "@/modules/tarefas/components/tarefas_resumoConclusaoPanel";
+import { isFinalStatus } from "@/modules/tarefas/services/tarefas_statusConstants";
 
 /* =========================================================================
  * Helpers defensivos de leitura (somente UI) — não alteram dados.
@@ -417,6 +419,10 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   // ⚠️ FONTE ÚNICA DE VERDADE para travas/permissões neste painel
   // Todas as decisões de UI devem consultar `perms`, NUNCA checar status direto.
   const perms = useFlowPermissions(assignment);
+  // 🆕 Flag de status final — após todos os hooks (rules-of-hooks).
+  // O early-return para renderizar ResumoConclusaoPanel está logo antes do JSX
+  // principal deste painel, abaixo da última chamada de hook.
+  const showResumoFinal = isFinalStatus(assignment?.status);
   const [step, setStep] = useState<"perguntas" | "plano">("perguntas");
   const [motivoFinal, setMotivoFinal] = useState("");
   const [acaoPorNC, setAcaoPorNC] = useState<Record<string, "plano" | "devolver">>({});
@@ -1150,6 +1156,23 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     );
   }
 
+  // 🆕 RESUMO FINAL — em status final (concluida, aprovada, reprovada, etc.),
+  // o painel do aprovador mostra um resumo agrupado: respostas do executor +
+  // avaliação do aprovador + planos do auditor + notas. Read-only.
+  if (showResumoFinal) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Resumo final</h3>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
+          </Button>
+        </div>
+        <ResumoConclusaoPanel assignment={assignment} fields={fields} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       {perms.approverPanelRestricted && perms.approverLockMessage && (
@@ -1784,6 +1807,8 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
 
   // ⚠️ FONTE ÚNICA DE VERDADE — auditor só age em aguardando_auditoria
   const perms = useFlowPermissions(assignment);
+  // 🆕 Flag de status final (avaliada após todos hooks abaixo).
+  const showResumoFinalAuditor = isFinalStatus(assignment?.status);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [motivoFinal, setMotivoFinal] = useState("");
   const [respostasAuto, setRespostasAuto] = useState<Record<string, { na: boolean; justificativa: string }>>({});
@@ -2398,6 +2423,21 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
             {flow.isSaving ? "Confirmando..." : "Confirmar Auditoria"}
           </Button>
         </div>
+      </div>
+    );
+  }
+
+  // 🆕 RESUMO FINAL — após status final, auditor também vê o resumo agrupado.
+  if (showResumoFinalAuditor) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Resumo final</h3>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
+          </Button>
+        </div>
+        <ResumoConclusaoPanel assignment={assignment} fields={fields} />
       </div>
     );
   }
