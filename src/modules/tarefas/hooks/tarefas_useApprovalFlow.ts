@@ -593,7 +593,7 @@ export function useApprovalFlow(assignmentId: string | null) {
         executado_por: profile.id,
         detalhes: {
           total_perguntas: perguntas.length,
-          rodada,
+          rodada: assignment.rodada_atual || 1,
           field_ids: perguntas.map(p => p.field_id),
         },
       });
