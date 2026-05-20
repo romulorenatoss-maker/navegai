@@ -1505,6 +1505,9 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
     itens: Array<{tipo: string; titulo: string; obrigatorio: boolean}>;
     prazo: string;
   }>>({});
+  const [avaliacaoPlanos, setAvaliacaoPlanos] = useState<Record<string, "conforme" | "nao_conforme">>({});
+  const [expandirR2, setExpandirR2] = useState<Record<string, boolean>>({});
+  const [planosR2, setPlanosR2] = useState<Record<string, { instrucao: string; itens: Array<{tipo:string;titulo:string;obrigatorio:boolean}>; prazo: string }>>({});
   const computePrazoAuditor = () => {
     const d = new Date(Date.now() + 24 * 3600 * 1000);
     const pad = (n: number) => n.toString().padStart(2, "0");
@@ -1896,6 +1899,124 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
             );
           })}
         </div>
+
+        {/* Respostas do aprovador aos planos do auditor — Conforme / Não Conforme / R2 */}
+        {((flow.fieldReviewsAuditor as any[]).filter((ap: any) => ap.respondido)).length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium px-1">Respostas do Aprovador aos Planos</p>
+            {(flow.fieldReviewsAuditor as any[])
+              .filter((ap: any) => ap.respondido)
+              .map((ap: any, idx: number) => {
+                const field = fields.find((f: any) => f.id === ap.field_id);
+                const fieldAnswer = (flow.fieldAnswers as any[]).find((a: any) => a.field_id === ap.field_id);
+                const rodada = ap.rodada ?? 1;
+                const itens: any[] = Array.isArray(ap.itens_plano) ? ap.itens_plano : [];
+                const valorJson = fieldAnswer?.valor_json ?? {};
+                const avaliacao = avaliacaoPlanos[ap.id];
+                const expandR2 = expandirR2[ap.id];
+                const plR2 = planosR2[ap.id] ?? { instrucao: "", itens: [] as any[], prazo: computePrazoAuditor() };
+                const updateR2 = (patch: any) => setPlanosR2(prev => ({ ...prev, [ap.id]: { ...(prev[ap.id] ?? plR2), ...patch } }));
+                return (
+                  <div key={ap.id || idx} className="border border-purple-300 dark:border-purple-800 rounded-lg overflow-hidden">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 dark:bg-purple-950/30 border-b border-purple-200">
+                      <ShieldCheck className="w-3.5 h-3.5 text-purple-700" />
+                      <span className="text-[11px] font-semibold text-purple-800">{field?.label ?? ap.field_id} — Plano R{idx + 1}</span>
+                      <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 ml-auto">Respondido</span>
+                    </div>
+                    {ap.instrucao_aprovador && (
+                      <div className="px-3 py-2 border-b border-border bg-muted/10">
+                        <p className="text-xs text-muted-foreground">{ap.instrucao_aprovador}</p>
+                      </div>
+                    )}
+                    <div className="px-3 py-2 space-y-2 border-b border-border">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Resposta do aprovador</p>
+                      {itens.length === 0 && <p className="text-[11px] text-muted-foreground italic">Sem itens no plano</p>}
+                      {itens.map((item: any, iIdx: number) => {
+                        const chave = `__auditor_plano__r${rodada}__${item.tipo}`;
+                        const dado = valorJson[chave];
+                        if (!dado) return <p key={iIdx} className="text-[11px] text-muted-foreground italic">Sem resposta para {item.titulo || item.tipo}</p>;
+                        return (
+                          <div key={iIdx} className="space-y-1">
+                            {item.titulo && <p className="text-[10px] text-purple-800 font-medium">{item.titulo}</p>}
+                            {(item.tipo === "texto" || item.tipo === "descricao") && dado.valor_texto && (
+                              <div className="bg-card border border-border rounded p-2"><p className="text-xs">{dado.valor_texto}</p></div>
+                            )}
+                            {(item.tipo === "foto" || item.tipo === "video" || item.tipo === "audio") && dado.evidencia_url && (
+                              <EvidenciaPreview anexoId={dado.evidencia_anexo_id ?? null} url={dado.evidencia_url} mimeType={dado.evidencia_mime_type ?? null} disabled />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="px-3 py-2 space-y-2">
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => { setAvaliacaoPlanos(prev => ({ ...prev, [ap.id]: "conforme" })); setExpandirR2(prev => ({ ...prev, [ap.id]: false })); }}
+                          className={`flex-1 text-xs px-2 py-2 rounded border font-medium transition-colors ${avaliacao === "conforme" ? "bg-emerald-100 border-emerald-500 text-emerald-800" : "border-border text-muted-foreground hover:bg-muted"}`}>
+                          Conforme
+                        </button>
+                        <button type="button" onClick={() => { setAvaliacaoPlanos(prev => ({ ...prev, [ap.id]: "nao_conforme" })); setExpandirR2(prev => ({ ...prev, [ap.id]: true })); }}
+                          className={`flex-1 text-xs px-2 py-2 rounded border font-medium transition-colors ${avaliacao === "nao_conforme" ? "bg-red-100 border-red-400 text-red-800" : "border-border text-muted-foreground hover:bg-muted"}`}>
+                          Não Conforme — R{idx + 2}
+                        </button>
+                      </div>
+                      {expandR2 && (
+                        <div className="border border-purple-300 dark:border-purple-800 rounded-lg overflow-hidden mt-1">
+                          <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 dark:bg-purple-950/30 border-b border-purple-200">
+                            <ShieldCheck className="w-3.5 h-3.5 text-purple-700" />
+                            <span className="text-[11px] font-semibold text-purple-800">Novo plano do auditor — R{idx + 2}</span>
+                          </div>
+                          <div className="p-3 space-y-2.5">
+                            <div>
+                              <Label className="text-[11px]">Instrução geral (opcional)</Label>
+                              <Textarea value={plR2.instrucao} onChange={e => updateR2({ instrucao: e.target.value })} rows={2} className="text-xs mt-1 min-h-[44px]" placeholder="O que o aprovador deve corrigir..." />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-[11px]">O que quero de volta (marque ao menos 1)</Label>
+                              {ITENS_AUDIT.map((cfg: any) => {
+                                const ativo = plR2.itens.find((i: any) => i.tipo === cfg.tipo);
+                                return (
+                                  <div key={cfg.tipo} className={`border rounded-lg overflow-hidden ${ativo ? "border-purple-400" : "border-border"}`}>
+                                    <button type="button" onClick={() => { const existe = plR2.itens.find((i: any) => i.tipo === cfg.tipo); updateR2({ itens: existe ? plR2.itens.filter((i: any) => i.tipo !== cfg.tipo) : [...plR2.itens, { tipo: cfg.tipo, titulo: "", obrigatorio: true }] }); }}
+                                      className={`w-full flex items-center gap-2 px-3 py-2.5 text-left ${ativo ? "bg-purple-50 dark:bg-purple-950/20" : "hover:bg-muted/50"}`}>
+                                      <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${ativo ? "bg-purple-600 border-purple-600" : "border-border"}`}>
+                                        {ativo && <span className="text-white text-[10px] font-bold">v</span>}
+                                      </div>
+                                      <span className="text-xs font-medium">{cfg.label}</span>
+                                    </button>
+                                    {ativo && (
+                                      <div className="px-3 pb-2 pt-1 border-t border-border bg-muted/10">
+                                        <Input value={(ativo as any).titulo} onChange={e => { const t = e.target.value; updateR2({ itens: plR2.itens.map((i: any) => i.tipo === cfg.tipo ? { ...i, titulo: t } : i) }); }} placeholder={`Instrução para ${cfg.tipo}...`} className="h-7 text-xs" />
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div>
+                              <Label className="text-[11px]">Prazo</Label>
+                              <Input type="datetime-local" value={plR2.prazo} onChange={e => updateR2({ prazo: e.target.value })} className="h-8 text-xs mt-1" />
+                            </div>
+                            <div className="flex gap-2">
+                              <Button type="button" size="sm" variant="outline" onClick={() => { setExpandirR2(prev => ({ ...prev, [ap.id]: false })); setAvaliacaoPlanos(prev => { const n = {...prev}; delete n[ap.id]; return n; }); }}>Cancelar</Button>
+                              <Button type="button" size="sm" className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                                disabled={flow.isSaving || plR2.itens.length === 0}
+                                onClick={async () => {
+                                  await flow.criarPlanoAuditor.mutateAsync({ perguntaId: ap.field_id, perguntaLabel: field?.label ?? ap.field_id, instrucao: plR2.instrucao, itensPlano: plR2.itens, prazoIso: plR2.prazo ? new Date(plR2.prazo).toISOString() : new Date(Date.now() + 86400000).toISOString() });
+                                  setExpandirR2(prev => ({ ...prev, [ap.id]: false }));
+                                  onClose();
+                                }}>
+                                {flow.isSaving ? "Enviando..." : `Registrar R${idx + 2} e enviar`}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        )}
 
         <div className="border border-primary/30 rounded-lg px-4 py-3 bg-primary/5 space-y-1">
           <div className="flex items-center justify-between">
