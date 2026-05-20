@@ -453,7 +453,24 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const calcRespostaExecutor = useCallback((metrica: string): { resposta: "sim" | "nao" | null; label: string; tiraPonto: boolean } => {
     const a = assignment;
     if (!a) return { resposta: null, label: "Sem dados", tiraPonto: false };
+
+    // ──────────────────────────────────────────────────────────────────
+    // Helpers derivados — sem depender de flags do banco (mais robusto)
+    // ──────────────────────────────────────────────────────────────────
+    const planosAprovador = (flow.fieldReviews as any[]).filter(
+      (r: any) => r.devolvido === true && r.criado_por_papel !== "auditor"
+    );
+    const teveDevolucao = planosAprovador.length > 0;
+    const planosAtrasados = (flow.contingencies as any[]).filter((c: any) => {
+      if (!c.prazo_resolucao) return false;
+      const prazoMs = new Date(c.prazo_resolucao).getTime();
+      const refMs = c.resolvida_em ? new Date(c.resolvida_em).getTime() : Date.now();
+      return refMs > prazoMs;
+    });
+    const numPlanosAtrasados = planosAtrasados.length;
+
     switch (metrica) {
+      // ── Atraso da execução / etapa ─────────────────────────────────
       case "executor_entregou_no_prazo":
       case "executor_atrasou": {
         const atrasou = a.flag_sla_estourado
@@ -461,28 +478,97 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
         if (atrasou) return { resposta: "sim", label: "Sim — entregou fora do prazo", tiraPonto: true };
         return { resposta: "nao", label: "Não — entregou no prazo", tiraPonto: false };
       }
+      case "executor_teve_atraso_etapa": {
+        // Atraso em etapa = qualquer plano de ação que estourou prazo OU flag de etapa
+        if (numPlanosAtrasados > 0 || a.flag_sla_etapa_estourado || a.flag_atraso_plano_acao) {
+          return { resposta: "sim", label: `Sim — ${numPlanosAtrasados || 1} etapa(s) com atraso`, tiraPonto: true };
+        }
+        return { resposta: "nao", label: "Não — todas etapas no prazo", tiraPonto: false };
+      }
+
+      // ── Obrigatórias respondidas (Sim é bom, Não tira ponto) ───────
+      case "executor_obrigatorias_respondidas": {
+        const obrigatoriasFaltando = (fields as any[]).filter((f: any) => {
+          if (!f.obrigatorio) return false;
+          const ans = (flow.fieldAnswers as any[]).find((x: any) => x.field_id === f.id);
+          if (!ans) return true;
+          const temValor = ans.valor_booleano !== null
+            || (ans.valor_texto && ans.valor_texto !== "")
+            || ans.evidencia_url
+            || ans.evidencia_anexo_id;
+          return !temValor;
+        });
+        if (obrigatoriasFaltando.length > 0) {
+          return { resposta: "nao", label: `Não — ${obrigatoriasFaltando.length} obrigatória(s) sem resposta`, tiraPonto: true };
+        }
+        return { resposta: "sim", label: "Sim — todas respondidas", tiraPonto: false };
+      }
+
+      // ── Evidências obrigatórias anexadas (Sim é bom) ───────────────
+      case "executor_evidencias_anexadas": {
+        const semEvidencia = (fields as any[]).filter((f: any) => {
+          const exige = f.exige_evidencia
+            || f.evidencia_obrigatoria
+            || f.aprovador_exige_evidencia_nao;
+          if (!exige) return false;
+          const ans = (flow.fieldAnswers as any[]).find((x: any) => x.field_id === f.id);
+          return !ans?.evidencia_url && !ans?.evidencia_anexo_id;
+        });
+        if (semEvidencia.length > 0) {
+          return { resposta: "nao", label: `Não — ${semEvidencia.length} sem evidência`, tiraPonto: true };
+        }
+        return { resposta: "sim", label: "Sim — todas anexadas", tiraPonto: false };
+      }
+
+      // ── Devolução / reabertura (Sim tira ponto) ────────────────────
+      case "executor_teve_devolucao": {
+        if (teveDevolucao) {
+          return { resposta: "sim", label: `Sim — ${planosAprovador.length} devolução(ões)/plano(s)`, tiraPonto: true };
+        }
+        return { resposta: "nao", label: "Não — sem devoluções", tiraPonto: false };
+      }
+
+      // ── Não conformidades ──────────────────────────────────────────
       case "executor_teve_nao_conforme": {
         const ncs = (flow.existingApprovalAnswers as any[]).filter((x: any) => x.resposta === "nao_conforme").length;
         if (ncs > 0) return { resposta: "sim", label: `Sim — ${ncs} não conforme(s)`, tiraPonto: true };
         return { resposta: "nao", label: "Não — todos conformes", tiraPonto: false };
       }
+
+      // ── Plano de ação ──────────────────────────────────────────────
       case "plano_acao_sla_estourado":
       case "executor_plano_atrasado": {
-        if (a.flag_atraso_plano_acao) return { resposta: "sim", label: "Sim — plano entregue com atraso", tiraPonto: true };
+        if (a.flag_atraso_plano_acao || numPlanosAtrasados > 0) {
+          return { resposta: "sim", label: "Sim — plano entregue com atraso", tiraPonto: true };
+        }
         return { resposta: "nao", label: "Não — dentro do prazo", tiraPonto: false };
       }
       case "executor_reincidencia": {
-        if (a.flag_reincidencia_atraso) return { resposta: "sim", label: "Sim — reincidência de atraso", tiraPonto: true };
+        if (a.flag_reincidencia_atraso || numPlanosAtrasados >= 2) {
+          return { resposta: "sim", label: "Sim — reincidência de atraso", tiraPonto: true };
+        }
         return { resposta: "nao", label: "Não", tiraPonto: false };
       }
-      case "executor_prazo_prorrogado": {
-        if (a.flag_atraso_plano_acao) return { resposta: "sim", label: "Sim — prazo foi prorrogado", tiraPonto: true };
+      case "executor_prazo_prorrogado":
+      case "plano_acao_prazo_prorrogado": {
+        const prorrogou = (flow.fieldReviews as any[]).some((r: any) => r.prazo_alterado === true);
+        if (a.flag_atraso_plano_acao || prorrogou) {
+          return { resposta: "sim", label: "Sim — prazo foi prorrogado", tiraPonto: true };
+        }
         return { resposta: "nao", label: "Não", tiraPonto: false };
       }
+      case "plano_acao_prazo_prorrogado_2x": {
+        const prorrogacoes = (flow.fieldReviews as any[]).filter((r: any) => r.prazo_alterado === true).length;
+        if (a.flag_reincidencia_atraso || prorrogacoes >= 2) {
+          return { resposta: "sim", label: "Sim — prorrogado 2x ou mais", tiraPonto: true };
+        }
+        return { resposta: "nao", label: "Não", tiraPonto: false };
+      }
+
       default:
         return { resposta: null, label: "Avaliação manual", tiraPonto: false };
     }
-  }, [assignment, flow.existingApprovalAnswers]);
+  }, [assignment, flow.existingApprovalAnswers, flow.fieldReviews, flow.fieldAnswers, flow.contingencies, fields]);
 
   const notaMaximaAprovador = perguntasAutoAprovador.reduce((sum: number, p: any) => sum + (p.peso || 0), 0);
   const notaEfetivaAprovador = perguntasAutoAprovador.reduce((sum: number, p: any) => {

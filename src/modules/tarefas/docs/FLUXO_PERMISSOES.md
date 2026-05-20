@@ -149,6 +149,28 @@ canApproverFinalize =
 
 ---
 
+## Métricas automáticas — `calcRespostaExecutor` (no painel do Aprovador)
+
+> Todas as métricas usam `flow.fieldReviews`, `flow.contingencies`, `flow.fieldAnswers`
+> e `fields` para derivar a resposta — NÃO dependem de flags do banco estarem
+> setadas (mais robusto). Flags são usadas como reforço quando disponíveis.
+
+| Métrica | Pergunta-padrão | "Sim" tira ponto? | Lógica |
+|---|---|---|---|
+| `executor_entregou_no_prazo` / `executor_atrasou` | Executor entregou no prazo? | Sim = atrasou (tira) | `finalizado_em > prazo_execucao` ou `flag_sla_estourado` |
+| `executor_teve_atraso_etapa` | Houve atraso em alguma etapa? | Sim tira | contingência com `resolvida_em > prazo_resolucao` |
+| `executor_obrigatorias_respondidas` | Todas obrigatórias respondidas? | **Não** tira | conta `fields[obrigatorio=true]` sem resposta em fieldAnswers |
+| `executor_evidencias_anexadas` | Evidências obrigatórias anexadas? | **Não** tira | conta `fields[exige_evidencia=true]` sem evidencia_url |
+| `executor_teve_devolucao` | Execução foi devolvida/reaberta? | Sim tira | existe `field_review.devolvido=true && criado_por_papel≠auditor` |
+| `executor_teve_nao_conforme` | Teve não conformidades? | Sim tira | conta `existingApprovalAnswers.resposta='nao_conforme'` |
+| `plano_acao_sla_estourado` / `executor_plano_atrasado` | Plano estourou SLA? | Sim tira | flag OU contingência atrasada |
+| `executor_prazo_prorrogado` / `plano_acao_prazo_prorrogado` | Prazo foi prorrogado? | Sim tira | `field_review.prazo_alterado=true` |
+| `plano_acao_prazo_prorrogado_2x` | Prorrogou 2+ vezes? | Sim tira | conta `prazo_alterado=true` ≥ 2 |
+| `executor_reincidencia` | Reincidência de atraso? | Sim tira | `flag_reincidencia_atraso` ou ≥2 planos atrasados |
+| `manual` | qualquer pergunta de avaliação humana | depende | retorna `null` — N/A mantém ponto |
+
+---
+
 ## Pontos de atenção (bugs históricos)
 
 1. **Dado órfão em `operational_field_reviews`** — auditor plans antigos com `respondido=null` ficam em `planosAuditorPendentes` permanentemente, destravando campos indevidamente. **Solução:** garantir que `respondido` default seja `false` (não NULL) e auditor planos sempre tenham esse valor explícito.
