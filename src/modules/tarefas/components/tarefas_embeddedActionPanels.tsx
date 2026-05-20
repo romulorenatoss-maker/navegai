@@ -419,6 +419,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const [expandirNovoPlano, setExpandirNovoPlano] = useState<Record<string, boolean>>({});
   const [showAprovarModal, setShowAprovarModal] = useState(false);
   const [auditorRespostas, setAuditorRespostas] = useState<Record<string, Record<string, { valor_texto?: string; evidencia_url?: string; evidencia_anexo_id?: string; evidencia_mime_type?: string }>>>({});
+  const [respostasAutoAprovador, setRespostasAutoAprovador] = useState<Record<string, { na: boolean; justificativa: string }>>({});
 
   const approverFields = useMemo(
     () => fields.filter((f) => !["secao", "divisor", "titulo"].includes(String(f.tipo))),
@@ -432,6 +433,58 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   );
 
   const computeDefaultPrazo = () => toDatetimeLocal(new Date(Date.now() + prazoPadraoHoras * 60 * 60 * 1000));
+
+  const perguntasAutoAprovador = useMemo(() => {
+    const snap = assignment?.operational_templates?.ada_config_snapshot
+      ?? assignment?.template_snapshot?.ada_config_snapshot;
+    const lista = snap?.checklists?.aprovador;
+    if (!Array.isArray(lista)) return [];
+    return lista.filter((p: any) => p.ativo !== false);
+  }, [assignment]);
+
+  const calcRespostaExecutor = useCallback((metrica: string): { resposta: "sim" | "nao" | null; label: string; tiraPonto: boolean } => {
+    const a = assignment;
+    if (!a) return { resposta: null, label: "Sem dados", tiraPonto: false };
+    switch (metrica) {
+      case "executor_entregou_no_prazo":
+      case "executor_atrasou": {
+        const atrasou = a.flag_sla_estourado
+          || (a.finalizado_em && a.prazo_execucao && new Date(a.finalizado_em) > new Date(a.prazo_execucao));
+        if (atrasou) return { resposta: "sim", label: "Sim — entregou fora do prazo", tiraPonto: true };
+        return { resposta: "nao", label: "Não — entregou no prazo", tiraPonto: false };
+      }
+      case "executor_teve_nao_conforme": {
+        const ncs = (flow.existingApprovalAnswers as any[]).filter((x: any) => x.resposta === "nao_conforme").length;
+        if (ncs > 0) return { resposta: "sim", label: `Sim — ${ncs} não conforme(s)`, tiraPonto: true };
+        return { resposta: "nao", label: "Não — todos conformes", tiraPonto: false };
+      }
+      case "plano_acao_sla_estourado":
+      case "executor_plano_atrasado": {
+        if (a.flag_atraso_plano_acao) return { resposta: "sim", label: "Sim — plano entregue com atraso", tiraPonto: true };
+        return { resposta: "nao", label: "Não — dentro do prazo", tiraPonto: false };
+      }
+      case "executor_reincidencia": {
+        if (a.flag_reincidencia_atraso) return { resposta: "sim", label: "Sim — reincidência de atraso", tiraPonto: true };
+        return { resposta: "nao", label: "Não", tiraPonto: false };
+      }
+      case "executor_prazo_prorrogado": {
+        if (a.flag_atraso_plano_acao) return { resposta: "sim", label: "Sim — prazo foi prorrogado", tiraPonto: true };
+        return { resposta: "nao", label: "Não", tiraPonto: false };
+      }
+      default:
+        return { resposta: null, label: "Avaliação manual", tiraPonto: false };
+    }
+  }, [assignment, flow.existingApprovalAnswers]);
+
+  const notaMaximaAprovador = perguntasAutoAprovador.reduce((sum: number, p: any) => sum + (p.peso || 0), 0);
+  const notaEfetivaAprovador = perguntasAutoAprovador.reduce((sum: number, p: any) => {
+    const key = p.tempId ?? p.id ?? p.pergunta;
+    const r = respostasAutoAprovador[key] ?? { na: false };
+    const auto = calcRespostaExecutor(p.metrica_calculo ?? "manual");
+    if (r.na) return sum + (p.peso || 0);
+    if (auto.tiraPonto) return sum;
+    return sum + (p.peso || 0);
+  }, 0);
 
   const getRespostaAprovador = (f: SnapshotField) =>
     flow.approverAnswers[f.id]?.resposta
@@ -555,26 +608,12 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
 
   // ── Modal Confirmar Aprovação ─────────────────────────────────────────────
   if (showAprovarModal) {
-    const itensConformes = approverFields.filter(f => {
-      const v = flow.approverAnswers[f.id]?.resposta ?? (flow.existingApprovalAnswers as any[]).find((a: any) => a.field_id === f.id)?.resposta;
-      return v === "conforme";
-    }).length;
-    const itensNaoConformes = approverFields.filter(f => {
-      const v = flow.approverAnswers[f.id]?.resposta ?? (flow.existingApprovalAnswers as any[]).find((a: any) => a.field_id === f.id)?.resposta;
-      return v === "nao_conforme";
-    }).length;
-    const contingenciasNoPrazo = (flow.contingencies as any[]).filter((c: any) =>
-      c.prazo_resolucao && c.resolvida_em && new Date(c.resolvida_em) <= new Date(c.prazo_resolucao)
-    ).length;
-    const score = calculateOperationalScore({
-      prazoLimite: assignment?.prazo_execucao ?? null,
-      fimEm: assignment?.finalizado_em ?? new Date().toISOString(),
-      status: assignment?.status ?? "",
-      totalItens: approverFields.length,
-      itensConformes,
-      evidenciaValidada: null,
-      totalContingencias: (flow.contingencies as any[]).length,
-      contingenciasNoPrazo,
+    const temPlanoPendente = planosAuditorPendentes.length > 0;
+
+    const todosNaJustificados = perguntasAutoAprovador.every((p: any) => {
+      const key = p.tempId ?? p.id ?? p.pergunta;
+      const r = respostasAutoAprovador[key] ?? { na: false };
+      return !r.na || !!r.justificativa?.trim();
     });
     const todosPlansPreenchidos = planosAuditorPendentes.every((p: any) => {
       const itens: any[] = Array.isArray(p.itens_plano) ? p.itens_plano : [];
@@ -585,12 +624,19 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
         return r && (r.valor_texto || r.evidencia_url);
       });
     });
-    const temPlanoPendente = planosAuditorPendentes.length > 0;
+    const podeEnviar = todosNaJustificados && (!temPlanoPendente || todosPlansPreenchidos);
 
     const handleEnviar = async () => {
+      for (const p of perguntasAutoAprovador) {
+        const key = (p as any).tempId ?? (p as any).id ?? (p as any).pergunta;
+        const r = respostasAutoAprovador[key];
+        if (r?.na && !r?.justificativa?.trim()) {
+          toast.error(`Justificativa obrigatória para N/A em: "${(p as any).pergunta}"`);
+          return;
+        }
+      }
       try {
         if (temPlanoPendente) {
-          // Salva respostas do plano do auditor em valor_json do campo
           for (const ap of planosAuditorPendentes) {
             const resps = auditorRespostas[ap.id] ?? {};
             const rodada = ap.rodada ?? 1;
@@ -602,17 +648,20 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             await (supabase as any).from("operational_field_answers")
               .upsert({ assignment_id: assignment?.id, field_id: ap.field_id, valor_json: novoJson }, { onConflict: "assignment_id,field_id" });
           }
-          // Marca planos como respondidos
           await (supabase as any).from("operational_field_reviews")
             .update({ respondido: true, updated_at: new Date().toISOString() })
             .in("id", planosAuditorPendentes.map((p: any) => p.id));
-          // Muda status para aguardando_auditoria
           await (supabase as any).from("operational_assignments")
             .update({ status: "aguardando_auditoria", updated_at: new Date().toISOString() })
             .eq("id", assignment?.id);
           toast.success("Resposta enviada ao auditor.");
           onClose();
         } else {
+          if (notaMaximaAprovador > 0) {
+            await (supabase as any).from("operational_assignments")
+              .update({ score_aprovacao: notaEfetivaAprovador, updated_at: new Date().toISOString() })
+              .eq("id", assignment?.id);
+          }
           await aprovarDireto();
         }
       } catch (e: any) {
@@ -623,57 +672,76 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     return (
       <div className="space-y-3">
         {/* Header */}
-        <div className="flex items-center gap-2 pb-1 border-b border-border">
+        <div className="flex items-center gap-2 pb-2 border-b border-border">
           <button type="button" onClick={() => setShowAprovarModal(false)} className="p-1 rounded hover:bg-muted transition-colors">
             <ArrowLeft className="w-4 h-4 text-muted-foreground" />
           </button>
           <span className="text-sm font-semibold text-foreground">Confirmar Aprovação</span>
         </div>
 
-        {/* Resumo de respostas */}
-        <div className="bg-card border border-border rounded-lg p-3 space-y-2">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Resumo da Revisão</p>
-          <div className="grid grid-cols-3 gap-2 text-xs">
-            <div className="text-center">
-              <div className="text-lg font-bold text-emerald-700">{itensConformes}</div>
-              <div className="text-muted-foreground">Conformes</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-red-700">{itensNaoConformes}</div>
-              <div className="text-muted-foreground">Não conf.</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-amber-700">{(flow.contingencies as any[]).length}</div>
-              <div className="text-muted-foreground">Planos</div>
-            </div>
+        {/* Perguntas automáticas do checklist — avaliam o executor */}
+        {perguntasAutoAprovador.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium px-1">Avaliação do executor</p>
+            {perguntasAutoAprovador.map((p: any, idx: number) => {
+              const key = p.tempId ?? p.id ?? p.pergunta;
+              const r = respostasAutoAprovador[key] ?? { na: false, justificativa: "" };
+              const auto = calcRespostaExecutor(p.metrica_calculo ?? "manual");
+              return (
+                <div key={key} className={`border rounded-lg p-3 space-y-2 ${r.na ? "opacity-60 bg-muted/20 border-border" : auto.tiraPonto ? "bg-red-50 dark:bg-red-950/20 border-red-200" : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200"}`}>
+                  <div className="flex items-start gap-2">
+                    <span className="text-[10px] font-bold text-muted-foreground w-5 shrink-0 mt-0.5">{idx + 1}.</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-foreground">{p.pergunta}</p>
+                      {auto.resposta && !r.na && (
+                        <div className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[10px] font-semibold ${auto.tiraPonto ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>
+                          {auto.tiraPonto ? "✗" : "✓"} {auto.label}
+                        </div>
+                      )}
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Nota: <span className={`font-semibold ${auto.tiraPonto && !r.na ? "text-red-600 line-through" : "text-emerald-600"}`}>{p.peso} pts</span>
+                        {auto.tiraPonto && !r.na && <span className="text-red-600 ml-1">→ 0 pts</span>}
+                        {r.na && <span className="text-amber-600 ml-1">→ N/A (nota mantida)</span>}
+                      </p>
+                    </div>
+                    {p.permite_na !== false && (
+                      <label className="flex items-center gap-1 shrink-0 cursor-pointer mt-0.5">
+                        <input type="checkbox" checked={r.na}
+                          onChange={e => setRespostasAutoAprovador(prev => ({ ...prev, [key]: { ...r, na: e.target.checked } }))}
+                          className="w-3.5 h-3.5" />
+                        <span className="text-[11px] text-muted-foreground">N/A</span>
+                      </label>
+                    )}
+                  </div>
+                  {r.na && (
+                    <div className="space-y-1 ml-5">
+                      <Label className="text-[10px] text-amber-700">Justificativa obrigatória — por que N/A? (nota será mantida)</Label>
+                      <Textarea value={r.justificativa}
+                        onChange={e => setRespostasAutoAprovador(prev => ({ ...prev, [key]: { ...r, justificativa: e.target.value } }))}
+                        placeholder="Por que este item não se aplica..."
+                        className="text-xs min-h-[36px]" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
+        )}
+
+        {/* Nota final do executor */}
+        <div className="border border-primary/30 rounded-lg px-4 py-3 bg-primary/5 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-foreground">Nota final do executor</span>
+            <span className="text-primary text-lg font-bold">{notaEfetivaAprovador} pts</span>
+          </div>
+          {notaMaximaAprovador > 0 && (
+            <p className="text-[11px] text-muted-foreground">
+              {notaEfetivaAprovador} de {notaMaximaAprovador} pts possíveis
+            </p>
+          )}
         </div>
 
-        {/* Score SLA */}
-        <div className="bg-card border border-border rounded-lg p-3 space-y-2">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Score por Tempo (SLA)</p>
-          {([
-            { label: "Pontualidade", val: score.pontualidade },
-            { label: "Conformidade", val: score.conformidade },
-            { label: "SLA Correções", val: score.slaCorrecoes },
-          ] as {label:string;val:number}[]).map(({ label, val }) => (
-            <div key={label} className="space-y-0.5">
-              <div className="flex justify-between text-[11px]">
-                <span className="text-muted-foreground">{label}</span>
-                <span className="font-medium">{val}%</span>
-              </div>
-              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all" style={{ width: `${val}%`, background: val >= 80 ? "#16a34a" : val >= 50 ? "#d97706" : "#dc2626" }} />
-              </div>
-            </div>
-          ))}
-          <div className="flex items-center justify-between pt-1 border-t border-border">
-            <span className="text-xs font-semibold text-foreground">Score Final</span>
-            <span className="text-sm font-bold" style={{ color: score.scoreFinal >= 80 ? "#16a34a" : score.scoreFinal >= 50 ? "#d97706" : "#dc2626" }}>{score.scoreFinal}/100</span>
-          </div>
-        </div>
-
-        {/* Plano do auditor — preencher antes de enviar */}
+        {/* Plano do auditor — preencher antes de enviar (somente se houver pendente) */}
         {temPlanoPendente && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 px-1">
@@ -752,13 +820,16 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           </div>
         )}
 
-        {/* Botão enviar */}
-        <div className="sticky bottom-0 bg-background pb-1 pt-2 border-t border-border">
-          <Button type="button" className="w-full" disabled={temPlanoPendente && !todosPlansPreenchidos}
-            style={{ background: temPlanoPendente && !todosPlansPreenchidos ? undefined : "#7c3aed" }}
-            onClick={handleEnviar}>
+        {/* Botões */}
+        <div className="flex gap-2 pt-2 sticky bottom-0 bg-background pb-1 border-t border-border">
+          <Button type="button" size="sm" variant="outline" onClick={() => setShowAprovarModal(false)} disabled={flow.isSaving}>
+            <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Voltar
+          </Button>
+          <div className="flex-1" />
+          <Button type="button" size="sm" onClick={handleEnviar} disabled={!podeEnviar || flow.isSaving}
+            className={temPlanoPendente ? "bg-purple-600 hover:bg-purple-700 text-white" : "bg-emerald-600 hover:bg-emerald-700 text-white"}>
             <Send className="w-3.5 h-3.5 mr-1" />
-            {temPlanoPendente ? "Enviar resposta ao auditor" : "Confirmar aprovação"}
+            {flow.isSaving ? "Enviando..." : temPlanoPendente ? "Enviar ao auditor" : "Confirmar aprovação"}
           </Button>
         </div>
       </div>
