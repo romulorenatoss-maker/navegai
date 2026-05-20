@@ -1649,6 +1649,80 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
 
       {false && null}
 
+      {/* ──────────────────────────────────────────────────────────────────
+          Seção "Auditoria realizada" — visível no painel do APROVADOR
+          quando há registro de auditoria (score_aprovador, score_auditor,
+          ou planos do auditor). Mostra o que o auditor fez ao avaliar.
+          ────────────────────────────────────────────────────────────── */}
+      {(() => {
+        const scoreDoAuditor = assignment?.score_aprovador ?? assignment?.score_auditor ?? null;
+        const planosAuditor = (flow.fieldReviews as any[]).filter(
+          (r: any) => r.criado_por_papel === "auditor"
+        );
+        const houveAuditoria = scoreDoAuditor != null || planosAuditor.length > 0;
+        if (!houveAuditoria) return null;
+        return (
+          <div className="border border-blue-300 dark:border-blue-800 rounded-lg overflow-hidden">
+            <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/30 border-b border-blue-200">
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-700" />
+              <span className="text-[11px] font-semibold text-blue-800">Auditoria realizada</span>
+            </div>
+            <div className="p-3 space-y-2">
+              {scoreDoAuditor != null && (
+                <div className="flex items-center justify-between bg-primary/5 border border-primary/30 rounded px-3 py-2">
+                  <span className="text-xs font-medium text-foreground">Nota recebida do auditor</span>
+                  <span className="text-primary text-base font-bold">{scoreDoAuditor} pts</span>
+                </div>
+              )}
+              {planosAuditor.length > 0 ? (
+                planosAuditor.map((ap: any, idx: number) => {
+                  const field = fields.find((f: any) => f.id === ap.field_id);
+                  const itens: any[] = Array.isArray(ap.itens_plano) ? ap.itens_plano : [];
+                  const fieldAnswer = (flow.fieldAnswers as any[]).find((a: any) => a.field_id === ap.field_id);
+                  const valorJson = fieldAnswer?.valor_json ?? {};
+                  const rodada = ap.rodada ?? 1;
+                  return (
+                    <div key={ap.id || idx} className="border border-border rounded">
+                      <div className="px-3 py-1.5 bg-muted/40 border-b border-border flex items-center justify-between">
+                        <span className="text-[11px] font-medium">{field?.label ?? ap.field_id} — Plano R{idx + 1}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${ap.respondido ? "bg-emerald-100 text-emerald-700 border border-emerald-200" : "bg-amber-100 text-amber-700 border border-amber-200"}`}>
+                          {ap.respondido ? "Respondido" : "Pendente"}
+                        </span>
+                      </div>
+                      {ap.instrucao_aprovador && (
+                        <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-b border-border">{ap.instrucao_aprovador}</p>
+                      )}
+                      <div className="px-3 py-2 space-y-1">
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Sua resposta ao auditor:</p>
+                        {itens.length === 0 && <p className="text-[11px] italic text-muted-foreground">—</p>}
+                        {itens.map((item: any, iIdx: number) => {
+                          const chave = `__auditor_plano__r${rodada}__${item.tipo}`;
+                          const dado = valorJson[chave];
+                          if (!dado) return <p key={iIdx} className="text-[11px] italic text-muted-foreground">Sem resposta para {item.titulo || item.tipo}</p>;
+                          return (
+                            <div key={iIdx} className="space-y-1">
+                              {item.titulo && <p className="text-[10px] text-muted-foreground">{item.titulo}</p>}
+                              {(item.tipo === "texto" || item.tipo === "descricao") && dado.valor_texto && (
+                                <div className="bg-card border border-border rounded p-2 text-xs">{dado.valor_texto}</div>
+                              )}
+                              {(item.tipo === "foto" || item.tipo === "video" || item.tipo === "audio") && dado.evidencia_url && (
+                                <EvidenciaPreview anexoId={dado.evidencia_anexo_id ?? null} url={dado.evidencia_url} mimeType={dado.evidencia_mime_type ?? null} disabled />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-[11px] text-muted-foreground italic">Auditor confirmou sem criar planos.</p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="flex flex-wrap gap-2 pt-2 sticky bottom-0 bg-background pb-1 border-t border-border">
         {false && null}
         <div className="flex-1" />
