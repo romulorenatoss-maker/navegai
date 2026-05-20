@@ -744,7 +744,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           //   src/modules/tarefas/docs/tarefas_rpc_aprovador_responder_plano_auditor.md
           for (const ap of planosAuditorPendentes) {
             const resps = auditorRespostas[ap.id] ?? {};
-            await planos.responderPlanoAuditor.mutateAsync({
+            await planosAcao.responderPlanoAuditor.mutateAsync({
               planoId: ap.id,
               respostaValorJson: resps as any,
             });
@@ -1540,7 +1540,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                     Lê DIRETO da nova tabela tarefas_planos_acao_auditor via usePlanosAcao.
                     Nada de valor_json — resposta está em ap.resposta_valor_json estruturada. */}
                 {(() => {
-                  const planosAuditorDoCampo = planos.planosAuditorPorField(f.id);
+                  const planosAuditorDoCampo = planosAcao.planosAuditorPorField(f.id);
                   if (planosAuditorDoCampo.length === 0) return null;
                   return planosAuditorDoCampo.map((ap) => {
                     const itens = Array.isArray(ap.itens_plano) ? ap.itens_plano : [];
