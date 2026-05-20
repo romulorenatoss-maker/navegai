@@ -223,8 +223,13 @@ export default function DashboardPage() {
       });
 
       setAllOS(result);
-      setLoading(false);
+      } catch (err) {
+        console.error("[DashboardPage] fetch OS falhou:", err);
+      } finally {
+        setLoading(false);
+      }
     };
+
 
     fetch();
   }, [searchTrigger]);
