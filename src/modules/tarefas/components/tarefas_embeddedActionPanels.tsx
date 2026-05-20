@@ -413,6 +413,7 @@ const getDefaultReviewAction = (rule: ReviewRule | null): "plano" | "devolver" =
 export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalProps) {
   const { profile } = useAuth();
   const flow = useApprovalFlow(assignment?.id || null);
+  const qc = useQueryClient();
 
   // ⚠️ FONTE ÚNICA DE VERDADE para travas/permissões neste painel
   // Todas as decisões de UI devem consultar `perms`, NUNCA checar status direto.
@@ -752,6 +753,13 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           await (supabase as any).from("operational_assignments")
             .update({ status: "aguardando_auditoria", updated_at: new Date().toISOString() })
             .eq("id", assignment?.id);
+          // 🆕 Força refetch das queries para que a UI mostre o valor_json
+          // atualizado (chave __auditor_plano__rN__tipo) sem precisar fechar
+          // e reabrir o drawer. Previne caso usuário fique no painel.
+          qc.invalidateQueries({ queryKey: ["operational_approval_field_answers", assignment?.id] });
+          qc.invalidateQueries({ queryKey: ["operational_approval_field_reviews", assignment?.id] });
+          qc.invalidateQueries({ queryKey: ["operational_auditor_plans", assignment?.id] });
+          qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
           toast.success("Resposta enviada ao auditor.");
           onClose();
         } else {
