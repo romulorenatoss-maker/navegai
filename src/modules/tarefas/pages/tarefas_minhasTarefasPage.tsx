@@ -567,12 +567,28 @@ export default function OperationalExecucaoPage() {
     setShowHistory(false);
     const sections = a.template_snapshot?.sections?.sort((x: any, y: any) => x.ordem - y.ordem);
     setActiveSection(sections?.[0]?.id || null);
-    // Se é auditor → abre direto na aba Auditor
-    // Se é aprovador → abre direto na aba Aprovação
-    // Caso contrário → abre no registro (executor)
-    const isAud = !!a.auditor_id && a.status === "aguardando_auditoria";
-    const isAprov = (!!a.aprovador_id || !!a.created_by) && a.status === "aguardando_aprovacao";
-    setViewMode(isAud ? "auditor" : isAprov ? "aprovacao" : "registro");
+    // Abre a tarefa na aba do PAPEL do usuário (independente do status):
+    //   - Auditor: vê primeiro a aba Auditor
+    //   - Aprovador: vê primeiro a aba Aprovação
+    //   - Executor/spectator: vê primeiro o Registro
+    // Em status ativo, abre na aba da ação. Em status final, abre na aba do papel.
+    const userIsAuditor = !!profile?.id && (
+      a.auditor_id === profile.id ||
+      (a.auditor_id === null && a.setor_auditor_id && meusSetorIds.includes(a.setor_auditor_id))
+    );
+    const userIsAprovador = !!profile?.id && (
+      a.aprovador_id === profile.id ||
+      (a.aprovador_id === null && a.created_by === profile.id)
+    );
+    const statusEhAuditoria = a.status === "aguardando_auditoria";
+    const statusEhAprovacao = a.status === "aguardando_aprovacao";
+
+    let initialView: "registro" | "aprovacao" | "auditor" = "registro";
+    if (statusEhAuditoria) initialView = "auditor";
+    else if (statusEhAprovacao) initialView = "aprovacao";
+    else if (userIsAuditor) initialView = "auditor";
+    else if (userIsAprovador && !userIsAuditor) initialView = "aprovacao";
+    setViewMode(initialView);
 
     if (profile?.id) {
       // Auditoria enriquecida: papel_usado derivado do contexto
