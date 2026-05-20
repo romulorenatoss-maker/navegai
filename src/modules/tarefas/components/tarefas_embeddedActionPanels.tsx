@@ -549,7 +549,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const emAuditoria = assignment?.status === "aguardando_auditoria";
   const planosAuditorPendentes = (flow.planosDoAuditor as any[]).filter((p: any) => !p.respondido);
 
-  if (planosAuditorPendentes.length > 0) {
+  if (false && planosAuditorPendentes.length > 0) {
     return (
       <div className="space-y-3">
         <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 rounded-lg p-3 flex items-start gap-2">
@@ -737,18 +737,26 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           <p className="text-xs text-blue-800 font-medium">Aguardando auditoria — somente leitura</p>
         </div>
       )}
-      {/* Instrução do auditor — aparece no topo quando auditor criou plano para o aprovador */}
+      {/* Planos do auditor — pendentes com inputs ativos, respondidos somente leitura */}
       {(() => {
         const auditPlans = (flow.planosDoAuditor as any[]) ?? [];
         if (auditPlans.length === 0) return null;
+        const pendentes = auditPlans.filter((p: any) => !p.respondido);
         return (
           <div className="space-y-2 mb-2">
+            {pendentes.length > 0 && (
+              <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 rounded-lg p-3 flex items-start gap-2">
+                <ShieldCheck className="w-4 h-4 text-purple-700 shrink-0 mt-0.5" />
+                <div className="text-xs text-purple-800">
+                  O auditor criou {pendentes.length} plano(s) de ação. Responda antes de continuar.
+                </div>
+              </div>
+            )}
             {auditPlans.map((auditPlan: any, idx: number) => {
               const itens: Array<{tipo:string;titulo:string;obrigatorio:boolean}> = Array.isArray(auditPlan.itens_plano) ? auditPlan.itens_plano : [];
-              // Respostas do aprovador a este plano — salvas no valor_json do campo original
-              // Usa perguntaId como field_id do plano
               const perguntaId = auditPlan.field_id;
               const rodada = auditPlan.rodada ?? 1;
+              const pendente = !auditPlan.respondido;
               const fieldAnswer = (flow.fieldAnswers as any[]).find((a: any) => a.field_id === perguntaId);
               const valorJson = fieldAnswer?.valor_json ?? {};
               return (
@@ -757,6 +765,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="w-3.5 h-3.5 text-purple-700 shrink-0" />
                       <span className="text-[11px] font-semibold text-purple-800">Plano do Auditor — {auditPlan.instrucao_aprovador ? `"${auditPlan.instrucao_aprovador.slice(0,30)}"` : `R${rodada}`}</span>
+                      {!pendente && <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Respondido</span>}
                     </div>
                     <span className="text-[10px] text-muted-foreground">{auditPlan.avaliado_em ? new Date(auditPlan.avaliado_em).toLocaleString("pt-BR", {day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : ""}</span>
                   </div>
@@ -768,6 +777,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                           const chave = `__auditor_plano__r${rodada}__${item.tipo}`;
                           const dado = valorJson[chave];
                           const temResposta = !!(dado?.evidencia_url || dado?.valor_texto);
+                          const itemFieldId = `${perguntaId}__auditor_plano__r${rodada}__${item.tipo}`;
                           return (
                             <div key={iIdx} className="space-y-1">
                               {item.titulo && <p className="text-[11px] text-purple-800 font-medium">{item.titulo}</p>}
@@ -784,6 +794,49 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                                     disabled
                                   />
                                 )
+                              ) : pendente ? (
+                                (item.tipo === "texto" || item.tipo === "descricao") ? (
+                                  <textarea
+                                    placeholder={`${item.titulo || "Descreva"}...`}
+                                    rows={3}
+                                    className="w-full text-xs rounded border border-purple-300 bg-white px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-purple-400"
+                                    onChange={e => {
+                                      flow.updateApproverAnswer(itemFieldId, { resposta: e.target.value } as any);
+                                    }}
+                                  />
+                                ) : (
+                                  <label className="flex items-center justify-center gap-2 border border-dashed border-purple-400 rounded-lg p-4 cursor-pointer hover:border-purple-600 transition-colors min-h-[52px]">
+                                    <Upload className="w-3.5 h-3.5 text-purple-600" />
+                                    <span className="text-xs text-purple-800 font-medium">
+                                      {item.tipo === "foto" ? "Tirar foto" : item.tipo === "video" ? "Gravar video" : "Gravar audio"} *
+                                    </span>
+                                    <input type="file" className="hidden"
+                                      accept={item.tipo === "foto" ? "image/*" : item.tipo === "video" ? "video/*" : "audio/*"}
+                                      capture="environment"
+                                      onChange={async e => {
+                                        const file = e.target.files?.[0];
+                                        if (!file) return;
+                                        const { data: sess } = await supabase.auth.getSession();
+                                        const token = sess.session?.access_token;
+                                        if (!token) return;
+                                        const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+                                        const fd = new FormData();
+                                        fd.append("file", file);
+                                        fd.append("contexto_tipo", "aprovacao");
+                                        fd.append("contexto_ref_id", perguntaId);
+                                        if (assignment?.id) fd.append("assignment_id", assignment.id);
+                                        const res = await fetch(`${FN_BASE}/tarefas-storage-upload`, { method:"POST", headers:{Authorization:`Bearer ${token}`}, body:fd });
+                                        const json = await res.json();
+                                        if (json.ok) {
+                                          const existing = (flow.fieldAnswers as any[]).find((a:any) => a.field_id === perguntaId);
+                                          const novoJson = { ...(existing?.valor_json ?? {}), [chave]: { evidencia_url: json.anexo.path_relativo, evidencia_anexo_id: json.anexo.id, evidencia_mime_type: json.anexo.mime_type ?? file.type } };
+                                          await (supabase as any).from("operational_field_answers").upsert({ assignment_id: assignment?.id, field_id: perguntaId, valor_json: novoJson }, { onConflict: "assignment_id,field_id" });
+                                          (flow as any).scheduleAutoSave && (flow as any).scheduleAutoSave(perguntaId, {} as any);
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                )
                               ) : (
                                 <p className="text-[10px] text-muted-foreground italic">Aguardando resposta...</p>
                               )}
@@ -796,6 +849,21 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                 </div>
               );
             })}
+            {pendentes.length > 0 && (
+              <Button type="button" className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                onClick={async () => {
+                  await (supabase as any).from("operational_field_reviews")
+                    .update({ respondido: true, updated_at: new Date().toISOString() })
+                    .in("id", pendentes.map((p:any) => p.id));
+                  await (supabase as any).from("operational_assignments")
+                    .update({ status: "aguardando_auditoria", updated_at: new Date().toISOString() })
+                    .eq("id", assignment?.id);
+                  toast.success("Resposta enviada ao auditor.");
+                  onClose();
+                }}>
+                Enviar resposta ao auditor
+              </Button>
+            )}
           </div>
         );
       })()}
