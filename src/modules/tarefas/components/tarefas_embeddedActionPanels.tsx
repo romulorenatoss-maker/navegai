@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle2, XCircle, RotateCcw, Send, Play, AlertTriangle, ShieldCheck, ExternalLink, Upload, ArrowLeft, ClipboardList, Clock } from "lucide-react";
+import { CheckCircle2, XCircle, RotateCcw, Send, Play, AlertTriangle, ShieldCheck, ExternalLink, Upload, ArrowLeft, ClipboardList, Clock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAssignmentReview } from "@/modules/tarefas/hooks/tarefas_useAssignmentReview";
 import { useApprovalFlow } from "@/modules/tarefas/hooks/tarefas_useApprovalFlow";
@@ -420,6 +420,9 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const [showAprovarModal, setShowAprovarModal] = useState(false);
   const [auditorRespostas, setAuditorRespostas] = useState<Record<string, Record<string, { valor_texto?: string; evidencia_url?: string; evidencia_anexo_id?: string; evidencia_mime_type?: string }>>>({});
   const [respostasAutoAprovador, setRespostasAutoAprovador] = useState<Record<string, { na: boolean; justificativa: string }>>({});
+  // Exceção: estado de upload para o plano do auditor — mesmo padrão do DynamicFieldRenderer
+  const [uploadingAuditorPlano, setUploadingAuditorPlano] = useState<Record<string, boolean>>({});
+  const [uploadProgressAuditorPlano, setUploadProgressAuditorPlano] = useState<Record<string, number>>({});
 
   const approverFields = useMemo(
     () => fields.filter((f) => !["secao", "divisor", "titulo"].includes(String(f.tipo))),
@@ -764,6 +767,10 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                     {itens.map((item: any, iIdx: number) => {
                       const val = resps[item.tipo];
                       const temResposta = !!(val?.valor_texto || val?.evidencia_url);
+                      // Exceção: chave de loading por plano+tipo — mesmo padrão do DynamicFieldRenderer
+                      const uploadKey = `${ap.id}__${item.tipo}`;
+                      const isUploadingItem = !!uploadingAuditorPlano[uploadKey];
+                      const progressItem = uploadProgressAuditorPlano[uploadKey] ?? 0;
                       return (
                         <div key={iIdx} className="space-y-1">
                           {item.titulo && <p className="text-[11px] text-purple-800 font-medium">{item.titulo}</p>}
@@ -784,25 +791,55 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                               onChange={e => setAuditorRespostas(prev => ({ ...prev, [ap.id]: { ...(prev[ap.id] ?? {}), [item.tipo]: { valor_texto: e.target.value } } }))}
                             />
                           ) : (
-                            <label className="flex items-center justify-center gap-2 border border-dashed border-purple-400 rounded-lg p-4 cursor-pointer hover:border-purple-600 transition-colors min-h-[52px]">
-                              <Upload className="w-3.5 h-3.5 text-purple-600" />
-                              <span className="text-xs text-purple-800 font-medium">
-                                {item.tipo === "foto" ? "Tirar foto" : item.tipo === "video" ? "Gravar vídeo" : "Gravar áudio"} *
-                              </span>
+                            <label className={`flex items-center justify-center gap-2 border border-dashed border-purple-400 rounded-lg p-4 cursor-pointer hover:border-purple-600 transition-colors min-h-[52px] ${isUploadingItem ? "opacity-60 pointer-events-none" : ""}`}>
+                              {isUploadingItem ? (
+                                <div className="flex flex-col items-center gap-1 w-full">
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-600" />
+                                  <span className="text-xs text-purple-700">{progressItem}%</span>
+                                  <div className="w-full bg-muted rounded-full h-1">
+                                    <div className="bg-purple-500 h-1 rounded-full transition-all" style={{ width: `${progressItem}%` }} />
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <Upload className="w-3.5 h-3.5 text-purple-600" />
+                                  <span className="text-xs text-purple-800 font-medium">
+                                    {item.tipo === "foto" ? "Tirar foto" : item.tipo === "video" ? "Gravar vídeo" : "Gravar áudio"} *
+                                  </span>
+                                </>
+                              )}
                               <input type="file" className="hidden"
                                 accept={item.tipo === "foto" ? "image/*" : item.tipo === "video" ? "video/*" : "audio/*"}
                                 capture="environment"
-                                onChange={async e => {
+                                onChange={e => {
                                   const file = e.target.files?.[0]; if (!file) return;
-                                  const { data: sess } = await supabase.auth.getSession();
-                                  const token = sess.session?.access_token; if (!token) return;
-                                  const fd = new FormData();
-                                  fd.append("file", file); fd.append("contexto_tipo", "aprovacao");
-                                  fd.append("contexto_ref_id", ap.field_id);
-                                  if (assignment?.id) fd.append("assignment_id", assignment.id);
-                                  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tarefas-storage-upload`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd });
-                                  const json = await res.json();
-                                  if (json.ok) setAuditorRespostas(prev => ({ ...prev, [ap.id]: { ...(prev[ap.id] ?? {}), [item.tipo]: { evidencia_url: json.anexo.path_relativo, evidencia_anexo_id: json.anexo.id, evidencia_mime_type: json.anexo.mime_type ?? file.type } } }));
+                                  supabase.auth.getSession().then(({ data: sess }) => {
+                                    const token = sess.session?.access_token; if (!token) return;
+                                    const fd = new FormData();
+                                    fd.append("file", file); fd.append("contexto_tipo", "aprovacao");
+                                    fd.append("contexto_ref_id", ap.field_id);
+                                    if (assignment?.id) fd.append("assignment_id", assignment.id);
+                                    setUploadingAuditorPlano(prev => ({ ...prev, [uploadKey]: true }));
+                                    setUploadProgressAuditorPlano(prev => ({ ...prev, [uploadKey]: 0 }));
+                                    const xhr = new XMLHttpRequest();
+                                    xhr.open("POST", `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tarefas-storage-upload`);
+                                    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+                                    xhr.upload.onprogress = ev => {
+                                      if (ev.lengthComputable)
+                                        setUploadProgressAuditorPlano(prev => ({ ...prev, [uploadKey]: Math.round((ev.loaded / ev.total) * 100) }));
+                                    };
+                                    xhr.onload = () => {
+                                      setUploadingAuditorPlano(prev => ({ ...prev, [uploadKey]: false }));
+                                      try {
+                                        const json = JSON.parse(xhr.responseText);
+                                        if (xhr.status >= 200 && xhr.status < 300 && json.ok)
+                                          setAuditorRespostas(prev => ({ ...prev, [ap.id]: { ...(prev[ap.id] ?? {}), [item.tipo]: { evidencia_url: json.anexo.path_relativo, evidencia_anexo_id: json.anexo.id, evidencia_mime_type: json.anexo.mime_type ?? file.type } } }));
+                                        else toast.error("Erro ao enviar arquivo.");
+                                      } catch { toast.error("Erro ao processar resposta."); }
+                                    };
+                                    xhr.onerror = () => { setUploadingAuditorPlano(prev => ({ ...prev, [uploadKey]: false })); toast.error("Erro de rede ao enviar arquivo."); };
+                                    xhr.send(fd);
+                                  });
                                 }}
                               />
                             </label>
