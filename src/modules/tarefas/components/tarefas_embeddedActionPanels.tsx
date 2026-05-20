@@ -27,6 +27,7 @@ import { ReviewFieldCard } from "@/modules/tarefas/components/tarefas_reviewFiel
 import { EvidenciaPreview } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import { SnapshotField, evaluateVisibility } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import { calculateOperationalScore } from "@/modules/tarefas/hooks/tarefas_useScoring";
+import { usePlanosAcao } from "@/modules/tarefas/hooks/tarefas_usePlanosAcao";
 
 /* =========================================================================
  * Helpers defensivos de leitura (somente UI) — não alteram dados.
@@ -413,6 +414,7 @@ const getDefaultReviewAction = (rule: ReviewRule | null): "plano" | "devolver" =
 export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalProps) {
   const { profile } = useAuth();
   const flow = useApprovalFlow(assignment?.id || null);
+  const planos = usePlanosAcao(assignment?.id || null);
   const qc = useQueryClient();
 
   // ⚠️ FONTE ÚNICA DE VERDADE para travas/permissões neste painel
@@ -736,30 +738,18 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
       }
       try {
         if (temPlanoPendente) {
+          // 🆕 Refactor: chama a RPC por plano. Cada chamada UPDATE em
+          // tarefas_planos_acao_auditor + trigger automatiza status →
+          // aguardando_auditoria. Doc:
+          //   src/modules/tarefas/docs/tarefas_rpc_aprovador_responder_plano_auditor.md
           for (const ap of planosAuditorPendentes) {
             const resps = auditorRespostas[ap.id] ?? {};
-            const rodada = ap.rodada ?? 1;
-            const existing = (flow.fieldAnswers as any[]).find((a: any) => a.field_id === ap.field_id);
-            const novoJson = { ...(existing?.valor_json ?? {}) };
-            for (const [tipo, val] of Object.entries(resps)) {
-              novoJson[`__auditor_plano__r${rodada}__${tipo}`] = val;
-            }
-            await (supabase as any).from("operational_field_answers")
-              .upsert({ assignment_id: assignment?.id, field_id: ap.field_id, valor_json: novoJson }, { onConflict: "assignment_id,field_id" });
+            await planos.responderPlanoAuditor.mutateAsync({
+              planoId: ap.id,
+              respostaValorJson: resps as any,
+            });
           }
-          await (supabase as any).from("operational_field_reviews")
-            .update({ respondido: true, updated_at: new Date().toISOString() })
-            .in("id", planosAuditorPendentes.map((p: any) => p.id));
-          await (supabase as any).from("operational_assignments")
-            .update({ status: "aguardando_auditoria", updated_at: new Date().toISOString() })
-            .eq("id", assignment?.id);
-          // 🆕 Força refetch das queries para que a UI mostre o valor_json
-          // atualizado (chave __auditor_plano__rN__tipo) sem precisar fechar
-          // e reabrir o drawer. Previne caso usuário fique no painel.
-          qc.invalidateQueries({ queryKey: ["operational_approval_field_answers", assignment?.id] });
-          qc.invalidateQueries({ queryKey: ["operational_approval_field_reviews", assignment?.id] });
-          qc.invalidateQueries({ queryKey: ["operational_auditor_plans", assignment?.id] });
-          qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
+          // Trigger já mudou status. Só fecha o drawer.
           toast.success("Resposta enviada ao auditor.");
           onClose();
         } else {
@@ -862,11 +852,11 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                 <div key={ap.id || idx} className="border border-purple-300 dark:border-purple-800 rounded-lg overflow-hidden">
                   <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 dark:bg-purple-950/30 border-b border-purple-200">
                     <ShieldCheck className="w-3.5 h-3.5 text-purple-700" />
-                    <span className="text-[11px] font-semibold text-purple-800">Plano do Auditor — R{idx + 1}</span>
-                    <span className="text-[10px] text-muted-foreground ml-auto">{ap.avaliado_em ? new Date(ap.avaliado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}</span>
+                    <span className="text-[11px] font-semibold text-purple-800">Plano do Auditor — R{ap.rodada}</span>
+                    <span className="text-[10px] text-muted-foreground ml-auto">{ap.criado_em ? new Date(ap.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}</span>
                   </div>
                   <div className="px-3 py-2 space-y-2">
-                    {ap.instrucao_aprovador && <p className="text-xs text-foreground">{ap.instrucao_aprovador}</p>}
+                    {ap.instrucao && <p className="text-xs text-foreground">{ap.instrucao}</p>}
                     {itens.map((item: any, iIdx: number) => {
                       const val = resps[item.tipo];
                       const temResposta = !!(val?.valor_texto || val?.evidencia_url);
@@ -1547,32 +1537,27 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                 })()}
 
                 {/* 🆕 Resposta enviada ao auditor — quando auditor pediu algo nesta pergunta.
-                    Aparece ENTRE o último plano de ação do aprovador (R1/R2/...) e o final
-                    do card da pergunta. Substitui a seção global "Auditoria realizada". */}
+                    Lê DIRETO da nova tabela tarefas_planos_acao_auditor via usePlanosAcao.
+                    Nada de valor_json — resposta está em ap.resposta_valor_json estruturada. */}
                 {(() => {
-                  const planosAuditorDoCampo = (flow.fieldReviews as any[])
-                    .filter((r: any) => r.criado_por_papel === "auditor" && r.field_id === f.id)
-                    .sort((a: any, b: any) => (a.rodada || 0) - (b.rodada || 0));
+                  const planosAuditorDoCampo = planos.planosAuditorPorField(f.id);
                   if (planosAuditorDoCampo.length === 0) return null;
-                  return planosAuditorDoCampo.map((ap: any) => {
-                    const itens: any[] = Array.isArray(ap.itens_plano) ? ap.itens_plano : [];
-                    const fieldAnswer = (flow.fieldAnswers as any[]).find((a: any) => a.field_id === ap.field_id);
-                    const valorJson = fieldAnswer?.valor_json ?? {};
-                    const rodada = ap.rodada ?? 1;
+                  return planosAuditorDoCampo.map((ap) => {
+                    const itens = Array.isArray(ap.itens_plano) ? ap.itens_plano : [];
+                    const resp = ap.resposta_valor_json ?? {};
                     return (
                       <div key={ap.id} className="px-3 py-2 border-t border-amber-300 bg-amber-50 dark:bg-amber-950/20 space-y-2">
                         <div className="flex items-center gap-2">
                           <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
-                          <span className="text-[11px] font-semibold text-amber-800">📨 Plano do auditor R{rodada} — sua resposta</span>
+                          <span className="text-[11px] font-semibold text-amber-800">📨 Plano do auditor R{ap.rodada} — sua resposta</span>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded ml-auto ${ap.respondido ? "bg-emerald-100 text-emerald-700 border border-emerald-200" : "bg-amber-100 text-amber-700 border border-amber-200"}`}>
                             {ap.respondido ? "Respondido" : "Pendente"}
                           </span>
                         </div>
-                        {ap.instrucao_aprovador && <p className="text-[11px] text-muted-foreground">{ap.instrucao_aprovador}</p>}
+                        {ap.instrucao && <p className="text-[11px] text-muted-foreground">{ap.instrucao}</p>}
                         {itens.length === 0 && <p className="text-[11px] italic text-muted-foreground">—</p>}
-                        {itens.map((item: any, iIdx: number) => {
-                          const chave = `__auditor_plano__r${rodada}__${item.tipo}`;
-                          const dado = valorJson[chave];
+                        {itens.map((item, iIdx) => {
+                          const dado: any = resp[item.tipo];
                           if (!dado) return <p key={iIdx} className="text-[11px] italic text-muted-foreground">Sem resposta para {item.titulo || item.tipo}</p>;
                           return (
                             <div key={iIdx} className="space-y-1">
@@ -1796,6 +1781,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
  * ========================================================================= */
 export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProps) {
   const flow = useAuditFlow(assignment?.id || null);
+  const planos = usePlanosAcao(assignment?.id || null);
   const { profile } = useAuth();
   const qc = useQueryClient();
 
@@ -2279,10 +2265,9 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
               .filter((ap: any) => ap.respondido)
               .map((ap: any, idx: number) => {
                 const field = fields.find((f: any) => f.id === ap.field_id);
-                const fieldAnswer = (flow.fieldAnswers as any[]).find((a: any) => a.field_id === ap.field_id);
-                const rodada = ap.rodada ?? 1;
                 const itens: any[] = Array.isArray(ap.itens_plano) ? ap.itens_plano : [];
-                const valorJson = fieldAnswer?.valor_json ?? {};
+                // 🆕 Resposta vem direto da nova tabela (ap.resposta_valor_json), não mais de valor_json.
+                const resp = ap.resposta_valor_json ?? {};
                 const avaliacao = avaliacaoPlanos[ap.id];
                 const expandR2 = expandirR2[ap.id];
                 const plR2 = planosR2[ap.id] ?? { instrucao: "", itens: [] as any[], prazo: computePrazoAuditor() };
@@ -2291,20 +2276,19 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
                   <div key={ap.id || idx} className="border border-purple-300 dark:border-purple-800 rounded-lg overflow-hidden">
                     <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 dark:bg-purple-950/30 border-b border-purple-200">
                       <ShieldCheck className="w-3.5 h-3.5 text-purple-700" />
-                      <span className="text-[11px] font-semibold text-purple-800">{field?.label ?? ap.field_id} — Plano R{idx + 1}</span>
+                      <span className="text-[11px] font-semibold text-purple-800">{field?.label ?? ap.field_id} — Plano R{ap.rodada}</span>
                       <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 ml-auto">Respondido</span>
                     </div>
-                    {ap.instrucao_aprovador && (
+                    {ap.instrucao && (
                       <div className="px-3 py-2 border-b border-border bg-muted/10">
-                        <p className="text-xs text-muted-foreground">{ap.instrucao_aprovador}</p>
+                        <p className="text-xs text-muted-foreground">{ap.instrucao}</p>
                       </div>
                     )}
                     <div className="px-3 py-2 space-y-2 border-b border-border">
                       <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Resposta do aprovador</p>
                       {itens.length === 0 && <p className="text-[11px] text-muted-foreground italic">Sem itens no plano</p>}
                       {itens.map((item: any, iIdx: number) => {
-                        const chave = `__auditor_plano__r${rodada}__${item.tipo}`;
-                        const dado = valorJson[chave];
+                        const dado: any = resp[item.tipo];
                         if (!dado) return <p key={iIdx} className="text-[11px] text-muted-foreground italic">Sem resposta para {item.titulo || item.tipo}</p>;
                         return (
                           <div key={iIdx} className="space-y-1">
@@ -2512,10 +2496,9 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium px-1">Respostas do Aprovador</p>
           {planosRespondidos.map((ap: any, idx: number) => {
             const field = fields.find((f: any) => f.id === ap.field_id);
-            const fieldAnswer = (flow.fieldAnswers as any[]).find((a: any) => a.field_id === ap.field_id);
-            const rodada = ap.rodada ?? 1;
             const itens: any[] = Array.isArray(ap.itens_plano) ? ap.itens_plano : [];
-            const valorJson = fieldAnswer?.valor_json ?? {};
+            // 🆕 Resposta direto da nova tabela (sem valor_json lookup).
+            const resp = ap.resposta_valor_json ?? {};
             const avaliacao = avaliacaoPlanos[ap.id];
             const expandR2 = expandirR2[ap.id];
             const plR2 = planosR2[ap.id] ?? { instrucao: "", itens: [] as any[], prazo: computePrazoAuditor() };
@@ -2524,20 +2507,19 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
               <div key={ap.id || idx} className="border border-purple-300 dark:border-purple-800 rounded-lg overflow-hidden">
                 <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 dark:bg-purple-950/30 border-b border-purple-200">
                   <ShieldCheck className="w-3.5 h-3.5 text-purple-700" />
-                  <span className="text-[11px] font-semibold text-purple-800">{field?.label ?? ap.field_id} — Plano R{idx + 1}</span>
+                  <span className="text-[11px] font-semibold text-purple-800">{field?.label ?? ap.field_id} — Plano R{ap.rodada}</span>
                   <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 ml-auto">Respondido</span>
                 </div>
-                {ap.instrucao_aprovador && (
+                {ap.instrucao && (
                   <div className="px-3 py-2 border-b border-border bg-muted/10">
-                    <p className="text-xs text-muted-foreground">{ap.instrucao_aprovador}</p>
+                    <p className="text-xs text-muted-foreground">{ap.instrucao}</p>
                   </div>
                 )}
                 <div className="px-3 py-2 space-y-2 border-b border-border">
                   <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Resposta do aprovador</p>
                   {itens.length === 0 && <p className="text-[11px] text-muted-foreground italic">Sem itens no plano</p>}
                   {itens.map((item: any, iIdx: number) => {
-                    const chave = `__auditor_plano__r${rodada}__${item.tipo}`;
-                    const dado = valorJson[chave];
+                    const dado: any = resp[item.tipo];
                     if (!dado) return <p key={iIdx} className="text-[11px] text-muted-foreground italic">Sem resposta para {item.titulo || item.tipo}</p>;
                     return (
                       <div key={iIdx} className="space-y-1">

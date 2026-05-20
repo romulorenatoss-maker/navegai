@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { SnapshotField } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import { useOperationalTransition } from "@/modules/tarefas/hooks/tarefas_useTransition";
+import { usePlanosAcao } from "@/modules/tarefas/hooks/tarefas_usePlanosAcao";
 
 export interface ApproverAnswerDraft {
   field_id: string;
@@ -34,6 +35,9 @@ export function useApprovalFlow(assignmentId: string | null) {
   const { profile } = useAuth();
   const qc = useQueryClient();
   const { transition } = useOperationalTransition();
+  // 🆕 Nova arquitetura: planos de ação separados por setor.
+  // RPCs + triggers fazem status automation. Doc: tarefas_arquitetura_planos_acao.md
+  const planosAcao = usePlanosAcao(assignmentId);
   const [approverAnswers, setApproverAnswers] = useState<Record<string, ApproverAnswerDraft>>({});
 
   // Load field answers
@@ -70,23 +74,9 @@ export function useApprovalFlow(assignmentId: string | null) {
     refetchOnWindowFocus: true,
   });
 
-  // Planos do auditor para o aprovador responder
-  const { data: planosDoAuditor = [] } = useQuery({
-    queryKey: ["operational_auditor_plans", assignmentId],
-    queryFn: async () => {
-      if (!assignmentId) return [];
-      const { data, error } = await (supabase as any).from("operational_field_reviews")
-        .select("*")
-        .eq("assignment_id", assignmentId)
-        .eq("criado_por_papel", "auditor")
-        .eq("destinatario_papel", "aprovador")
-        .order("rodada", { ascending: true });
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!assignmentId,
-    staleTime: 0,
-  });
+  // 🆕 planosDoAuditor agora vem do hook usePlanosAcao (nova tabela).
+  // Apelido para preservar API consumida por componentes existentes.
+  const planosDoAuditor = planosAcao.planosAuditor;
 
   // Load contingencies
   const { data: contingencies = [] } = useQuery({
@@ -422,60 +412,21 @@ export function useApprovalFlow(assignmentId: string | null) {
           });
         }
 
-        // 2b) Libera o campo no executor: marca devolvido=true em operational_field_reviews
-        // (mesmo padrão de devolverPerguntasParaRefazer; gate em useAssignmentExecution)
-        // Usa max(rodadas existentes para o field) + 1 para garantir que R3, R4... sejam criados
-        // corretamente mesmo quando assignment.rodada_atual ainda não foi incrementado.
-        const reviewsDoField = (fieldReviews as any[]).filter(
-          (r: any) => r.field_id === p.field_id && r.criado_por_papel !== "auditor"
-        );
-        const rodadaPA = reviewsDoField.length > 0
-          ? Math.max(...reviewsDoField.map((r: any) => r.rodada || 0)) + 1
-          : assignment.rodada_atual || 1;
-        const answerExecPA = (fieldAnswers as any[]).find((a: any) => a.field_id === p.field_id);
-        const reviewPayload: any = {
-          assignment_id: assignmentId,
-          field_id: p.field_id,
-          answer_id: answerExecPA?.id ?? null,
-          conforme: false,
-          devolvido: true,
-          motivo_devolucao: p.descricao_acao,
-          observacao: p.descricao_acao,
-          instrucao_aprovador: p.descricao_acao || (p.itens_plano?.map((i: any) => `${i.tipo}: ${i.titulo}`).join(" | ") ?? ""),
-          tipo_evidencia_exigida: (p as any).tipo_evidencia_exigida || "nenhuma",
-          itens_plano: (p as any).itens_plano || [],
-          anexo_orientacao_url: (p as any).anexo_orientacao_url ?? null,
-          anexo_orientacao_anexo_id: (p as any).anexo_orientacao_anexo_id ?? null,
-          anexo_orientacao_mime_type: (p as any).anexo_orientacao_mime_type ?? null,
-          rodada: rodadaPA,
-          avaliador_id: profile.id,
-          avaliado_em: new Date().toISOString(),
-        };
-        const existingReview = (fieldReviews as any[]).find(
-          (r: any) => r.field_id === p.field_id && r.rodada === rodadaPA && r.criado_por_papel !== "auditor"
-        );
-        if (existingReview) {
-          await (supabase as any).from("operational_field_reviews")
-            .update(reviewPayload).eq("id", existingReview.id);
-        } else {
-          await (supabase as any).from("operational_field_reviews").insert(reviewPayload);
-        }
+        // 2b) 🆕 Cria plano de ação na nova tabela dedicada (tarefas_planos_acao_aprovador)
+        // via RPC. Trigger automatiza status → devolvida. Sem colisão de rodada com auditor.
+        // Doc: src/modules/tarefas/docs/tarefas_rpc_aprovador_criar_plano_acao.md
+        await planosAcao.criarPlanoAprovador.mutateAsync({
+          assignmentId,
+          fieldId: p.field_id,
+          instrucao: p.descricao_acao || (p.itens_plano?.map((i: any) => `${i.tipo}: ${i.titulo}`).join(" | ") ?? ""),
+          itensPlano: (p.itens_plano || []) as any,
+          prazoResolucao: p.prazo_iso,
+          criticidade: p.criticidade,
+        });
       }
 
-      // 3) Dispara devolução final consolidada → status EM_PLANO_ACAO via solicitar_plano_acao
-      // Mantém uso de reprovar_devolver_final para preservar comportamento (rodada++).
-      await transition.mutateAsync({
-        assignmentId,
-        action: "reprovar_devolver_final",
-        motivo: motivoGeral || `${planos.length} plano(s) de ação registrado(s) pelo aprovador`,
-        origem: "aprovacao_plano_acao_final",
-        extraData: {
-          aprovadorId: profile.id,
-          rodadaAtual: assignment.rodada_atual,
-          total_planos: planos.length,
-          planos_com_prazo_alterado: planos.filter(p => p.prazo_alterado).length,
-        },
-      });
+      // 3) 🆕 Status já foi alterado pelo trigger AFTER INSERT da RPC acima.
+      // Não precisa mais chamar transition.mutateAsync — trigger faz devolvida automático.
 
       await (supabase as any).from("operational_execution_logs").insert({
         assignment_id: assignmentId,

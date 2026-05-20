@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { SnapshotField } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import { useOperationalTransition } from "@/modules/tarefas/hooks/tarefas_useTransition";
+import { usePlanosAcao } from "@/modules/tarefas/hooks/tarefas_usePlanosAcao";
 
 export interface AuditorAnswerDraft {
   field_id: string;
@@ -24,6 +25,9 @@ export function useAuditFlow(assignmentId: string | null) {
   const { profile } = useAuth();
   const qc = useQueryClient();
   const { transition } = useOperationalTransition();
+  // 🆕 Nova arquitetura: planos de ação separados por setor.
+  // RPCs + triggers fazem status automation. Doc: tarefas_arquitetura_planos_acao.md
+  const planosAcao = usePlanosAcao(assignmentId);
   const [auditorAnswers, setAuditorAnswers] = useState<Record<string, AuditorAnswerDraft>>({});
 
   // Respostas do executor (para herança)
@@ -130,22 +134,9 @@ export function useAuditFlow(assignmentId: string | null) {
     onError: (e: any) => toast.error(`Erro ao salvar: ${e.message}`),
   });
 
-  // Planos do auditor para o aprovador
-  const { data: fieldReviewsAuditor = [] } = useQuery({
-    queryKey: ["operational_audit_field_reviews", assignmentId],
-    queryFn: async () => {
-      if (!assignmentId) return [];
-      const { data, error } = await (supabase as any)
-        .from("operational_field_reviews")
-        .select("*")
-        .eq("assignment_id", assignmentId)
-        .eq("criado_por_papel", "auditor");
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!assignmentId,
-    staleTime: 0,
-  });
+  // 🆕 fieldReviewsAuditor agora vem do hook usePlanosAcao (tabela nova).
+  // Apelido para preservar API consumida por componentes existentes.
+  const fieldReviewsAuditor = planosAcao.planosAuditor;
 
   // TODOS os field_reviews (incluindo do aprovador) — para metricas de prorrogacao/atraso
   const { data: allFieldReviews = [] } = useQuery({
@@ -190,47 +181,27 @@ export function useAuditFlow(assignmentId: string | null) {
       prazoIso: string;
     }) => {
       if (!profile?.id || !assignmentId) throw new Error("Nao autenticado");
-      // Rodada maxima entre TODOS os reviews do campo (aprovador + auditor)
-      const { data: todosReviews } = await (supabase as any)
-        .from("operational_field_reviews")
-        .select("rodada")
-        .eq("assignment_id", assignmentId)
-        .eq("field_id", perguntaId);
-      const rodadaAtual = ((todosReviews as any[]) ?? [])
-        .reduce((max: number, r: any) => Math.max(max, r.rodada ?? 0), 0) + 1;
-
-      const payload = {
-        assignment_id: assignmentId,
-        field_id: perguntaId,
-        avaliador_id: profile.id,
-        instrucao_aprovador: instrucao,
-        itens_plano: itensPlano,
-        devolvido: true,
-        rodada: rodadaAtual,
-        criado_por_papel: "auditor",
-        destinatario_papel: "aprovador",
-        avaliado_em: new Date().toISOString(),
-      };
-      const { error: insertError } = await (supabase as any).from("operational_field_reviews").insert(payload);
-      if (insertError) throw new Error(`Erro ao criar plano: ${insertError.message}`);
-      // Muda status para aguardando_aprovacao
-      const { error: updateError } = await (supabase as any)
-        .from("operational_assignments")
-        .update({ status: "aguardando_aprovacao", updated_at: new Date().toISOString() })
-        .eq("id", assignmentId);
-      if (updateError) throw new Error(`Erro ao atualizar status: ${updateError.message}`);
+      // 🆕 Cria via RPC na tabela tarefas_planos_acao_auditor.
+      // Trigger automatiza status → aguardando_aprovacao. Rodada calculada na RPC.
+      // Doc: src/modules/tarefas/docs/tarefas_rpc_auditor_criar_plano_acao.md
+      await planosAcao.criarPlanoAuditor.mutateAsync({
+        assignmentId,
+        fieldId: perguntaId,
+        instrucao,
+        itensPlano: itensPlano as any,
+        prazoResolucao: prazoIso,
+        criticidade: "media",
+      });
+      // Log de auditoria (segue separado, fora da RPC)
       await (supabase as any).from("operational_execution_logs").insert({
         assignment_id: assignmentId,
         acao: "auditor_criou_plano",
         executado_por: profile.id,
-        detalhes: { pergunta_id: perguntaId, pergunta_label: perguntaLabel, rodada: rodadaAtual },
+        detalhes: { pergunta_id: perguntaId, pergunta_label: perguntaLabel },
       });
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["operational_audit_field_reviews", assignmentId] });
-      qc.invalidateQueries({ queryKey: ["operational_auditor_plans", assignmentId] });
       qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
-      toast.success("Plano criado e enviado ao aprovador.");
     },
     onError: (e: any) => toast.error(e.message),
   });

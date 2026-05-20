@@ -241,6 +241,9 @@ export function TabTarefasExecutadas({ templateId }: Props) {
       // Field reviews and answers
       await (supabase as any).from("operational_field_reviews").delete().eq("assignment_id", id);
       await (supabase as any).from("operational_field_answers").delete().eq("assignment_id", id);
+      // 🆕 Espelho nas tabelas novas (Regra 0.7 — verdade única, sem dado órfão)
+      await (supabase as any).from("tarefas_planos_acao_aprovador").delete().eq("assignment_id", id);
+      await (supabase as any).from("tarefas_planos_acao_auditor").delete().eq("assignment_id", id);
       // Execution data
       await (supabase as any).from("operational_execution_check_answers").delete().eq("assignment_id", id);
       await (supabase as any).from("operational_execution_step_logs").delete().eq("assignment_id", id);
