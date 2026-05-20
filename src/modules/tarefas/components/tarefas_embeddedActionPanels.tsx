@@ -546,8 +546,8 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   };
 
   // Bloqueio: se status aguardando_auditoria sem planos do auditor pendentes → somente leitura
-  const emAuditoria = assignment?.status === "aguardando_auditoria";
   const planosAuditorPendentes = (flow.planosDoAuditor as any[]).filter((p: any) => !p.respondido);
+  const emAuditoria = assignment?.status === "aguardando_auditoria" && planosAuditorPendentes.length === 0;
 
   if (false && planosAuditorPendentes.length > 0) {
     return (
@@ -737,137 +737,6 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           <p className="text-xs text-blue-800 font-medium">Aguardando auditoria — somente leitura</p>
         </div>
       )}
-      {/* Planos do auditor — pendentes com inputs ativos, respondidos somente leitura */}
-      {(() => {
-        const auditPlans = (flow.planosDoAuditor as any[]) ?? [];
-        if (auditPlans.length === 0) return null;
-        const pendentes = auditPlans.filter((p: any) => !p.respondido);
-        return (
-          <div className="space-y-2 mb-2">
-            {pendentes.length > 0 && (
-              <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 rounded-lg p-3 flex items-start gap-2">
-                <ShieldCheck className="w-4 h-4 text-purple-700 shrink-0 mt-0.5" />
-                <div className="text-xs text-purple-800">
-                  O auditor criou {pendentes.length} plano(s) de ação. Responda antes de continuar.
-                </div>
-              </div>
-            )}
-            {auditPlans.map((auditPlan: any, idx: number) => {
-              const itens: Array<{tipo:string;titulo:string;obrigatorio:boolean}> = Array.isArray(auditPlan.itens_plano) ? auditPlan.itens_plano : [];
-              const perguntaId = auditPlan.field_id;
-              const rodada = auditPlan.rodada ?? 1;
-              const pendente = !auditPlan.respondido;
-              const fieldAnswer = (flow.fieldAnswers as any[]).find((a: any) => a.field_id === perguntaId);
-              const valorJson = fieldAnswer?.valor_json ?? {};
-              return (
-                <div key={idx} className="border border-purple-300 dark:border-purple-800 rounded-lg overflow-hidden">
-                  <div className="flex items-center justify-between px-3 py-2 bg-purple-50 dark:bg-purple-950/30 border-b border-purple-200">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-3.5 h-3.5 text-purple-700 shrink-0" />
-                      <span className="text-[11px] font-semibold text-purple-800">Plano do Auditor — R{idx + 1}</span>
-                      {!pendente && <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Respondido</span>}
-                    </div>
-                    <span className="text-[10px] text-muted-foreground">{auditPlan.avaliado_em ? new Date(auditPlan.avaliado_em).toLocaleString("pt-BR", {day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : ""}</span>
-                  </div>
-                  <div className="px-3 py-2 space-y-2">
-                    {auditPlan.instrucao_aprovador && <p className="text-xs text-foreground">{auditPlan.instrucao_aprovador}</p>}
-                    {itens.length > 0 && (
-                      <div className="space-y-2">
-                        {itens.map((item, iIdx) => {
-                          const chave = `__auditor_plano__r${rodada}__${item.tipo}`;
-                          const dado = valorJson[chave];
-                          const temResposta = !!(dado?.evidencia_url || dado?.valor_texto);
-                          const itemFieldId = `${perguntaId}__auditor_plano__r${rodada}__${item.tipo}`;
-                          return (
-                            <div key={iIdx} className="space-y-1">
-                              {item.titulo && <p className="text-[11px] text-purple-800 font-medium">{item.titulo}</p>}
-                              {temResposta ? (
-                                (item.tipo === "texto" || item.tipo === "descricao") ? (
-                                  <div className="bg-card border border-border rounded p-2">
-                                    <p className="text-xs">{dado.valor_texto}</p>
-                                  </div>
-                                ) : (
-                                  <EvidenciaPreview
-                                    anexoId={dado.evidencia_anexo_id ?? null}
-                                    url={dado.evidencia_url}
-                                    mimeType={dado.evidencia_mime_type ?? null}
-                                    disabled
-                                  />
-                                )
-                              ) : pendente ? (
-                                (item.tipo === "texto" || item.tipo === "descricao") ? (
-                                  <textarea
-                                    placeholder={`${item.titulo || "Descreva"}...`}
-                                    rows={3}
-                                    className="w-full text-xs rounded border border-purple-300 bg-white px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-purple-400"
-                                    onChange={e => {
-                                      flow.updateApproverAnswer(itemFieldId, { resposta: e.target.value } as any);
-                                    }}
-                                  />
-                                ) : (
-                                  <label className="flex items-center justify-center gap-2 border border-dashed border-purple-400 rounded-lg p-4 cursor-pointer hover:border-purple-600 transition-colors min-h-[52px]">
-                                    <Upload className="w-3.5 h-3.5 text-purple-600" />
-                                    <span className="text-xs text-purple-800 font-medium">
-                                      {item.tipo === "foto" ? "Tirar foto" : item.tipo === "video" ? "Gravar video" : "Gravar audio"} *
-                                    </span>
-                                    <input type="file" className="hidden"
-                                      accept={item.tipo === "foto" ? "image/*" : item.tipo === "video" ? "video/*" : "audio/*"}
-                                      capture="environment"
-                                      onChange={async e => {
-                                        const file = e.target.files?.[0];
-                                        if (!file) return;
-                                        const { data: sess } = await supabase.auth.getSession();
-                                        const token = sess.session?.access_token;
-                                        if (!token) return;
-                                        const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
-                                        const fd = new FormData();
-                                        fd.append("file", file);
-                                        fd.append("contexto_tipo", "aprovacao");
-                                        fd.append("contexto_ref_id", perguntaId);
-                                        if (assignment?.id) fd.append("assignment_id", assignment.id);
-                                        const res = await fetch(`${FN_BASE}/tarefas-storage-upload`, { method:"POST", headers:{Authorization:`Bearer ${token}`}, body:fd });
-                                        const json = await res.json();
-                                        if (json.ok) {
-                                          const existing = (flow.fieldAnswers as any[]).find((a:any) => a.field_id === perguntaId);
-                                          const novoJson = { ...(existing?.valor_json ?? {}), [chave]: { evidencia_url: json.anexo.path_relativo, evidencia_anexo_id: json.anexo.id, evidencia_mime_type: json.anexo.mime_type ?? file.type } };
-                                          await (supabase as any).from("operational_field_answers").upsert({ assignment_id: assignment?.id, field_id: perguntaId, valor_json: novoJson }, { onConflict: "assignment_id,field_id" });
-                                          (flow as any).scheduleAutoSave && (flow as any).scheduleAutoSave(perguntaId, {} as any);
-                                        }
-                                      }}
-                                    />
-                                  </label>
-                                )
-                              ) : (
-                                <p className="text-[10px] text-muted-foreground italic">Aguardando resposta...</p>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            {pendentes.length > 0 && (
-              <Button type="button" className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-                onClick={async () => {
-                  await (supabase as any).from("operational_field_reviews")
-                    .update({ respondido: true, updated_at: new Date().toISOString() })
-                    .in("id", pendentes.map((p:any) => p.id));
-                  await (supabase as any).from("operational_assignments")
-                    .update({ status: "aguardando_auditoria", updated_at: new Date().toISOString() })
-                    .eq("id", assignment?.id);
-                  toast.success("Resposta enviada ao auditor.");
-                  onClose();
-                }}>
-                Enviar resposta ao auditor
-              </Button>
-            )}
-          </div>
-        );
-      })()}
-
       <div className="bg-card border border-border rounded-lg p-3">
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Resumo</p>
         <div className="grid grid-cols-3 gap-2 text-xs">
