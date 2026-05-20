@@ -190,14 +190,25 @@ canApproverFinalize =
 ## Constraint `operational_score_logs.tipo_score`
 
 ```sql
-CHECK (tipo_score IN ('executor', 'avaliado', 'auditor'))
+CHECK (tipo_score IN ('executor', 'avaliado', 'auditor', 'aprovador'))
 ```
 
-- `executor` → nota do aprovador avaliando o executor
-- `avaliado` → nota técnica do avaliador (legado)
-- `auditor` → nota DADA PELO AUDITOR avaliando o aprovador (target_profile_id = aprovador_id)
+**Histórico:** o constraint original (migration `20260514051025`) só aceitava
+`('executor','avaliado','auditor')`. Mas a função de trigger
+`recalcular_score_assignment` (migration `20260514183227`) inseria com
+`'aprovador'` quando `score_aprovador IS NOT NULL` — gerando violação ao
+confirmar auditoria. Migration `20260520130000` resolveu adicionando
+`'aprovador'` ao CHECK.
 
-**Atenção:** valores como `"auditoria"`, `"aprovacao"`, `"aprovador"` NÃO existem e violam o constraint.
+**Significado semântico (por destinatário):**
+- `executor` → score do executor (target_profile_id = responsavel_id)
+- `avaliado` → score do avaliado (legado, target = avaliado_id)
+- `auditor` → score do auditor (target = auditor_id, geralmente fan-out por setor)
+- `aprovador` → score que o auditor deu para o aprovador (target = aprovador_id)
+
+**Fonte da verdade:** o trigger `recalcular_score_assignment` é chamado em
+toda transição de status final e popula score_logs derivando de
+`operational_assignments.score_executor / score_avaliado / score_auditor / score_aprovador`.
 
 ---
 
