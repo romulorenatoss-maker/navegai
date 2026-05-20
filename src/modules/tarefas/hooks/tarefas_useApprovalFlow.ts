@@ -581,7 +581,7 @@ export function useApprovalFlow(assignmentId: string | null) {
         origem: "aprovacao_devolver_perguntas",
         extraData: {
           aprovadorId: profile.id,
-          rodadaAtual: rodada,
+          rodadaAtual: assignment.rodada_atual || 1,
           total_perguntas_devolvidas: perguntas.length,
           modo: "devolver_perguntas_sem_plano",
         },
