@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { useAssignmentReview } from "@/modules/tarefas/hooks/tarefas_useAssignmentReview";
 import { useApprovalFlow } from "@/modules/tarefas/hooks/tarefas_useApprovalFlow";
 import { useAuditFlow } from "@/modules/tarefas/hooks/tarefas_useAuditFlow";
+import { useFlowPermissions } from "@/modules/tarefas/hooks/tarefas_useFlowPermissions";
 import { ReviewFieldCard } from "@/modules/tarefas/components/tarefas_reviewFieldCard";
 import { EvidenciaPreview } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import { SnapshotField, evaluateVisibility } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
@@ -412,6 +413,10 @@ const getDefaultReviewAction = (rule: ReviewRule | null): "plano" | "devolver" =
 export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalProps) {
   const { profile } = useAuth();
   const flow = useApprovalFlow(assignment?.id || null);
+
+  // ⚠️ FONTE ÚNICA DE VERDADE para travas/permissões neste painel
+  // Todas as decisões de UI devem consultar `perms`, NUNCA checar status direto.
+  const perms = useFlowPermissions(assignment, profile, false, []);
   const [step, setStep] = useState<"perguntas" | "plano">("perguntas");
   const [motivoFinal, setMotivoFinal] = useState("");
   const [acaoPorNC, setAcaoPorNC] = useState<Record<string, "plano" | "devolver">>({});
@@ -604,20 +609,14 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     }
   };
 
-  // Bloqueio: se status aguardando_auditoria sem planos do auditor pendentes → somente leitura
+  // ▼▼▼ TUDO ABAIXO É DERIVADO DE `perms` — NÃO DUPLICAR LÓGICA AQUI ▼▼▼
+  // Aliases legados para minimizar diff nos JSX que já existiam abaixo.
   const planosAuditorPendentes = (flow.planosDoAuditor as any[]).filter((p: any) => !p.respondido);
-  const emAuditoria = assignment?.status === "aguardando_auditoria";
-  const fieldsDevolvidos = new Set(planosAuditorPendentes.map((p: any) => p.field_id));
-
-  // Exceção: modo restrito = emAuditoria OU tem planos do auditor pendentes (mesmo status aguardando_aprovacao)
-  // Quando auditor cria plano e devolve, status vira aguardando_aprovacao — mas o lock deve continuar
-  const temPlanosAuditorPendentes = planosAuditorPendentes.length > 0;
-  const emModoRestrito = emAuditoria || temPlanosAuditorPendentes;
-
-  // Exceção: nome do responsável pela auditoria — para tooltip e banner
-  const nomeAuditorResp = assignment?.auditor?.nome ?? assignment?.profiles_audit?.nome ?? null;
-  const nomeSetorAuditorResp = assignment?.setor_auditor?.nome ?? null;
-  const nomeResponsavelAuditoria = nomeAuditorResp ?? nomeSetorAuditorResp ?? "auditor";
+  const emAuditoria = perms.status === "aguardando_auditoria";
+  const fieldsDevolvidos = perms.fieldsDevolvidosPeloAuditor;
+  const temPlanosAuditorPendentes = perms.hasAuditorPlansPending;
+  const emModoRestrito = perms.approverPanelRestricted;
+  const nomeResponsavelAuditoria = perms.responsavelAtual;
 
   // ── Modal Confirmar Aprovação ─────────────────────────────────────────────
   if (showAprovarModal) {
@@ -1067,13 +1066,11 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
 
   return (
     <div className="space-y-3">
-      {emModoRestrito && (
+      {perms.approverPanelRestricted && perms.approverLockMessage && (
         <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border-2 border-red-400 rounded-lg shadow-sm">
           <span className="text-lg shrink-0">🔒</span>
           <p className="text-xs text-red-800 dark:text-red-300 font-semibold">
-            {temPlanosAuditorPendentes
-              ? `🔒 BLOQUEADO — Auditor devolveu ${fieldsDevolvidos.size} item(s) · responda apenas esse(s)`
-              : `🔒 BLOQUEADO — Aguardando ${nomeResponsavelAuditoria} avaliar · edição travada`}
+            {perms.approverLockMessage}
           </p>
         </div>
       )}
@@ -1364,7 +1361,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                           {/* Botões Conforme / Não Conforme no plano — só no último plano, e só se não bloqueado por auditoria */}
 
 
-                          {idx === planosDoField.length - 1 && (!emModoRestrito || fieldsDevolvidos.has(f.id)) && (
+                          {idx === planosDoField.length - 1 && (perms.canApproverDecideField(f.id)) && (
                             <div className="px-3 py-2 flex gap-2">
                               <button type="button" onClick={() => handleResposta(f, "conforme")}
                                 className={`flex-1 text-xs px-2 py-2 rounded border font-medium transition-colors ${value === "conforme" ? "bg-emerald-100 border-emerald-500 text-emerald-800" : "border-border text-muted-foreground hover:bg-muted"}`}>
@@ -1382,7 +1379,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                             </div>
                           )}
                           {/* Formulario de novo plano inline (R2+) - mesmo layout do R1 */}
-                          {idx === planosDoField.length - 1 && (!emModoRestrito || fieldsDevolvidos.has(f.id)) && expandirNovoPlano[f.id] && (() => {
+                          {idx === planosDoField.length - 1 && (perms.canApproverDecideField(f.id)) && expandirNovoPlano[f.id] && (() => {
                             const p = planos[f.id] || { descricao_acao: "", prazo: computeDefaultPrazo(), prazo_padrao: computeDefaultPrazo(), justificativa_alteracao_prazo: "", criticidade: "media" as const, tipo_evidencia_exigida: "descricao" as const, itens_plano: [] as ItemPlano[], anexo_orientacao_url: null as string | null, anexo_orientacao_anexo_id: null as string | null, anexo_orientacao_mime_type: null as string | null };
                             const updateP = (patch: any) => setPlanos(prev => { const cur = prev[f.id] ?? p; return { ...prev, [f.id]: { ...cur, ...patch } }; });
                             const ITENS_R2 = [
@@ -1456,7 +1453,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                 })()}
 
                 {/* Sem planos ainda — botões normais do aprovador + plano de ação inline */}
-                {(flow.fieldReviews as any[]).filter((r: any) => r.field_id === f.id && r.devolvido === true && r.criado_por_papel !== "auditor").length === 0 && (!emModoRestrito || fieldsDevolvidos.has(f.id)) && (
+                {(flow.fieldReviews as any[]).filter((r: any) => r.field_id === f.id && r.devolvido === true && r.criado_por_papel !== "auditor").length === 0 && (perms.canApproverDecideField(f.id)) && (
                   <div className="px-3 py-2.5 space-y-2 border-t border-border">
                     <div className="flex gap-2">
                       {getReviewOptions(f, "aprovador").map((opt) => (
@@ -1569,12 +1566,12 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
       <div className="flex flex-wrap gap-2 pt-2 sticky bottom-0 bg-background pb-1 border-t border-border">
         {false && null}
         <div className="flex-1" />
-        {emModoRestrito ? (
+        {perms.approverPanelRestricted ? (
           <Button
             type="button" size="sm"
             onClick={() => setShowAprovarModal(true)}
-            disabled={flow.isSaving || fieldsDevolvidos.size === 0}
-            title={fieldsDevolvidos.size === 0 ? `Aguardando ${nomeResponsavelAuditoria} avaliar` : undefined}
+            disabled={flow.isSaving || !perms.canApproverFinalize}
+            title={perms.approverButtonTooltip ?? undefined}
             className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="w-3.5 h-3.5 mr-1" />
@@ -1624,6 +1621,9 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
   const flow = useAuditFlow(assignment?.id || null);
   const { profile } = useAuth();
   const qc = useQueryClient();
+
+  // ⚠️ FONTE ÚNICA DE VERDADE — auditor só age em aguardando_auditoria
+  const perms = useFlowPermissions(assignment, profile, false, []);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [motivoFinal, setMotivoFinal] = useState("");
   const [respostasAuto, setRespostasAuto] = useState<Record<string, { na: boolean; justificativa: string }>>({});
