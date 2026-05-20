@@ -135,7 +135,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetch = async () => {
       setLoading(true);
-
+      try {
       const from = startDate ? startOfDay(startDate).toISOString() : startOfMonth(now).toISOString();
       const to = endDate ? endOfDay(endDate).toISOString() : endOfMonth(now).toISOString();
 
@@ -158,7 +158,6 @@ export default function DashboardPage() {
 
       if (!osData || osData.length === 0) {
         setAllOS([]);
-        setLoading(false);
         return;
       }
 
@@ -224,8 +223,13 @@ export default function DashboardPage() {
       });
 
       setAllOS(result);
-      setLoading(false);
+      } catch (err) {
+        console.error("[DashboardPage] fetch OS falhou:", err);
+      } finally {
+        setLoading(false);
+      }
     };
+
 
     fetch();
   }, [searchTrigger]);
@@ -399,7 +403,7 @@ export default function DashboardPage() {
       setPendingOtherSector(otherPending);
       setCompletedOS(completed.slice(0, 20)); // limit to last 20
     };
-    fetchPending();
+    fetchPending().catch((err) => console.error("[DashboardPage] fetchPending falhou:", err));
   }, [profile, isAdmin, searchTrigger]);
 
   // Fetch ranking + scores
@@ -551,8 +555,8 @@ export default function DashboardPage() {
       setSetorMedias(sMedias);
     };
 
-    fetchRanking();
-    fetchScores();
+    fetchRanking().catch((err) => console.error("[DashboardPage] fetchRanking falhou:", err));
+    fetchScores().catch((err) => console.error("[DashboardPage] fetchScores falhou:", err));
   }, [searchTrigger]);
 
   // Split OS by status
