@@ -1,3 +1,4 @@
+// build: 2026-05-20 — isAprovadorView/isAuditorView + useFlowPermissions
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
