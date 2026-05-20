@@ -1304,7 +1304,7 @@ export default function OperationalExecucaoPage() {
               </div>
             )}
 
-            {isEditable && selectedAssignment?.status !== "pendente" && (
+            {isEditable && selectedAssignment?.status !== "pendente" && viewMode === "registro" && (
               <>
                 {snapshotSections.length === 0 ? (
                   <div className="space-y-3">
@@ -1420,7 +1420,7 @@ export default function OperationalExecucaoPage() {
               />
             )}
 
-            {!isEditable && selectedAssignment && (isAprovadorView || isAuditorView) && viewMode === "aprovacao" && (
+            {selectedAssignment && (isAprovadorView || isAuditorView) && viewMode === "aprovacao" && (
               <EmbeddedApprovalPanel
                 assignment={selectedAssignment}
                 fields={effectiveFields}
@@ -1428,7 +1428,7 @@ export default function OperationalExecucaoPage() {
               />
             )}
 
-            {!isEditable && selectedAssignment && isAuditorView && viewMode === "auditor" && (
+            {selectedAssignment && isAuditorView && viewMode === "auditor" && (
               <EmbeddedAuditPanel
                 assignment={selectedAssignment}
                 fields={effectiveFields}
