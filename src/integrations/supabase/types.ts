@@ -4896,6 +4896,158 @@ export type Database = {
           },
         ]
       }
+      tarefas_planos_acao_aprovador: {
+        Row: {
+          assignment_id: string
+          criado_em: string
+          criado_por: string | null
+          criticidade: string | null
+          deleted_at: string | null
+          field_id: string
+          id: string
+          instrucao: string | null
+          itens_plano: Json
+          prazo_resolucao: string | null
+          respondido: boolean
+          respondido_em: string | null
+          respondido_por: string | null
+          resposta_valor_json: Json | null
+          rodada: number
+        }
+        Insert: {
+          assignment_id: string
+          criado_em?: string
+          criado_por?: string | null
+          criticidade?: string | null
+          deleted_at?: string | null
+          field_id: string
+          id?: string
+          instrucao?: string | null
+          itens_plano?: Json
+          prazo_resolucao?: string | null
+          respondido?: boolean
+          respondido_em?: string | null
+          respondido_por?: string | null
+          resposta_valor_json?: Json | null
+          rodada: number
+        }
+        Update: {
+          assignment_id?: string
+          criado_em?: string
+          criado_por?: string | null
+          criticidade?: string | null
+          deleted_at?: string | null
+          field_id?: string
+          id?: string
+          instrucao?: string | null
+          itens_plano?: Json
+          prazo_resolucao?: string | null
+          respondido?: boolean
+          respondido_em?: string | null
+          respondido_por?: string | null
+          resposta_valor_json?: Json | null
+          rodada?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tarefas_planos_acao_aprovador_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tarefas_planos_acao_aprovador_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tarefas_planos_acao_aprovador_respondido_por_fkey"
+            columns: ["respondido_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tarefas_planos_acao_auditor: {
+        Row: {
+          assignment_id: string
+          criado_em: string
+          criado_por: string | null
+          criticidade: string | null
+          deleted_at: string | null
+          field_id: string
+          id: string
+          instrucao: string | null
+          itens_plano: Json
+          prazo_resolucao: string | null
+          respondido: boolean
+          respondido_em: string | null
+          respondido_por: string | null
+          resposta_valor_json: Json | null
+          rodada: number
+        }
+        Insert: {
+          assignment_id: string
+          criado_em?: string
+          criado_por?: string | null
+          criticidade?: string | null
+          deleted_at?: string | null
+          field_id: string
+          id?: string
+          instrucao?: string | null
+          itens_plano?: Json
+          prazo_resolucao?: string | null
+          respondido?: boolean
+          respondido_em?: string | null
+          respondido_por?: string | null
+          resposta_valor_json?: Json | null
+          rodada: number
+        }
+        Update: {
+          assignment_id?: string
+          criado_em?: string
+          criado_por?: string | null
+          criticidade?: string | null
+          deleted_at?: string | null
+          field_id?: string
+          id?: string
+          instrucao?: string | null
+          itens_plano?: Json
+          prazo_resolucao?: string | null
+          respondido?: boolean
+          respondido_em?: string | null
+          respondido_por?: string | null
+          resposta_valor_json?: Json | null
+          rodada?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tarefas_planos_acao_auditor_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tarefas_planos_acao_auditor_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tarefas_planos_acao_auditor_respondido_por_fkey"
+            columns: ["respondido_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tarefas_pontuacao_config: {
         Row: {
           aprovador_pacote_padrao: Json
@@ -5770,6 +5922,124 @@ export type Database = {
       sync_user_role: {
         Args: { _cargo: string; _user_id: string }
         Returns: undefined
+      }
+      tarefas_rpc_aprovador_criar_plano_acao: {
+        Args: {
+          p_assignment_id: string
+          p_criticidade?: string
+          p_field_id: string
+          p_instrucao: string
+          p_itens_plano: Json
+          p_prazo_resolucao: string
+        }
+        Returns: {
+          assignment_id: string
+          criado_em: string
+          criado_por: string | null
+          criticidade: string | null
+          deleted_at: string | null
+          field_id: string
+          id: string
+          instrucao: string | null
+          itens_plano: Json
+          prazo_resolucao: string | null
+          respondido: boolean
+          respondido_em: string | null
+          respondido_por: string | null
+          resposta_valor_json: Json | null
+          rodada: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tarefas_planos_acao_aprovador"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      tarefas_rpc_aprovador_responder_plano_auditor: {
+        Args: { p_plano_id: string; p_resposta_valor_json: Json }
+        Returns: {
+          assignment_id: string
+          criado_em: string
+          criado_por: string | null
+          criticidade: string | null
+          deleted_at: string | null
+          field_id: string
+          id: string
+          instrucao: string | null
+          itens_plano: Json
+          prazo_resolucao: string | null
+          respondido: boolean
+          respondido_em: string | null
+          respondido_por: string | null
+          resposta_valor_json: Json | null
+          rodada: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tarefas_planos_acao_auditor"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      tarefas_rpc_auditor_criar_plano_acao: {
+        Args: {
+          p_assignment_id: string
+          p_criticidade?: string
+          p_field_id: string
+          p_instrucao: string
+          p_itens_plano: Json
+          p_prazo_resolucao: string
+        }
+        Returns: {
+          assignment_id: string
+          criado_em: string
+          criado_por: string | null
+          criticidade: string | null
+          deleted_at: string | null
+          field_id: string
+          id: string
+          instrucao: string | null
+          itens_plano: Json
+          prazo_resolucao: string | null
+          respondido: boolean
+          respondido_em: string | null
+          respondido_por: string | null
+          resposta_valor_json: Json | null
+          rodada: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tarefas_planos_acao_auditor"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      tarefas_rpc_executor_responder_plano_aprovador: {
+        Args: { p_plano_id: string; p_resposta_valor_json: Json }
+        Returns: {
+          assignment_id: string
+          criado_em: string
+          criado_por: string | null
+          criticidade: string | null
+          deleted_at: string | null
+          field_id: string
+          id: string
+          instrucao: string | null
+          itens_plano: Json
+          prazo_resolucao: string | null
+          respondido: boolean
+          respondido_em: string | null
+          respondido_por: string | null
+          resposta_valor_json: Json | null
+          rodada: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tarefas_planos_acao_aprovador"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       user_has_avaliacao_on_os: {
         Args: { _os_id: string; _user_id: string }
