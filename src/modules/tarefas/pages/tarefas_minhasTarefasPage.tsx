@@ -687,7 +687,11 @@ export default function OperationalExecucaoPage() {
       (selectedAssignment.aprovador_id === null && selectedAssignment.created_by === profile?.id)
     )
     && selectedAssignment.status === "aguardando_aprovacao";
+  // Exceção: aba Auditor só abre quando (1) há auditor configurado na tarefa E
+  // (2) status é aguardando_auditoria — nunca durante aguardando_aprovacao.
+  const temAuditorConfigurado = !!(selectedAssignment?.auditor_id || selectedAssignment?.setor_auditor_id);
   const isAuditorMode = !!selectedAssignment
+    && temAuditorConfigurado
     && (
       selectedAssignment.auditor_id === profile?.id ||
       isAdmin ||
@@ -695,7 +699,7 @@ export default function OperationalExecucaoPage() {
        selectedAssignment.setor_auditor_id &&
        meusSetorIds.includes(selectedAssignment.setor_auditor_id))
     )
-    && ["aguardando_auditoria", "aguardando_aprovacao"].includes(selectedAssignment.status);
+    && selectedAssignment.status === "aguardando_auditoria";
 
   const isEditable = selectedAssignment && !isAprovadorMode && !isAvaliadorMode && !isAuditorMode && (
     (["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || isAdmin)) ||
