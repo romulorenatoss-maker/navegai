@@ -764,7 +764,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   <div className="flex items-center justify-between px-3 py-2 bg-purple-50 dark:bg-purple-950/30 border-b border-purple-200">
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="w-3.5 h-3.5 text-purple-700 shrink-0" />
-                      <span className="text-[11px] font-semibold text-purple-800">Plano do Auditor — {auditPlan.instrucao_aprovador ? `"${auditPlan.instrucao_aprovador.slice(0,30)}"` : `R${rodada}`}</span>
+                      <span className="text-[11px] font-semibold text-purple-800">Plano do Auditor — R{idx + 1}</span>
                       {!pendente && <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Respondido</span>}
                     </div>
                     <span className="text-[10px] text-muted-foreground">{auditPlan.avaliado_em ? new Date(auditPlan.avaliado_em).toLocaleString("pt-BR", {day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : ""}</span>
