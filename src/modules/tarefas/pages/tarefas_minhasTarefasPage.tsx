@@ -779,6 +779,21 @@ export default function OperationalExecucaoPage() {
     });
   };
 
+  const handleIniciarDevolvida = () => {
+    if (!selectedAssignment) return;
+    exec.startTask.mutate({
+      assignmentId: selectedAssignment.id,
+      horarioInicioPrevisto: selectedAssignment.horario_inicio_previsto || null,
+      dataPrevista: selectedAssignment.data_prevista || null,
+    }, {
+      onSuccess: () => {
+        setSelectedAssignment({ ...selectedAssignment, status: "em_andamento" });
+        qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
+        toast.success("Tarefa iniciada! Responda ao plano de ação.");
+      },
+    });
+  };
+
   const handleAprovarRecebimento = async () => {
     if (!selectedAssignment) return;
     try {
@@ -1443,6 +1458,10 @@ export default function OperationalExecucaoPage() {
               ) : hasSections && !isLastSection ? (
                 <Button type="button" size="sm" onClick={goToNextSection}>
                   Próxima Etapa <ChevronDown className="w-3.5 h-3.5 ml-1 -rotate-90" />
+                </Button>
+              ) : selectedAssignment?.status === "devolvida" ? (
+                <Button type="button" size="sm" onClick={handleIniciarDevolvida} disabled={exec.startTask.isPending}>
+                  <Play className="w-3.5 h-3.5 mr-1" /> {exec.startTask.isPending ? "Iniciando..." : "Iniciar para Responder"}
                 </Button>
               ) : (
                 <Button type="button" size="sm" onClick={handleSubmit} disabled={exec.isSubmitting || !allFieldsFilled}>
