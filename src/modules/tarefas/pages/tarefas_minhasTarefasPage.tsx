@@ -21,6 +21,8 @@ import { AssignmentCard } from "@/modules/tarefas/components/tarefas_tarefaCard"
 import { DynamicFieldRenderer, SnapshotField, evaluateVisibility } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import { parseAnexoFromDescricao } from "@/modules/tarefas/components/tarefas_tabFormBuilder";
 import { useAssignmentExecution } from "@/modules/tarefas/hooks/tarefas_useAssignmentExecution";
+import { usePlanosAcao } from "@/modules/tarefas/hooks/tarefas_usePlanosAcao";
+import { ExecutorPlanoAprovadorCard } from "@/modules/tarefas/components/tarefas_executorPlanoAprovadorCard";
 import { useOperationalTransition } from "@/modules/tarefas/hooks/tarefas_useTransition";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -412,6 +414,9 @@ export default function OperationalExecucaoPage() {
   }), [buckets, sorted]);
 
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
+  // 🆕 Nova arquitetura: planos de ação separados por setor.
+  // Doc: src/modules/tarefas/docs/tarefas_arquitetura_planos_acao.md
+  const planos = usePlanosAcao(selectedAssignment?.id || null);
 
   // Em tarefas EM ANDAMENTO, sobrepõe ada_config_snapshot vivo do template
   // (inclui checklists.aprovador com replicadas/manual/pacote padrão atualizados).
@@ -1329,6 +1334,34 @@ export default function OperationalExecucaoPage() {
                     qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
                   }}
                 />
+              </div>
+            )}
+
+            {/* 🆕 Planos de ação PENDENTES criados pelo aprovador para o executor
+                responder. Renderizados acima dos fields para destaque máximo.
+                Card dedicado (tarefas_executorPlanoAprovadorCard) usa a RPC nova
+                tarefas_rpc_executor_responder_plano_aprovador.
+                Doc: src/modules/tarefas/docs/tarefas_arquitetura_planos_acao.md */}
+            {isEditable && selectedAssignment && viewMode === "registro" && planos.planosAprovadorPendentes.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
+                  📨 Planos de ação aguardando sua resposta ({planos.planosAprovadorPendentes.length})
+                </p>
+                {planos.planosAprovadorPendentes.map((p) => {
+                  const field = effectiveFields.find((f) => f.id === p.field_id);
+                  return (
+                    <ExecutorPlanoAprovadorCard
+                      key={p.id}
+                      plano={p}
+                      fieldLabel={field?.label}
+                      assignmentId={selectedAssignment.id}
+                      isResponding={planos.responderPlanoAprovador.isPending}
+                      onResponder={async (input) => {
+                        await planos.responderPlanoAprovador.mutateAsync(input);
+                      }}
+                    />
+                  );
+                })}
               </div>
             )}
 
