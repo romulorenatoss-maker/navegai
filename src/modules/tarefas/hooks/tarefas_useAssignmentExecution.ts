@@ -42,6 +42,9 @@ export function useAssignmentExecution(assignmentId: string | null) {
       return data;
     },
     enabled: !!assignmentId,
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   // Load execution logs (audit trail)
@@ -366,12 +369,14 @@ export function useAssignmentExecution(assignmentId: string | null) {
   }, [answers, reviews]);
 
   const getLatestReview = useCallback((fieldId: string) => {
-    return reviews.find((r: any) => r.field_id === fieldId);
+    // Exclui reviews do auditor — eles têm rodada mais alta mas são para o aprovador, não o executor
+    return reviews.find((r: any) => r.field_id === fieldId && r.criado_por_papel !== "auditor");
   }, [reviews]);
 
   const getAllReviews = useCallback((fieldId: string) => {
+    // Exclui reviews do auditor para não confundir planRound do executor
     return (reviews as any[])
-      .filter((r: any) => r.field_id === fieldId)
+      .filter((r: any) => r.field_id === fieldId && r.criado_por_papel !== "auditor")
       .sort((a: any, b: any) => (a.rodada || 0) - (b.rodada || 0));
   }, [reviews]);
 
