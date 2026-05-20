@@ -74,6 +74,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { TASK_STATUS, type TaskStatus } from "@/modules/tarefas/services/tarefas_statusConstants";
 
 // ============================================================================
@@ -132,43 +133,57 @@ export interface FlowPermissions {
 
 // ============================================================================
 // HOOK PRINCIPAL
+//
+// Pega `profile` e `isAdmin` de useAuth() internamente. Não exige props.
+// `meusSetorIds` é opcional — passa só se o componente já tem a lista carregada.
 // ============================================================================
 export function useFlowPermissions(
   assignment: any,
-  profile: any,
-  isAdmin: boolean = false,
   meusSetorIds: string[] = []
 ): FlowPermissions {
+  const { profile, isAdmin: isAdminCtx } = useAuth();
+  const isAdmin = !!isAdminCtx;
+
   // ──────────────────────────────────────────────────────────────────────
   // 1. Identifica papel do usuário nesta tarefa
+  //    Regra-chave: assume que se o painel é renderizado, o usuário já
+  //    passou pelo gate de visibilidade (isAprovadorMode/isAuditorMode/etc).
+  //    Aqui só decide o papel pelo STATUS, com fallback para "aprovador"
+  //    quando status indica aprovação e usuário tem ALGUM vínculo com a tarefa.
   // ──────────────────────────────────────────────────────────────────────
   const role: FlowRole = useMemo(() => {
-    if (!assignment || !profile) return "spectator";
+    if (!assignment) return "spectator";
 
     const status = assignment.status as TaskStatus;
-    const isExecutor =
-      assignment.responsavel_id === profile.id ||
-      assignment.executor_id === profile.id ||
-      (assignment.setor_id && meusSetorIds.includes(assignment.setor_id));
-    const isAprovador =
-      assignment.aprovador_id === profile.id ||
-      (assignment.aprovador_id === null && assignment.created_by === profile.id);
-    const isAuditor =
-      assignment.auditor_id === profile.id ||
+    const pid = profile?.id ?? null;
+
+    const isExecutor = !!pid && (
+      assignment.responsavel_id === pid ||
+      assignment.executor_id === pid ||
+      (assignment.setor_id && meusSetorIds.includes(assignment.setor_id))
+    );
+    const isAprovador = !!pid && (
+      assignment.aprovador_id === pid ||
+      (assignment.aprovador_id === null && assignment.created_by === pid)
+    );
+    const isAuditor = !!pid && (
+      assignment.auditor_id === pid ||
       (assignment.auditor_id === null &&
        assignment.setor_auditor_id &&
-       meusSetorIds.includes(assignment.setor_auditor_id));
+       meusSetorIds.includes(assignment.setor_auditor_id))
+    );
 
-    // Quem age = quem o STATUS define
+    // Quem age = quem o STATUS define.
+    // Para admin, role espelha o status (admin pode atuar em qualquer fase).
     if (status === TASK_STATUS.AGUARDANDO_AUDITORIA) {
       if (isAuditor || isAdmin) return "auditor";
-      if (isAprovador) return "aprovador"; // vê read-only
+      if (isAprovador) return "aprovador";
       if (isExecutor) return "executor";
       return "spectator";
     }
     if (status === TASK_STATUS.AGUARDANDO_APROVACAO) {
       if (isAprovador || isAdmin) return "aprovador";
-      if (isAuditor) return "auditor"; // vê read-only
+      if (isAuditor) return "auditor";
       if (isExecutor) return "executor";
       return "spectator";
     }
@@ -183,9 +198,8 @@ export function useFlowPermissions(
       if (isAuditor) return "auditor";
       return "spectator";
     }
-    // Status final
     return "spectator";
-  }, [assignment, profile, isAdmin, meusSetorIds]);
+  }, [assignment, profile?.id, isAdmin, meusSetorIds]);
 
   // ──────────────────────────────────────────────────────────────────────
   // 2. Carrega planos do auditor (pendentes + respondidos)

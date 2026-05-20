@@ -416,7 +416,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
 
   // ⚠️ FONTE ÚNICA DE VERDADE para travas/permissões neste painel
   // Todas as decisões de UI devem consultar `perms`, NUNCA checar status direto.
-  const perms = useFlowPermissions(assignment, profile, false, []);
+  const perms = useFlowPermissions(assignment);
   const [step, setStep] = useState<"perguntas" | "plano">("perguntas");
   const [motivoFinal, setMotivoFinal] = useState("");
   const [acaoPorNC, setAcaoPorNC] = useState<Record<string, "plano" | "devolver">>({});
@@ -1623,7 +1623,7 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
   const qc = useQueryClient();
 
   // ⚠️ FONTE ÚNICA DE VERDADE — auditor só age em aguardando_auditoria
-  const perms = useFlowPermissions(assignment, profile, false, []);
+  const perms = useFlowPermissions(assignment);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [motivoFinal, setMotivoFinal] = useState("");
   const [respostasAuto, setRespostasAuto] = useState<Record<string, { na: boolean; justificativa: string }>>({});

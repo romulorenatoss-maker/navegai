@@ -67,7 +67,7 @@ AGUARDANDO_APROVACAO
 
 ## Como o hook decide
 
-`useFlowPermissions(assignment, profile, isAdmin, meusSetorIds)`
+`useFlowPermissions(assignment, meusSetorIds?)` — `profile` e `isAdmin` vêm de `useAuth()` automaticamente.
 
 ### 1. Detecta o papel do usuário
 
