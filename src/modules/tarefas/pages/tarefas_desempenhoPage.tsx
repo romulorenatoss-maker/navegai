@@ -115,7 +115,8 @@ export default function DesempenhoOperacionalPage() {
   // ── Computed stats (with weighted average using multiplicador) ──
   const myExecutorLogs = scoreLogs.filter((s: any) => s.tipo_score === "executor" && s.profile_id === profileId);
   const myAvaliadoLogs = scoreLogs.filter((s: any) => s.tipo_score === "avaliado" && s.target_profile_id === profileId);
-  const myAprovadorLogs = scoreLogs.filter((s: any) => s.tipo_score === "aprovador" && s.profile_id === profileId);
+  // Nota dada pelo auditor avaliando o aprovador (constraint do banco aceita 'auditor', não 'aprovador')
+  const myAprovadorLogs = scoreLogs.filter((s: any) => s.tipo_score === "auditor" && s.target_profile_id === profileId);
 
   const weightedAvg = (logs: any[]) => {
     if (logs.length === 0) return null;

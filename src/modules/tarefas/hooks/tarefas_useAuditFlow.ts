@@ -147,6 +147,38 @@ export function useAuditFlow(assignmentId: string | null) {
     staleTime: 0,
   });
 
+  // TODOS os field_reviews (incluindo do aprovador) — para metricas de prorrogacao/atraso
+  const { data: allFieldReviews = [] } = useQuery({
+    queryKey: ["operational_audit_all_field_reviews", assignmentId],
+    queryFn: async () => {
+      if (!assignmentId) return [];
+      const { data, error } = await (supabase as any)
+        .from("operational_field_reviews")
+        .select("*")
+        .eq("assignment_id", assignmentId);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!assignmentId,
+    staleTime: 0,
+  });
+
+  // Contingencias (prazos de resolucao) — para detectar atraso real do plano
+  const { data: contingencies = [] } = useQuery({
+    queryKey: ["operational_audit_contingencies", assignmentId],
+    queryFn: async () => {
+      if (!assignmentId) return [];
+      const { data, error } = await (supabase as any)
+        .from("operational_contingencies")
+        .select("*")
+        .eq("assignment_id", assignmentId);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!assignmentId,
+    staleTime: 0,
+  });
+
   type ItemPlano = { tipo: string; titulo: string; obrigatorio: boolean };
 
   const criarPlanoAuditor = useMutation({
@@ -262,6 +294,8 @@ export function useAuditFlow(assignmentId: string | null) {
     approvalAnswers,
     auditorAnswers,
     fieldReviewsAuditor,
+    allFieldReviews,
+    contingencies,
     updateAuditorAnswer,
     autoSaveAuditorAnswer,
     getBlockingReasons,

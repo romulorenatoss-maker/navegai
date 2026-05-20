@@ -1744,33 +1744,88 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
     return lista.filter((p: any) => p.ativo !== false);
   }, [assignment]);
 
-  // Calcula resposta automática para perguntas do auditor (auditando o APROVADOR)
+  // Calcula resposta automática para perguntas do auditor (auditando o APROVADOR).
+  // Deriva direto dos dados (field_reviews, contingencies) — independe de flags estarem setadas.
   const calcRespostaAuditor = useCallback((metrica: string): { resposta: "sim" | "nao" | null; label: string; tiraPonto: boolean } => {
     const a = assignment;
     if (!a) return { resposta: null, label: "Sem dados", tiraPonto: false };
+
+    const planosAprovador = (flow.allFieldReviews as any[]).filter(
+      (r: any) => r.devolvido === true && r.criado_por_papel !== "auditor"
+    );
+    const contingenciasAtrasadas = (flow.contingencies as any[]).filter((c: any) => {
+      if (!c.prazo_resolucao) return false;
+      const prazoMs = new Date(c.prazo_resolucao).getTime();
+      const refMs = c.resolvida_em ? new Date(c.resolvida_em).getTime() : Date.now();
+      return refMs > prazoMs;
+    });
+    const prorrogacoes = (flow.allFieldReviews as any[]).filter(
+      (r: any) => r.prazo_alterado === true && r.criado_por_papel !== "auditor"
+    );
+
     switch (metrica) {
+      // ── Aprovador respondeu no SLA? (Sim = fora do prazo, tira ponto) ──
       case "aprovador_respondeu_no_sla": {
         if (a.flag_sla_etapa_estourado) return { resposta: "sim", label: "Sim — avaliou fora do SLA", tiraPonto: true };
         return { resposta: "nao", label: "Não — avaliou no prazo", tiraPonto: false };
       }
-      case "aprovador_reabriu_tarefa":
-        if ((a.rodada_atual ?? 1) > 1) return { resposta: "sim", label: "Sim — devolveu/reabriu", tiraPonto: true };
+
+      // ── Aprovador devolveu/reabriu? ──
+      case "aprovador_reabriu_tarefa": {
+        const devolveu = planosAprovador.length > 0 || (a.rodada_atual ?? 1) > 1;
+        if (devolveu) return { resposta: "sim", label: `Sim — ${planosAprovador.length || 1} devolução(ões)`, tiraPonto: true };
         return { resposta: "nao", label: "Não", tiraPonto: false };
-      case "aprovador_aprovou_com_pendencia":
-        return { resposta: null, label: "Verificação manual", tiraPonto: false };
-      case "plano_acao_sla_estourado":
-        if (a.flag_atraso_plano_acao) return { resposta: "sim", label: "Sim — SLA do plano estourou", tiraPonto: true };
+      }
+
+      // ── Aprovou com pendência? (Sim = pendências, tira ponto) ──
+      case "aprovador_aprovou_com_pendencia": {
+        // Pendência = plano de ação criado mas executor ainda não respondeu (sem evidência)
+        const planosSemResposta = planosAprovador.filter((p: any) => {
+          const itens = Array.isArray(p.itens_plano) ? p.itens_plano : [];
+          if (itens.length === 0) return false;
+          const ans = (flow.fieldAnswers as any[]).find((x: any) => x.field_id === p.field_id);
+          const valorJson = ans?.valor_json ?? {};
+          // Verifica se há resposta para algum item do plano
+          const algumRespondido = itens.some((item: any) => {
+            const chave = `__plano_acao__r${p.rodada}__${item.tipo}`;
+            return valorJson[chave];
+          });
+          return !algumRespondido;
+        });
+        if (planosSemResposta.length > 0) {
+          return { resposta: "sim", label: `Sim — ${planosSemResposta.length} pendência(s)`, tiraPonto: true };
+        }
+        return { resposta: "nao", label: "Não — sem pendências", tiraPonto: false };
+      }
+
+      // ── Plano de ação estourou SLA? (Sim tira ponto) ──
+      case "plano_acao_sla_estourado": {
+        if (a.flag_atraso_plano_acao || contingenciasAtrasadas.length > 0) {
+          return { resposta: "sim", label: `Sim — ${contingenciasAtrasadas.length || 1} plano(s) atrasado(s)`, tiraPonto: true };
+        }
         return { resposta: "nao", label: "Não — dentro do prazo", tiraPonto: false };
-      case "plano_acao_prazo_prorrogado":
-        if (a.flag_atraso_plano_acao) return { resposta: "sim", label: "Sim — prazo foi prorrogado", tiraPonto: true };
+      }
+
+      // ── Prazo foi prorrogado? (Sim tira ponto) ──
+      case "plano_acao_prazo_prorrogado": {
+        if (prorrogacoes.length > 0) {
+          return { resposta: "sim", label: `Sim — ${prorrogacoes.length} prorrogação(ões)`, tiraPonto: true };
+        }
         return { resposta: "nao", label: "Não", tiraPonto: false };
-      case "plano_acao_prazo_prorrogado_2x":
-        if (a.flag_reincidencia_atraso) return { resposta: "sim", label: "Sim — prorrogado mais de 1 vez", tiraPonto: true };
+      }
+
+      // ── Prorrogado 2x+? (Sim tira ponto) ──
+      case "plano_acao_prazo_prorrogado_2x": {
+        if (a.flag_reincidencia_atraso || prorrogacoes.length >= 2) {
+          return { resposta: "sim", label: `Sim — ${prorrogacoes.length} prorrogações`, tiraPonto: true };
+        }
         return { resposta: "nao", label: "Não", tiraPonto: false };
+      }
+
       default:
         return { resposta: null, label: "Avaliação manual", tiraPonto: false };
     }
-  }, [assignment]);
+  }, [assignment, flow.allFieldReviews, flow.contingencies, flow.fieldAnswers]);
 
   const notaMaximaAuditor = perguntasAutoAuditor.reduce((sum: number, p: any) => sum + (p.peso || 0), 0);
   const notaEfetivaAuditor = perguntasAutoAuditor.reduce((sum: number, p: any) => {
@@ -1818,7 +1873,7 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
               profile_id: profile?.id,
               target_profile_id: m.profile_id,
               target_setor_id: assignment.setor_avaliado_id,
-              tipo_score: "auditoria",
+              tipo_score: "auditor",
               score_final: notaEfetivaAuditor,
               detalhe_calculo: { nota_efetiva: notaEfetivaAuditor, nota_maxima: notaMaximaAuditor, destino: "setor" },
               created_at: new Date().toISOString(),
@@ -1833,7 +1888,7 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
             assignment_id: assignment.id,
             profile_id: profile?.id,
             target_profile_id: aprovadorId,
-            tipo_score: "aprovador",
+            tipo_score: "auditor",
             score_final: notaEfetivaAuditor,
             detalhe_calculo: { nota_efetiva: notaEfetivaAuditor, nota_maxima: notaMaximaAuditor, destino: "aprovador" },
             created_at: new Date().toISOString(),

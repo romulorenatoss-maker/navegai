@@ -171,6 +171,36 @@ canApproverFinalize =
 
 ---
 
+## Métricas automáticas — `calcRespostaAuditor` (no painel do Auditor)
+
+> Auditor avalia o APROVADOR. Mesma estratégia: derivar de dados reais
+> (`flow.allFieldReviews`, `flow.contingencies`) em vez de só flags.
+
+| Métrica | Pergunta | Sim tira? | Lógica |
+|---|---|---|---|
+| `aprovador_respondeu_no_sla` | Aprovador avaliou fora do SLA? | Sim tira | `flag_sla_etapa_estourado` |
+| `aprovador_reabriu_tarefa` | Aprovador devolveu/reabriu? | Sim tira | `allFieldReviews.devolvido && criado_por_papel≠auditor` ou `rodada_atual>1` |
+| `aprovador_aprovou_com_pendencia` | Aprovou com pendência? | Sim tira | planos do aprovador sem evidência em `fieldAnswers.valor_json[__plano_acao__rN__tipo]` |
+| `plano_acao_sla_estourado` | Plano estourou SLA? | Sim tira | flag OU `contingencies.resolvida_em > prazo_resolucao` |
+| `plano_acao_prazo_prorrogado` | Prazo prorrogado? | Sim tira | conta `allFieldReviews.prazo_alterado=true` |
+| `plano_acao_prazo_prorrogado_2x` | Prorrogou 2+? | Sim tira | conta prorrogações ≥ 2 ou `flag_reincidencia_atraso` |
+
+---
+
+## Constraint `operational_score_logs.tipo_score`
+
+```sql
+CHECK (tipo_score IN ('executor', 'avaliado', 'auditor'))
+```
+
+- `executor` → nota do aprovador avaliando o executor
+- `avaliado` → nota técnica do avaliador (legado)
+- `auditor` → nota DADA PELO AUDITOR avaliando o aprovador (target_profile_id = aprovador_id)
+
+**Atenção:** valores como `"auditoria"`, `"aprovacao"`, `"aprovador"` NÃO existem e violam o constraint.
+
+---
+
 ## Pontos de atenção (bugs históricos)
 
 1. **Dado órfão em `operational_field_reviews`** — auditor plans antigos com `respondido=null` ficam em `planosAuditorPendentes` permanentemente, destravando campos indevidamente. **Solução:** garantir que `respondido` default seja `false` (não NULL) e auditor planos sempre tenham esse valor explícito.
