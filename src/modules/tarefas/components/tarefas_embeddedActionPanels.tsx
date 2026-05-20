@@ -558,6 +558,72 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             O auditor criou {planosAuditorPendentes.length} plano(s) de acao. Responda antes de continuar.
           </div>
         </div>
+
+        {/* Respostas do executor — contexto somente-leitura para o aprovador responder ao auditor */}
+        {approverFields.length > 0 && (
+          <div className="border border-border rounded-lg overflow-hidden">
+            <div className="px-3 py-2 bg-muted border-b border-border flex items-center gap-2">
+              <ClipboardList className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Respostas do Executor</span>
+            </div>
+            <div className="divide-y divide-border">
+              {approverFields.map((f) => {
+                const execAnswer = findOriginalFieldAnswer(f, flow);
+                const execAnswerStatus = normalizeAnswer(getAnswerValue(execAnswer));
+                const execObservation = getObservation(execAnswer);
+                const execEvidence = getEvidence(execAnswer);
+                return (
+                  <div key={f.id} className="px-3 py-2.5 space-y-2">
+                    <span className="text-xs font-medium text-foreground">{(f as any).label || f.id}</span>
+                    <div className="flex gap-2 mt-1">
+                      {getReviewOptions(f, "aprovador").map((opt) => {
+                        const optStatus = normalizeAnswer(opt.v);
+                        const marcado = !!execAnswerStatus && optStatus === execAnswerStatus;
+                        const cls = marcado
+                          ? optStatus === "conforme"
+                            ? "bg-emerald-600 border-emerald-700 text-white ring-2 ring-emerald-300"
+                            : optStatus === "nao_conforme"
+                              ? "bg-red-600 border-red-700 text-white ring-2 ring-red-300"
+                              : "bg-slate-700 border-slate-800 text-white ring-2 ring-slate-300"
+                          : "bg-background border-border text-muted-foreground opacity-25";
+                        return (
+                          <div key={opt.v} className={`flex-1 text-xs px-2 py-1.5 rounded border text-center font-semibold ${cls}`}>
+                            {marcado ? "✓ " : ""}{opt.label}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Resposta:{" "}
+                      <span className={`font-bold ${execAnswerStatus === "conforme" ? "text-emerald-700" : execAnswerStatus === "nao_conforme" ? "text-red-700" : execAnswerStatus === "na" ? "text-slate-700" : "text-muted-foreground"}`}>
+                        {execAnswerStatus === "conforme" ? "Conforme" : execAnswerStatus === "nao_conforme" ? "Não Conforme" : execAnswerStatus === "na" ? "N/A" : "Sem resposta"}
+                      </span>
+                    </div>
+                    {execObservation && <p className="text-xs text-foreground">{execObservation}</p>}
+                    {execEvidence && (
+                      <div className="bg-card border border-border rounded-md overflow-hidden">
+                        <div className="px-2 py-1 bg-blue-50 dark:bg-blue-950/20 border-b border-border">
+                          <span className="text-[10px] font-medium text-blue-800 dark:text-blue-400">
+                            {execAnswer?.evidencia_mime_type?.startsWith("video/") ? "🎥 Vídeo" : execAnswer?.evidencia_mime_type?.startsWith("audio/") ? "🎵 Áudio" : "📷 Foto"}
+                          </span>
+                        </div>
+                        <div className="p-2">
+                          <EvidenciaPreview
+                            anexoId={execAnswer?.evidencia_anexo_id ?? null}
+                            url={String(execEvidence)}
+                            mimeType={execAnswer?.evidencia_mime_type ?? null}
+                            disabled
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {planosAuditorPendentes.map((auditPlan: any, idx: number) => {
           const itens: Array<{tipo:string;titulo:string;obrigatorio:boolean}> = Array.isArray(auditPlan.itens_plano) ? auditPlan.itens_plano : [];
           const rodada = auditPlan.rodada ?? 1;
