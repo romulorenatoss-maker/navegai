@@ -135,7 +135,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetch = async () => {
       setLoading(true);
-
+      try {
       const from = startDate ? startOfDay(startDate).toISOString() : startOfMonth(now).toISOString();
       const to = endDate ? endOfDay(endDate).toISOString() : endOfMonth(now).toISOString();
 
@@ -158,7 +158,6 @@ export default function DashboardPage() {
 
       if (!osData || osData.length === 0) {
         setAllOS([]);
-        setLoading(false);
         return;
       }
 
