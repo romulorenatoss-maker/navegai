@@ -822,8 +822,36 @@ export default function OperationalExecucaoPage() {
     });
   };
 
-  const handleIniciarDevolvida = () => {
+  const handleIniciarDevolvida = async () => {
     if (!selectedAssignment) return;
+
+    // 🆕 Sync defensivo (Regra 9 — preservar comportamento):
+    // O banco pode estar mais adiantado que o cache (race condition, múltiplas
+    // abas, trigger backend). Antes de chamar a mutation "iniciar", refetch o
+    // status real. Se já está em em_andamento, evita a transição inválida
+    // (em_andamento → em_andamento), sincroniza UI e mostra toast informativo.
+    try {
+      const { data: cur, error: curErr } = await (supabase as any)
+        .from("operational_assignments")
+        .select("status")
+        .eq("id", selectedAssignment.id)
+        .single();
+      if (curErr) throw curErr;
+      if (cur?.status && cur.status !== "devolvida") {
+        setSelectedAssignment({ ...selectedAssignment, status: cur.status });
+        qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
+        if (cur.status === "em_andamento") {
+          toast.info("Tarefa já está em andamento. Pode responder ao plano de ação.");
+        } else {
+          toast.info(`Status atualizado para: ${cur.status}`);
+        }
+        return;
+      }
+    } catch (e: any) {
+      // Sync falhou — segue fluxo normal e deixa a mutation tratar o erro.
+      console.warn("[handleIniciarDevolvida] sync defensivo falhou:", e);
+    }
+
     exec.startTask.mutate({
       assignmentId: selectedAssignment.id,
       horarioInicioPrevisto: selectedAssignment.horario_inicio_previsto || null,
