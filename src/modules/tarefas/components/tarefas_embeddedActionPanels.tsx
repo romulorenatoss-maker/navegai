@@ -27,7 +27,6 @@ import { ReviewFieldCard } from "@/modules/tarefas/components/tarefas_reviewFiel
 import { EvidenciaPreview } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import { SnapshotField, evaluateVisibility } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import { calculateOperationalScore } from "@/modules/tarefas/hooks/tarefas_useScoring";
-import { ResumoConclusaoPanel } from "@/modules/tarefas/components/tarefas_resumoConclusaoPanel";
 
 /* =========================================================================
  * Helpers defensivos de leitura (somente UI) — não alteram dados.
@@ -1153,9 +1152,6 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
 
   return (
     <div className="space-y-3">
-      {/* 🆕 RESUMO consolidado — sempre visível no topo do painel do aprovador. */}
-      <ResumoConclusaoPanel assignment={assignment} fields={fields} />
-
       {perms.approverPanelRestricted && perms.approverLockMessage && (
         <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border-2 border-red-400 rounded-lg shadow-sm">
           <span className="text-lg shrink-0">🔒</span>
@@ -2408,9 +2404,6 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
 
   return (
     <div className="space-y-3">
-      {/* 🆕 RESUMO consolidado — sempre visível no topo do painel do auditor. */}
-      <ResumoConclusaoPanel assignment={assignment} fields={fields} />
-
       <div className="bg-blue-500/5 border border-blue-500/30 rounded-lg p-3 flex items-start gap-2">
         <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
         <div className="text-xs text-foreground">
