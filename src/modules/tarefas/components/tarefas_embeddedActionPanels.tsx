@@ -1068,12 +1068,12 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   return (
     <div className="space-y-3">
       {emModoRestrito && (
-        <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 rounded-lg">
-          <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
-          <p className="text-xs text-blue-800 font-medium">
+        <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border-2 border-red-400 rounded-lg shadow-sm">
+          <span className="text-lg shrink-0">🔒</span>
+          <p className="text-xs text-red-800 dark:text-red-300 font-semibold">
             {temPlanosAuditorPendentes
-              ? `Auditor devolveu ${fieldsDevolvidos.size} item(s) para resposta — demais campos bloqueados`
-              : `Aguardando ${nomeResponsavelAuditoria} avaliar — edição bloqueada`}
+              ? `🔒 BLOQUEADO — Auditor devolveu ${fieldsDevolvidos.size} item(s) · responda apenas esse(s)`
+              : `🔒 BLOQUEADO — Aguardando ${nomeResponsavelAuditoria} avaliar · edição travada`}
           </p>
         </div>
       )}
