@@ -414,7 +414,7 @@ const getDefaultReviewAction = (rule: ReviewRule | null): "plano" | "devolver" =
 export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalProps) {
   const { profile } = useAuth();
   const flow = useApprovalFlow(assignment?.id || null);
-  const planos = usePlanosAcao(assignment?.id || null);
+  const planosAcao = usePlanosAcao(assignment?.id || null);
   const qc = useQueryClient();
 
   // ⚠️ FONTE ÚNICA DE VERDADE para travas/permissões neste painel
