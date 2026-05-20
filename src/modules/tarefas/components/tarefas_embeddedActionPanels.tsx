@@ -916,7 +916,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   <span className="text-sm font-medium text-foreground">{f.label}</span>
                   <div className="flex items-center gap-2">
                     {(() => {
-                      const nPlanos = (flow.fieldReviews as any[]).filter((r: any) => r.field_id === f.id && r.devolvido === true).length;
+                      const nPlanos = (flow.fieldReviews as any[]).filter((r: any) => r.field_id === f.id && r.devolvido === true && r.criado_por_papel !== "auditor").length;
                       if (nPlanos === 0) return null;
                       return <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-400">{nPlanos} plano{nPlanos > 1 ? "s" : ""}</span>;
                     })()}
@@ -1008,7 +1008,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                 {/* Histórico de planos de ação R1, R2... */}
                 {(() => {
                   const planosDoField = (flow.fieldReviews as any[])
-                    .filter((r: any) => r.field_id === f.id && r.devolvido === true)
+                    .filter((r: any) => r.field_id === f.id && r.devolvido === true && r.criado_por_papel !== "auditor")
                     .sort((a: any, b: any) => (a.rodada || 0) - (b.rodada || 0));
 
                   const calcStatus = (r: any) => {
@@ -1247,7 +1247,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                 })()}
 
                 {/* Sem planos ainda — botões normais do aprovador + plano de ação inline */}
-                {(flow.fieldReviews as any[]).filter((r: any) => r.field_id === f.id && r.devolvido === true).length === 0 && (
+                {(flow.fieldReviews as any[]).filter((r: any) => r.field_id === f.id && r.devolvido === true && r.criado_por_papel !== "auditor").length === 0 && (
                   <div className="px-3 py-2.5 space-y-2 border-t border-border">
                     <div className="flex gap-2">
                       {getReviewOptions(f, "aprovador").map((opt) => (
