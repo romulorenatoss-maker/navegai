@@ -701,6 +701,28 @@ export default function OperationalExecucaoPage() {
     )
     && selectedAssignment.status === "aguardando_auditoria";
 
+  // ──────────────────────────────────────────────────────────────────────
+  // VISÕES (sem checagem de status) — controlam visibilidade das ABAS
+  // Quando a tarefa concluí, status final NÃO esconde a aba do papel:
+  // o usuário ainda vê o histórico read-only do que ele/outro fez.
+  // O edit é gateado por useFlowPermissions dentro dos painéis.
+  // ──────────────────────────────────────────────────────────────────────
+  const isAprovadorView = !!selectedAssignment
+    && (
+      selectedAssignment.aprovador_id === profile?.id ||
+      isAdmin ||
+      (selectedAssignment.aprovador_id === null && selectedAssignment.created_by === profile?.id)
+    );
+  const isAuditorView = !!selectedAssignment
+    && temAuditorConfigurado
+    && (
+      selectedAssignment.auditor_id === profile?.id ||
+      isAdmin ||
+      (selectedAssignment.auditor_id === null &&
+       selectedAssignment.setor_auditor_id &&
+       meusSetorIds.includes(selectedAssignment.setor_auditor_id))
+    );
+
   const isEditable = selectedAssignment && !isAprovadorMode && !isAvaliadorMode && !isAuditorMode && (
     (["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || isAdmin)) ||
     isAdminEditing
@@ -1159,7 +1181,7 @@ export default function OperationalExecucaoPage() {
               <Progress value={progress} className="h-2" />
             </div>
 
-            {(snapshotSections.length > 1 || isAprovadorMode || isAuditorMode) && (
+            {(snapshotSections.length > 1 || isAprovadorView || isAuditorView) && (
               <div className="flex gap-1.5 mt-3 overflow-x-auto pb-1">
                 {snapshotSections.map((s: any) => {
                   const sFields = fieldsBySection[s.id] || [];
@@ -1199,13 +1221,13 @@ export default function OperationalExecucaoPage() {
                     </button>
                   );
                 })}
-                {(isAprovadorMode || isAuditorMode) && (
+                {(isAprovadorView || isAuditorView) && (
                   <button type="button" onClick={() => setViewMode("aprovacao")}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border whitespace-nowrap transition-colors ${viewMode === "aprovacao" ? "bg-emerald-500/10 border-emerald-500 text-emerald-700 dark:text-emerald-400" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
                     <CheckCircle2 className="w-3 h-3" /> Aprovação
                   </button>
                 )}
-                {isAuditorMode && (
+                {isAuditorView && (
                   <button type="button" onClick={() => setViewMode("auditor")}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border whitespace-nowrap transition-colors ${viewMode === "auditor" ? "bg-blue-500/10 border-blue-500 text-blue-700 dark:text-blue-400" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
                     <CheckCircle2 className="w-3 h-3" /> Auditor
@@ -1381,7 +1403,7 @@ export default function OperationalExecucaoPage() {
               />
             )}
 
-            {!isEditable && selectedAssignment && (isAprovadorMode || isAuditorMode) && viewMode === "aprovacao" && (
+            {!isEditable && selectedAssignment && (isAprovadorView || isAuditorView) && viewMode === "aprovacao" && (
               <EmbeddedApprovalPanel
                 assignment={selectedAssignment}
                 fields={effectiveFields}
@@ -1389,7 +1411,7 @@ export default function OperationalExecucaoPage() {
               />
             )}
 
-            {!isEditable && selectedAssignment && isAuditorMode && viewMode === "auditor" && (
+            {!isEditable && selectedAssignment && isAuditorView && viewMode === "auditor" && (
               <EmbeddedAuditPanel
                 assignment={selectedAssignment}
                 fields={effectiveFields}
@@ -1398,8 +1420,8 @@ export default function OperationalExecucaoPage() {
             )}
 
             {!isEditable && selectedAssignment && (
-              (!isAvaliadorMode && !isAprovadorMode && !isAuditorMode) ||
-              ((isAprovadorMode || isAuditorMode) && viewMode === "registro")
+              (!isAvaliadorMode && !isAprovadorView && !isAuditorView) ||
+              ((isAprovadorView || isAuditorView) && viewMode === "registro")
             ) && (
               <div className="space-y-3">
                 {effectiveFields.map(f => (
