@@ -550,7 +550,8 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
 
   // Bloqueio: se status aguardando_auditoria sem planos do auditor pendentes → somente leitura
   const planosAuditorPendentes = (flow.planosDoAuditor as any[]).filter((p: any) => !p.respondido);
-  const emAuditoria = assignment?.status === "aguardando_auditoria" && planosAuditorPendentes.length === 0;
+  const emAuditoria = assignment?.status === "aguardando_auditoria";
+  const fieldsDevolvidos = new Set(planosAuditorPendentes.map((p: any) => p.field_id));
 
   // ── Modal Confirmar Aprovação ─────────────────────────────────────────────
   if (showAprovarModal) {
@@ -946,11 +947,15 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   }
 
   return (
-    <div className="space-y-3" style={emAuditoria ? {pointerEvents:"none",opacity:0.65} : undefined}>
+    <div className="space-y-3">
       {emAuditoria && (
-        <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 rounded-lg" style={{pointerEvents:"auto",opacity:1}}>
+        <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 rounded-lg">
           <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
-          <p className="text-xs text-blue-800 font-medium">Aguardando auditoria — somente leitura</p>
+          <p className="text-xs text-blue-800 font-medium">
+            {fieldsDevolvidos.size > 0
+              ? `Aguardando auditoria — responda ${fieldsDevolvidos.size} item(s) devolvido(s) e clique em Aprovar`
+              : "Aguardando auditoria — somente o botão Aprovar está disponível"}
+          </p>
         </div>
       )}
       <div className="bg-card border border-border rounded-lg p-3">
@@ -1237,10 +1242,10 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                               </div>
                             );
                           })()}
-                          {/* Botões Conforme / Não Conforme no plano — só no último plano */}
+                          {/* Botões Conforme / Não Conforme no plano — só no último plano, e só se não bloqueado por auditoria */}
 
 
-                          {idx === planosDoField.length - 1 && (
+                          {idx === planosDoField.length - 1 && (!emAuditoria || fieldsDevolvidos.has(f.id)) && (
                             <div className="px-3 py-2 flex gap-2">
                               <button type="button" onClick={() => handleResposta(f, "conforme")}
                                 className={`flex-1 text-xs px-2 py-2 rounded border font-medium transition-colors ${value === "conforme" ? "bg-emerald-100 border-emerald-500 text-emerald-800" : "border-border text-muted-foreground hover:bg-muted"}`}>
@@ -1258,7 +1263,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                             </div>
                           )}
                           {/* Formulario de novo plano inline (R2+) - mesmo layout do R1 */}
-                          {idx === planosDoField.length - 1 && expandirNovoPlano[f.id] && (() => {
+                          {idx === planosDoField.length - 1 && (!emAuditoria || fieldsDevolvidos.has(f.id)) && expandirNovoPlano[f.id] && (() => {
                             const p = planos[f.id] || { descricao_acao: "", prazo: computeDefaultPrazo(), prazo_padrao: computeDefaultPrazo(), justificativa_alteracao_prazo: "", criticidade: "media" as const, tipo_evidencia_exigida: "descricao" as const, itens_plano: [] as ItemPlano[], anexo_orientacao_url: null as string | null, anexo_orientacao_anexo_id: null as string | null, anexo_orientacao_mime_type: null as string | null };
                             const updateP = (patch: any) => setPlanos(prev => { const cur = prev[f.id] ?? p; return { ...prev, [f.id]: { ...cur, ...patch } }; });
                             const ITENS_R2 = [
@@ -1332,7 +1337,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                 })()}
 
                 {/* Sem planos ainda — botões normais do aprovador + plano de ação inline */}
-                {(flow.fieldReviews as any[]).filter((r: any) => r.field_id === f.id && r.devolvido === true && r.criado_por_papel !== "auditor").length === 0 && (
+                {(flow.fieldReviews as any[]).filter((r: any) => r.field_id === f.id && r.devolvido === true && r.criado_por_papel !== "auditor").length === 0 && (!emAuditoria || fieldsDevolvidos.has(f.id)) && (
                   <div className="px-3 py-2.5 space-y-2 border-t border-border">
                     <div className="flex gap-2">
                       {getReviewOptions(f, "aprovador").map((opt) => (
@@ -1445,7 +1450,17 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
       <div className="flex flex-wrap gap-2 pt-2 sticky bottom-0 bg-background pb-1 border-t border-border">
         {false && null}
         <div className="flex-1" />
-        {perguntasComAcao.length > 0 ? (
+        {emAuditoria ? (
+          <Button
+            type="button" size="sm"
+            onClick={() => setShowAprovarModal(true)}
+            disabled={flow.isSaving}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            <Send className="w-3.5 h-3.5 mr-1" />
+            {flow.isSaving ? "Salvando..." : "Aprovar"}
+          </Button>
+        ) : perguntasComAcao.length > 0 ? (
           <Button
             type="button" size="sm"
             onClick={() => {
