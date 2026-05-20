@@ -403,7 +403,7 @@ export default function DashboardPage() {
       setPendingOtherSector(otherPending);
       setCompletedOS(completed.slice(0, 20)); // limit to last 20
     };
-    fetchPending();
+    fetchPending().catch((err) => console.error("[DashboardPage] fetchPending falhou:", err));
   }, [profile, isAdmin, searchTrigger]);
 
   // Fetch ranking + scores
@@ -555,8 +555,8 @@ export default function DashboardPage() {
       setSetorMedias(sMedias);
     };
 
-    fetchRanking();
-    fetchScores();
+    fetchRanking().catch((err) => console.error("[DashboardPage] fetchRanking falhou:", err));
+    fetchScores().catch((err) => console.error("[DashboardPage] fetchScores falhou:", err));
   }, [searchTrigger]);
 
   // Split OS by status
