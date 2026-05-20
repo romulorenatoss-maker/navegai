@@ -2532,51 +2532,8 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
                     <p className="text-xs text-muted-foreground">{ap.instrucao_aprovador}</p>
                   </div>
                 )}
-
-                {/* 🆕 HISTÓRICO da pergunta: R0 executor + R1/R2 aprovador + nota final.
-                    Dá ao auditor o contexto completo antes de decidir Conforme/NC. */}
-                {(() => {
-                  const execAns = (flow.fieldAnswers as any[]).find((a: any) => a.field_id === ap.field_id);
-                  const planosAprovador = (flow.allFieldReviews as any[])
-                    .filter((r: any) => r.field_id === ap.field_id && r.criado_por_papel !== "auditor" && r.devolvido === true)
-                    .sort((a: any, b: any) => (a.rodada || 0) - (b.rodada || 0));
-                  const respAprov = (flow.approvalAnswers as any[]).find((a: any) => a.field_id === ap.field_id);
-                  if (!execAns && planosAprovador.length === 0 && !respAprov) return null;
-                  return (
-                    <div className="px-3 py-2 border-b border-border bg-muted/5 space-y-1.5">
-                      <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">Histórico da pergunta</p>
-                      {execAns && (
-                        <div className="text-[11px] bg-blue-50 dark:bg-blue-950/20 border border-blue-200 rounded px-2 py-1">
-                          <span className="font-semibold text-blue-800">R0 Executor:</span>{" "}
-                          {execAns.valor_booleano === true ? "Conforme/Sim" : execAns.valor_booleano === false ? "Não conforme/Não" : execAns.valor_texto || "(sem resposta)"}
-                          {execAns.evidencia_url && <span className="ml-1">· 📎 evidência</span>}
-                        </div>
-                      )}
-                      {planosAprovador.map((pa: any) => (
-                        <div key={pa.id} className="text-[11px] bg-amber-50 dark:bg-amber-950/20 border border-amber-200 rounded px-2 py-1">
-                          <span className="font-semibold text-amber-800">R{pa.rodada} Aprovador devolveu:</span>{" "}
-                          {pa.motivo_devolucao || pa.instrucao_aprovador || "(sem motivo)"}
-                          {Array.isArray(pa.itens_plano) && pa.itens_plano.length > 0 && (
-                            <span className="ml-1">· {pa.itens_plano.length} item(s) no plano</span>
-                          )}
-                        </div>
-                      ))}
-                      {respAprov && respAprov.resposta && (
-                        <div className={`text-[11px] border rounded px-2 py-1 ${
-                          respAprov.resposta === "conforme" ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                          : respAprov.resposta === "nao_conforme" ? "bg-rose-50 border-rose-200 text-rose-800"
-                          : "bg-slate-50 border-slate-200 text-slate-700"
-                        }`}>
-                          <span className="font-semibold">Nota final do Aprovador:</span> {respAprov.resposta === "conforme" ? "Conforme" : respAprov.resposta === "nao_conforme" ? "Não conforme" : respAprov.resposta}
-                          {respAprov.observacao && <span> — {respAprov.observacao}</span>}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-
                 <div className="px-3 py-2 space-y-2 border-b border-border">
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">📨 Resposta do aprovador ao auditor</p>
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Resposta do aprovador</p>
                   {itens.length === 0 && <p className="text-[11px] text-muted-foreground italic">Sem itens no plano</p>}
                   {itens.map((item: any, iIdx: number) => {
                     const chave = `__auditor_plano__r${rodada}__${item.tipo}`;

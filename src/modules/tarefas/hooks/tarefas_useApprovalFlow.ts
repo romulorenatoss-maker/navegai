@@ -426,15 +426,8 @@ export function useApprovalFlow(assignmentId: string | null) {
         // (mesmo padrão de devolverPerguntasParaRefazer; gate em useAssignmentExecution)
         // Usa max(rodadas existentes para o field) + 1 para garantir que R3, R4... sejam criados
         // corretamente mesmo quando assignment.rodada_atual ainda não foi incrementado.
-        //
-        // 🐛 FIX: contar TODOS os reviews (aprovador + auditor) no max. Antes filtrava só
-        // não-auditor, o que causava colisão quando auditor tinha rodada N pendente:
-        //   - R1 aprovador (rodada=1)
-        //   - R2 auditor pendente (rodada=2)
-        //   - Aprovador criava novo plano → max(só aprovador) + 1 = 2 ❌ COLIDIA com auditor
-        // Agora: max(todos os reviews) + 1 → rodada=3 (correto).
         const reviewsDoField = (fieldReviews as any[]).filter(
-          (r: any) => r.field_id === p.field_id
+          (r: any) => r.field_id === p.field_id && r.criado_por_papel !== "auditor"
         );
         const rodadaPA = reviewsDoField.length > 0
           ? Math.max(...reviewsDoField.map((r: any) => r.rodada || 0)) + 1
@@ -522,11 +515,9 @@ export function useApprovalFlow(assignmentId: string | null) {
       }
 
       for (const p of perguntas) {
-        // Rodada por campo: max(TODOS os reviews do field) + 1
-        // 🐛 FIX: antes ignorava auditor's rows → colisão quando auditor R(n) pendente.
-        // Agora soma todos para garantir rodada única na cascata auditor→aprovador→executor.
+        // Rodada por campo: max(rodadas não-auditor para o field) + 1
         const reviewsDoField = (fieldReviews as any[]).filter(
-          (r: any) => r.field_id === p.field_id
+          (r: any) => r.field_id === p.field_id && r.criado_por_papel !== "auditor"
         );
         const rodada = reviewsDoField.length > 0
           ? Math.max(...reviewsDoField.map((r: any) => r.rodada || 0)) + 1
