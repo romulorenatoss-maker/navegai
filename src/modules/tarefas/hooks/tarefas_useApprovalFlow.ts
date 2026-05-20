@@ -442,7 +442,7 @@ export function useApprovalFlow(assignmentId: string | null) {
           avaliado_em: new Date().toISOString(),
         };
         const existingReview = (fieldReviews as any[]).find(
-          (r: any) => r.field_id === p.field_id && r.rodada === rodadaPA
+          (r: any) => r.field_id === p.field_id && r.rodada === rodadaPA && r.criado_por_papel !== "auditor"
         );
         if (existingReview) {
           await (supabase as any).from("operational_field_reviews")
@@ -525,7 +525,7 @@ export function useApprovalFlow(assignmentId: string | null) {
         };
         // Upsert por (assignment_id, field_id, rodada)
         const existing = (fieldReviews as any[]).find(
-          (r: any) => r.field_id === p.field_id && r.rodada === rodada
+          (r: any) => r.field_id === p.field_id && r.rodada === rodada && r.criado_por_papel !== "auditor"
         );
         if (existing) {
           await (supabase as any).from("operational_field_reviews")
