@@ -424,7 +424,14 @@ export function useApprovalFlow(assignmentId: string | null) {
 
         // 2b) Libera o campo no executor: marca devolvido=true em operational_field_reviews
         // (mesmo padrão de devolverPerguntasParaRefazer; gate em useAssignmentExecution)
-        const rodadaPA = assignment.rodada_atual || 1;
+        // Usa max(rodadas existentes para o field) + 1 para garantir que R3, R4... sejam criados
+        // corretamente mesmo quando assignment.rodada_atual ainda não foi incrementado.
+        const reviewsDoField = (fieldReviews as any[]).filter(
+          (r: any) => r.field_id === p.field_id && r.criado_por_papel !== "auditor"
+        );
+        const rodadaPA = reviewsDoField.length > 0
+          ? Math.max(...reviewsDoField.map((r: any) => r.rodada || 0)) + 1
+          : assignment.rodada_atual || 1;
         const answerExecPA = (fieldAnswers as any[]).find((a: any) => a.field_id === p.field_id);
         const reviewPayload: any = {
           assignment_id: assignmentId,
