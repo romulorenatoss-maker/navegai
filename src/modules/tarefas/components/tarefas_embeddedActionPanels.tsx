@@ -25,6 +25,7 @@ import { useAuditFlow } from "@/modules/tarefas/hooks/tarefas_useAuditFlow";
 import { ReviewFieldCard } from "@/modules/tarefas/components/tarefas_reviewFieldCard";
 import { EvidenciaPreview } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import { SnapshotField, evaluateVisibility } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
+import { calculateOperationalScore } from "@/modules/tarefas/hooks/tarefas_useScoring";
 
 /* =========================================================================
  * Helpers defensivos de leitura (somente UI) — não alteram dados.
@@ -416,6 +417,8 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const [acaoPorNC, setAcaoPorNC] = useState<Record<string, "plano" | "devolver">>({});
   const [planos, setPlanos] = useState<Record<string, PlanoDraft>>({});
   const [expandirNovoPlano, setExpandirNovoPlano] = useState<Record<string, boolean>>({});
+  const [showAprovarModal, setShowAprovarModal] = useState(false);
+  const [auditorRespostas, setAuditorRespostas] = useState<Record<string, Record<string, { valor_texto?: string; evidencia_url?: string; evidencia_anexo_id?: string; evidencia_mime_type?: string }>>>({});
 
   const approverFields = useMemo(
     () => fields.filter((f) => !["secao", "divisor", "titulo"].includes(String(f.tipo))),
@@ -548,6 +551,219 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   // Bloqueio: se status aguardando_auditoria sem planos do auditor pendentes → somente leitura
   const planosAuditorPendentes = (flow.planosDoAuditor as any[]).filter((p: any) => !p.respondido);
   const emAuditoria = assignment?.status === "aguardando_auditoria" && planosAuditorPendentes.length === 0;
+
+  // ── Modal Confirmar Aprovação ─────────────────────────────────────────────
+  if (showAprovarModal) {
+    const itensConformes = approverFields.filter(f => {
+      const v = flow.approverAnswers[f.id]?.resposta ?? (flow.existingApprovalAnswers as any[]).find((a: any) => a.field_id === f.id)?.resposta;
+      return v === "conforme";
+    }).length;
+    const itensNaoConformes = approverFields.filter(f => {
+      const v = flow.approverAnswers[f.id]?.resposta ?? (flow.existingApprovalAnswers as any[]).find((a: any) => a.field_id === f.id)?.resposta;
+      return v === "nao_conforme";
+    }).length;
+    const contingenciasNoPrazo = (flow.contingencies as any[]).filter((c: any) =>
+      c.prazo_resolucao && c.resolvida_em && new Date(c.resolvida_em) <= new Date(c.prazo_resolucao)
+    ).length;
+    const score = calculateOperationalScore({
+      prazoLimite: assignment?.prazo_execucao ?? null,
+      fimEm: assignment?.finalizado_em ?? new Date().toISOString(),
+      status: assignment?.status ?? "",
+      totalItens: approverFields.length,
+      itensConformes,
+      evidenciaValidada: null,
+      totalContingencias: (flow.contingencies as any[]).length,
+      contingenciasNoPrazo,
+    });
+    const todosPlansPreenchidos = planosAuditorPendentes.every((p: any) => {
+      const itens: any[] = Array.isArray(p.itens_plano) ? p.itens_plano : [];
+      if (itens.length === 0) return true;
+      const resps = auditorRespostas[p.id] ?? {};
+      return itens.every((item: any) => {
+        const r = resps[item.tipo];
+        return r && (r.valor_texto || r.evidencia_url);
+      });
+    });
+    const temPlanoPendente = planosAuditorPendentes.length > 0;
+
+    const handleEnviar = async () => {
+      try {
+        if (temPlanoPendente) {
+          // Salva respostas do plano do auditor em valor_json do campo
+          for (const ap of planosAuditorPendentes) {
+            const resps = auditorRespostas[ap.id] ?? {};
+            const rodada = ap.rodada ?? 1;
+            const existing = (flow.fieldAnswers as any[]).find((a: any) => a.field_id === ap.field_id);
+            const novoJson = { ...(existing?.valor_json ?? {}) };
+            for (const [tipo, val] of Object.entries(resps)) {
+              novoJson[`__auditor_plano__r${rodada}__${tipo}`] = val;
+            }
+            await (supabase as any).from("operational_field_answers")
+              .upsert({ assignment_id: assignment?.id, field_id: ap.field_id, valor_json: novoJson }, { onConflict: "assignment_id,field_id" });
+          }
+          // Marca planos como respondidos
+          await (supabase as any).from("operational_field_reviews")
+            .update({ respondido: true, updated_at: new Date().toISOString() })
+            .in("id", planosAuditorPendentes.map((p: any) => p.id));
+          // Muda status para aguardando_auditoria
+          await (supabase as any).from("operational_assignments")
+            .update({ status: "aguardando_auditoria", updated_at: new Date().toISOString() })
+            .eq("id", assignment?.id);
+          toast.success("Resposta enviada ao auditor.");
+          onClose();
+        } else {
+          await aprovarDireto();
+        }
+      } catch (e: any) {
+        toast.error(e.message || "Erro ao enviar.");
+      }
+    };
+
+    return (
+      <div className="space-y-3">
+        {/* Header */}
+        <div className="flex items-center gap-2 pb-1 border-b border-border">
+          <button type="button" onClick={() => setShowAprovarModal(false)} className="p-1 rounded hover:bg-muted transition-colors">
+            <ArrowLeft className="w-4 h-4 text-muted-foreground" />
+          </button>
+          <span className="text-sm font-semibold text-foreground">Confirmar Aprovação</span>
+        </div>
+
+        {/* Resumo de respostas */}
+        <div className="bg-card border border-border rounded-lg p-3 space-y-2">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Resumo da Revisão</p>
+          <div className="grid grid-cols-3 gap-2 text-xs">
+            <div className="text-center">
+              <div className="text-lg font-bold text-emerald-700">{itensConformes}</div>
+              <div className="text-muted-foreground">Conformes</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-red-700">{itensNaoConformes}</div>
+              <div className="text-muted-foreground">Não conf.</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-amber-700">{(flow.contingencies as any[]).length}</div>
+              <div className="text-muted-foreground">Planos</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Score SLA */}
+        <div className="bg-card border border-border rounded-lg p-3 space-y-2">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Score por Tempo (SLA)</p>
+          {([
+            { label: "Pontualidade", val: score.pontualidade },
+            { label: "Conformidade", val: score.conformidade },
+            { label: "SLA Correções", val: score.slaCorrecoes },
+          ] as {label:string;val:number}[]).map(({ label, val }) => (
+            <div key={label} className="space-y-0.5">
+              <div className="flex justify-between text-[11px]">
+                <span className="text-muted-foreground">{label}</span>
+                <span className="font-medium">{val}%</span>
+              </div>
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all" style={{ width: `${val}%`, background: val >= 80 ? "#16a34a" : val >= 50 ? "#d97706" : "#dc2626" }} />
+              </div>
+            </div>
+          ))}
+          <div className="flex items-center justify-between pt-1 border-t border-border">
+            <span className="text-xs font-semibold text-foreground">Score Final</span>
+            <span className="text-sm font-bold" style={{ color: score.scoreFinal >= 80 ? "#16a34a" : score.scoreFinal >= 50 ? "#d97706" : "#dc2626" }}>{score.scoreFinal}/100</span>
+          </div>
+        </div>
+
+        {/* Plano do auditor — preencher antes de enviar */}
+        {temPlanoPendente && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 px-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-purple-700" />
+              <p className="text-[10px] uppercase tracking-wider text-purple-800 font-medium">Resposta ao Plano do Auditor</p>
+            </div>
+            {planosAuditorPendentes.map((ap: any, idx: number) => {
+              const itens: any[] = Array.isArray(ap.itens_plano) ? ap.itens_plano : [];
+              const rodada = ap.rodada ?? 1;
+              const resps = auditorRespostas[ap.id] ?? {};
+              return (
+                <div key={ap.id || idx} className="border border-purple-300 dark:border-purple-800 rounded-lg overflow-hidden">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 dark:bg-purple-950/30 border-b border-purple-200">
+                    <ShieldCheck className="w-3.5 h-3.5 text-purple-700" />
+                    <span className="text-[11px] font-semibold text-purple-800">Plano do Auditor — R{idx + 1}</span>
+                    <span className="text-[10px] text-muted-foreground ml-auto">{ap.avaliado_em ? new Date(ap.avaliado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}</span>
+                  </div>
+                  <div className="px-3 py-2 space-y-2">
+                    {ap.instrucao_aprovador && <p className="text-xs text-foreground">{ap.instrucao_aprovador}</p>}
+                    {itens.map((item: any, iIdx: number) => {
+                      const val = resps[item.tipo];
+                      const temResposta = !!(val?.valor_texto || val?.evidencia_url);
+                      return (
+                        <div key={iIdx} className="space-y-1">
+                          {item.titulo && <p className="text-[11px] text-purple-800 font-medium">{item.titulo}</p>}
+                          {temResposta ? (
+                            (item.tipo === "texto" || item.tipo === "descricao") ? (
+                              <div className="bg-card border border-border rounded p-2 flex items-center justify-between">
+                                <p className="text-xs">{val?.valor_texto}</p>
+                                <button type="button" className="text-[10px] text-muted-foreground hover:text-foreground ml-2"
+                                  onClick={() => setAuditorRespostas(prev => { const n = {...prev, [ap.id]: {...(prev[ap.id]??{})} }; delete n[ap.id][item.tipo]; return n; })}>✕</button>
+                              </div>
+                            ) : (
+                              <EvidenciaPreview anexoId={val?.evidencia_anexo_id ?? null} url={val?.evidencia_url ?? ""} mimeType={val?.evidencia_mime_type ?? null} disabled />
+                            )
+                          ) : (item.tipo === "texto" || item.tipo === "descricao") ? (
+                            <textarea
+                              placeholder={`${item.titulo || "Descreva"}...`} rows={3}
+                              className="w-full text-xs rounded border border-purple-300 bg-white px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-purple-400"
+                              onChange={e => setAuditorRespostas(prev => ({ ...prev, [ap.id]: { ...(prev[ap.id] ?? {}), [item.tipo]: { valor_texto: e.target.value } } }))}
+                            />
+                          ) : (
+                            <label className="flex items-center justify-center gap-2 border border-dashed border-purple-400 rounded-lg p-4 cursor-pointer hover:border-purple-600 transition-colors min-h-[52px]">
+                              <Upload className="w-3.5 h-3.5 text-purple-600" />
+                              <span className="text-xs text-purple-800 font-medium">
+                                {item.tipo === "foto" ? "Tirar foto" : item.tipo === "video" ? "Gravar vídeo" : "Gravar áudio"} *
+                              </span>
+                              <input type="file" className="hidden"
+                                accept={item.tipo === "foto" ? "image/*" : item.tipo === "video" ? "video/*" : "audio/*"}
+                                capture="environment"
+                                onChange={async e => {
+                                  const file = e.target.files?.[0]; if (!file) return;
+                                  const { data: sess } = await supabase.auth.getSession();
+                                  const token = sess.session?.access_token; if (!token) return;
+                                  const fd = new FormData();
+                                  fd.append("file", file); fd.append("contexto_tipo", "aprovacao");
+                                  fd.append("contexto_ref_id", ap.field_id);
+                                  if (assignment?.id) fd.append("assignment_id", assignment.id);
+                                  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tarefas-storage-upload`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd });
+                                  const json = await res.json();
+                                  if (json.ok) setAuditorRespostas(prev => ({ ...prev, [ap.id]: { ...(prev[ap.id] ?? {}), [item.tipo]: { evidencia_url: json.anexo.path_relativo, evidencia_anexo_id: json.anexo.id, evidencia_mime_type: json.anexo.mime_type ?? file.type } } }));
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+            {!todosPlansPreenchidos && (
+              <p className="text-[11px] text-purple-700 text-center">Preencha todos os itens do plano antes de enviar.</p>
+            )}
+          </div>
+        )}
+
+        {/* Botão enviar */}
+        <div className="sticky bottom-0 bg-background pb-1 pt-2 border-t border-border">
+          <Button type="button" className="w-full" disabled={temPlanoPendente && !todosPlansPreenchidos}
+            style={{ background: temPlanoPendente && !todosPlansPreenchidos ? undefined : "#7c3aed" }}
+            onClick={handleEnviar}>
+            <Send className="w-3.5 h-3.5 mr-1" />
+            {temPlanoPendente ? "Enviar resposta ao auditor" : "Confirmar aprovação"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  // ── fim Modal Confirmar Aprovação ────────────────────────────────────────
 
   if (false && planosAuditorPendentes.length > 0) {
     return (
@@ -1252,7 +1468,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
         ) : (
           <Button
             type="button" size="sm"
-            onClick={aprovarDireto}
+            onClick={() => setShowAprovarModal(true)}
             disabled={blockReasons.length > 0 || flow.isSaving}
             className="bg-emerald-600 hover:bg-emerald-700 text-white"
           >
