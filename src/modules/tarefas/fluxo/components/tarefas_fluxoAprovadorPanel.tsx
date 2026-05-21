@@ -136,48 +136,49 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
           papel="aprovador"
           acoesAtivas={true}
           onAprovadorResponderPlanoAuditor={(planoId) => handleResponderPlanoAuditor(planoId)}
-          rodape={
-            <>
-              {/* Botões Conforme/NC por pergunta */}
-              {(perms.podeAprovadorCriarPlanoExecutorParaField(p.fieldId) || planosAuditorPendentes.length > 0) && (
-                <div className="space-y-2 mt-2 border-t pt-2">
-                  {perms.podeAprovadorCriarPlanoExecutorParaField(p.fieldId) && (
-                    <FluxoBotaoConformeNaoConforme
-                    valor={avaliacao[p.fieldId] ?? null}
-                    onConforme={() =>
-                      setAvaliacao((prev) => ({ ...prev, [p.fieldId]: "conforme" }))
-                    }
-                    onNaoConforme={() => {
-                      setAvaliacao((prev) => ({ ...prev, [p.fieldId]: "nao_conforme" }));
+          entrePlanosAprovadorEAuditor={
+            perms.podeAprovadorCriarPlanoExecutorParaField(p.fieldId) ? (
+              <div className="space-y-2 mt-2 border-t pt-2">
+                <FluxoBotaoConformeNaoConforme
+                  valor={avaliacao[p.fieldId] ?? null}
+                  onConforme={() =>
+                    setAvaliacao((prev) => ({ ...prev, [p.fieldId]: "conforme" }))
+                  }
+                  onNaoConforme={() => {
+                    setAvaliacao((prev) => ({ ...prev, [p.fieldId]: "nao_conforme" }));
+                    setPlanosDraft((prev) => ({
+                      ...prev,
+                      [p.fieldId]: prev[p.fieldId] ?? defaultPlano(),
+                    }));
+                  }}
+                  disabled={actions.isSubmitting}
+                  labelNaoConforme={`Não Conforme · criar plano R${(p.planosAprovador.length || 0) + 1}`}
+                />
+
+                {avaliacao[p.fieldId] === "nao_conforme" && planosDraft[p.fieldId] && (
+                  <PlanoForm
+                    draft={planosDraft[p.fieldId]}
+                    onChange={(patch) =>
                       setPlanosDraft((prev) => ({
                         ...prev,
-                        [p.fieldId]: prev[p.fieldId] ?? defaultPlano(),
-                      }));
+                        [p.fieldId]: { ...(prev[p.fieldId] ?? defaultPlano()), ...patch },
+                      }))
+                    }
+                    onSubmit={() => handleCriarPlano(p.fieldId)}
+                    onCancel={() => {
+                      setAvaliacao((prev) => { const n = { ...prev }; delete n[p.fieldId]; return n; });
+                      setPlanosDraft((prev) => { const n = { ...prev }; delete n[p.fieldId]; return n; });
                     }}
-                    disabled={actions.isSubmitting}
-                    labelNaoConforme={`Não Conforme · criar plano R${(p.planosAprovador.length || 0) + 1}`}
-                    />
-                  )}
-
-                  {/* Form do plano quando NC */}
-                  {avaliacao[p.fieldId] === "nao_conforme" && planosDraft[p.fieldId] && (
-                    <PlanoForm
-                      draft={planosDraft[p.fieldId]}
-                      onChange={(patch) =>
-                        setPlanosDraft((prev) => ({
-                          ...prev,
-                          [p.fieldId]: { ...(prev[p.fieldId] ?? defaultPlano()), ...patch },
-                        }))
-                      }
-                      onSubmit={() => handleCriarPlano(p.fieldId)}
-                      onCancel={() => {
-                        setAvaliacao((prev) => { const n = { ...prev }; delete n[p.fieldId]; return n; });
-                        setPlanosDraft((prev) => { const n = { ...prev }; delete n[p.fieldId]; return n; });
-                      }}
-                      isSubmitting={actions.isSubmitting}
-                    />
-                  )}
-
+                    isSubmitting={actions.isSubmitting}
+                  />
+                )}
+              </div>
+            ) : null
+          }
+          rodape={
+            <>
+              {planosAuditorPendentes.length > 0 && (
+                <div className="space-y-2 mt-2 border-t pt-2">
                   {/* Form de responder plano do auditor (na pergunta dele) */}
                   {planosAuditorPendentes.map((ap) => (
                     <PlanoAuditorRespostaForm

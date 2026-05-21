@@ -26,6 +26,7 @@ interface Props {
   /** Callbacks (opcionais) acionados pelos cards de plano internos. */
   onExecutorResponderPlano?: (planoId: string) => void;
   onAprovadorResponderPlanoAuditor?: (planoId: string) => void;
+  entrePlanosAprovadorEAuditor?: React.ReactNode;
   /** Conteúdo extra a renderizar no rodapé do card (ex: botão criar plano). */
   rodape?: React.ReactNode;
 }
@@ -36,6 +37,7 @@ export function FluxoPerguntaHistoricoCard({
   acoesAtivas,
   onExecutorResponderPlano,
   onAprovadorResponderPlanoAuditor,
+  entrePlanosAprovadorEAuditor,
   rodape,
 }: Props) {
   const r0 = pergunta.respostaOriginalExecutor;
@@ -111,6 +113,8 @@ export function FluxoPerguntaHistoricoCard({
             onResponder={() => onExecutorResponderPlano?.(plano.id)}
           />
         ))}
+
+        {entrePlanosAprovadorEAuditor}
 
         {/* Planos do auditor R1 auditor, R2 auditor... */}
         {pergunta.planosAuditor.map((plano) => (
