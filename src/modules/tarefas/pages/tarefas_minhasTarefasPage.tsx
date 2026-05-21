@@ -1590,6 +1590,10 @@ export default function OperationalExecucaoPage() {
                 <Button type="button" size="sm" onClick={handleIniciarDevolvida} disabled={exec.startTask.isPending}>
                   <Play className="w-3.5 h-3.5 mr-1" /> {exec.startTask.isPending ? "Iniciando..." : "Iniciar para Responder"}
                 </Button>
+              ) : planos.planosAprovadorPendentes.length > 0 ? (
+                // 🆕 Plano de ação pendente → card próprio do plano cuida do envio.
+                // Esconde "Enviar para Avaliação" para evitar 2 botões duplicados.
+                null
               ) : (
                 <Button type="button" size="sm" onClick={handleSubmit} disabled={exec.isSubmitting || !allFieldsFilled}>
                   <Send className="w-3.5 h-3.5 mr-1" /> {exec.isSubmitting ? "Enviando..." : "Enviar para Avaliação"}
