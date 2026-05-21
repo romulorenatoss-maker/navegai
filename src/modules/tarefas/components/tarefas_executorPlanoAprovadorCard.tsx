@@ -37,11 +37,17 @@ interface Props {
   plano: PlanoAcaoRow;
   fieldLabel?: string;
   assignmentId: string;
+  /** Origem da tarefa: "rotina" ou "ad_hoc". Usado para montar o path no Drive. */
+  tipoTarefa: string;
+  /** Código visível da tarefa (ex: "#0025"). Vai pra pasta no Drive. */
+  codigoTarefa: string;
+  /** Nome da tarefa (do template). Vira slug na pasta do Drive. */
+  nomeTarefa: string;
   onResponder: (input: { planoId: string; respostaValorJson: PlanoAcaoRespostaPayload }) => Promise<unknown>;
   isResponding?: boolean;
 }
 
-export function ExecutorPlanoAprovadorCard({ plano, fieldLabel, assignmentId, onResponder, isResponding }: Props) {
+export function ExecutorPlanoAprovadorCard({ plano, fieldLabel, assignmentId, tipoTarefa, codigoTarefa, nomeTarefa, onResponder, isResponding }: Props) {
   const [respostas, setRespostas] = useState<PlanoAcaoRespostaPayload>({});
   const [uploadingTipo, setUploadingTipo] = useState<string | null>(null);
   const [progress, setProgress] = useState<Record<string, number>>({});
@@ -66,9 +72,18 @@ export function ExecutorPlanoAprovadorCard({ plano, fieldLabel, assignmentId, on
 
       const fd = new FormData();
       fd.append("file", file);
-      fd.append("contexto_tipo", "execucao_plano_aprovador");
+      // contexto_tipo "plano_acao" está na whitelist da edge function
+      // (supabase/functions/tarefas-storage-upload/index.ts:20-23)
+      fd.append("contexto_tipo", "plano_acao");
       fd.append("contexto_ref_id", plano.id);
       fd.append("assignment_id", assignmentId);
+      // 🆕 Propaga campos para buildPathRelativo do storage provider montar
+      // o caminho correto no Drive:
+      //   tarefas/{MM-YYYY}/{DD}/{tipoTarefa}/{codigoTarefa}-{slug-nome}/plano_acao/arquivo
+      // Doc: supabase/functions/_shared/tarefas_storage_provider.ts (buildPathRelativo)
+      fd.append("tipo_tarefa", tipoTarefa);
+      fd.append("codigo_tarefa", codigoTarefa);
+      fd.append("nome_tarefa", nomeTarefa);
 
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tarefas-storage-upload`);

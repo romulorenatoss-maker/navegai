@@ -1376,6 +1376,9 @@ export default function OperationalExecucaoPage() {
                             plano={p}
                             fieldLabel={f.label}
                             assignmentId={selectedAssignment.id}
+                            tipoTarefa={(selectedAssignment.origem ?? "rotina") as string}
+                            codigoTarefa={`#${String(selectedAssignment.numero_tarefa ?? "").padStart(4, "0")}`}
+                            nomeTarefa={selectedAssignment.template_snapshot?.nome ?? "tarefa"}
                             isResponding={planos.responderPlanoAprovador.isPending}
                             onResponder={async (input) => {
                               await planos.responderPlanoAprovador.mutateAsync(input);
@@ -1465,6 +1468,9 @@ export default function OperationalExecucaoPage() {
                                   plano={p}
                                   fieldLabel={f.label}
                                   assignmentId={selectedAssignment.id}
+                                  tipoTarefa={(selectedAssignment.origem ?? "rotina") as string}
+                                  codigoTarefa={`#${String(selectedAssignment.numero_tarefa ?? "").padStart(4, "0")}`}
+                                  nomeTarefa={selectedAssignment.template_snapshot?.nome ?? "tarefa"}
                                   isResponding={planos.responderPlanoAprovador.isPending}
                                   onResponder={async (input) => {
                                     await planos.responderPlanoAprovador.mutateAsync(input);
