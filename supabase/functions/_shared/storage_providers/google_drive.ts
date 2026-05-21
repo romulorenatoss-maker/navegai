@@ -56,7 +56,14 @@ async function createFolder(name: string, parentId: string | null): Promise<stri
   return j.id;
 }
 
-async function ensureFolderPath(rootFolderId: string, segments: string[]): Promise<string> {
+/**
+ * Garante que o caminho `segments` existe abaixo de `rootFolderId`, criando
+ * pastas que não existem e reusando as que já existem (find-or-create).
+ * Retorna o ID da pasta final.
+ *
+ * Exportado para reuso direto em edge functions (ex: tarefas-storage-create-folder).
+ */
+export async function ensureFolderPath(rootFolderId: string, segments: string[]): Promise<string> {
   const cache = cacheFor(rootFolderId);
   const cacheKey = segments.join('/');
   if (cacheKey === '') return rootFolderId;
