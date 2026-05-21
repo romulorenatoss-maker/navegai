@@ -113,10 +113,10 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
 
   return (
     <div className="space-y-3">
-      <Card>
+      <Card className="max-w-full overflow-hidden">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center justify-between gap-2">
-            <span>#{a.numero_tarefa} · {a.nome}</span>
+          <CardTitle className="text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0">
+            <span className="min-w-0 break-words whitespace-normal">#{a.numero_tarefa} · {a.nome}</span>
             <Badge variant="outline">{statusLabel(a.status)}</Badge>
           </CardTitle>
         </CardHeader>
@@ -230,8 +230,8 @@ function PlanoForm({
   isSubmitting?: boolean;
 }) {
   return (
-    <div className="border border-amber-300 rounded-md overflow-hidden">
-      <div className="px-3 py-2 bg-amber-50 border-b border-amber-200 flex items-center gap-2">
+    <div className="border border-amber-300 rounded-md overflow-hidden max-w-full">
+      <div className="px-3 py-2 bg-amber-50 border-b border-amber-200 flex items-start gap-2">
         <ClipboardList className="h-3.5 w-3.5 text-amber-700" />
         <span className="text-[11px] font-semibold text-amber-800">Novo plano para o executor</span>
       </div>
@@ -257,7 +257,7 @@ function PlanoForm({
             type="datetime-local"
             value={draft.prazoIso}
             onChange={(e) => onChange({ prazoIso: e.target.value })}
-            className="h-8 text-xs"
+            className="h-8 text-xs max-w-full"
           />
         </div>
         <div className="flex gap-1.5">
@@ -280,8 +280,8 @@ function PlanoForm({
             </button>
           ))}
         </div>
-        <div className="flex gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button type="button" size="sm" variant="outline" className="w-full sm:w-auto" onClick={onCancel} disabled={isSubmitting}>
             Cancelar
           </Button>
           <Button
@@ -289,7 +289,7 @@ function PlanoForm({
             size="sm"
             onClick={onSubmit}
             disabled={isSubmitting || draft.itens.length === 0}
-            className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+            className="w-full sm:flex-1 bg-amber-600 hover:bg-amber-700 text-white"
           >
             {isSubmitting ? "Criando..." : "Criar plano e devolver"}
           </Button>
@@ -316,7 +316,7 @@ function PlanoAuditorRespostaForm({
   isSubmitting?: boolean;
 }) {
   return (
-    <div className="border border-purple-300 rounded-md p-2 space-y-2 mt-2">
+    <div className="border border-purple-300 rounded-md p-2 space-y-2 mt-2 max-w-full overflow-hidden">
       <p className="text-[11px] font-semibold text-purple-800">
         Responder ao auditor:
       </p>
@@ -351,7 +351,7 @@ function PlanoAuditorRespostaForm({
               value={r.evidencia_url ?? ""}
               onChange={(e) => onChangeResposta(idx, { tipo: item.tipo, evidencia_url: e.target.value })}
               placeholder="URL da evidência (upload via card será reaproveitado em fase de UI)"
-              className="h-8 text-xs"
+              className="h-8 text-xs max-w-full"
             />
           </div>
         );

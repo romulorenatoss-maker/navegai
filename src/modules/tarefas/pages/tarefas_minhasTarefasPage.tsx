@@ -562,14 +562,14 @@ export default function OperationalExecucaoPage() {
         <TabsContent value="operacionais" className="space-y-0 mt-0">
 
       {/* Filtros (busca, data, ordenação, criar) */}
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <div className="relative flex-1 min-w-[160px]">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3 flex-wrap">
+        <div className="relative w-full sm:flex-1 sm:min-w-[160px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Pesquisar" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9 h-9 text-sm" />
         </div>
-        <Input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value || today)} className="w-[140px] h-9 text-sm" />
+        <Input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value || today)} className="w-full sm:w-[140px] h-9 text-sm" />
         <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
-          <SelectTrigger className="w-[150px] h-9 text-sm">
+          <SelectTrigger className="w-full sm:w-[150px] h-9 text-sm">
             <ArrowDownUp className="w-3.5 h-3.5 mr-1" />
             <SelectValue />
           </SelectTrigger>
@@ -581,16 +581,16 @@ export default function OperationalExecucaoPage() {
             <SelectItem value="movimento">Última movimentação</SelectItem>
           </SelectContent>
         </Select>
-        <Button type="button" size="icon" className="h-9 w-9 shrink-0" onClick={() => setQuickTaskOpen(true)} title="Nova Tarefa">
+        <Button type="button" size="icon" className="h-9 w-full sm:w-9 shrink-0" onClick={() => setQuickTaskOpen(true)} title="Nova Tarefa">
           <Plus className="w-4 h-4" />
         </Button>
       </div>
 
       {isAdmin && (
-        <div className="flex items-center gap-2 mb-3 flex-wrap p-2 rounded-lg bg-muted/40 border border-border">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3 flex-wrap p-2 rounded-lg bg-muted/40 border border-border">
           {/* Setor primeiro — filtra os executores abaixo */}
           <Select value={adminSetor} onValueChange={v => { setAdminSetor(v); setAdminExecutor("__all"); }}>
-            <SelectTrigger className="w-[180px] h-8 text-xs">
+            <SelectTrigger className="w-full sm:w-[180px] h-8 text-xs">
               <Filter className="w-3 h-3 mr-1" />
               <SelectValue placeholder="Setor" />
             </SelectTrigger>
@@ -604,7 +604,7 @@ export default function OperationalExecucaoPage() {
 
           {/* Executores — filtrados pelo setor selecionado */}
           <Select value={adminExecutor} onValueChange={setAdminExecutor}>
-            <SelectTrigger className="w-[200px] h-8 text-xs">
+            <SelectTrigger className="w-full sm:w-[200px] h-8 text-xs">
               <Users className="w-3 h-3 mr-1" />
               <SelectValue placeholder="Executor" />
             </SelectTrigger>
@@ -752,13 +752,13 @@ export default function OperationalExecucaoPage() {
             <SheetTitle>{selectedAssignment?.template_snapshot?.nome || selectedAssignment?.operational_templates?.nome || "Tarefa"}</SheetTitle>
           </VisuallyHidden>
 
-          <div className="p-4 border-b border-border">
-            <div className="flex items-center gap-2">
+          <div className="p-4 border-b border-border max-w-full overflow-hidden">
+            <div className="flex items-start gap-2 min-w-0">
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={closeExecution}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               <div className="flex-1 min-w-0">
-                <h2 className="text-sm font-semibold text-foreground truncate flex items-center gap-2">
+                <h2 className="text-sm font-semibold text-foreground flex flex-wrap items-center gap-2 min-w-0 break-words">
                   {selectedAssignment?.numero_tarefa && (
                     <span className="text-[11px] font-mono font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded shrink-0">
                       #{String(selectedAssignment.numero_tarefa).padStart(4, "0")}
@@ -783,7 +783,7 @@ export default function OperationalExecucaoPage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 max-w-full">
             {showContingencyPanel && selectedAssignment && (
               <div className="bg-muted/30 border border-border rounded-lg p-3">
                 <EmbeddedContingencyPanel assignmentId={selectedAssignment.id} />
@@ -816,14 +816,14 @@ export default function OperationalExecucaoPage() {
           </div>
 
           {isCriadorValidando && (
-            <div className="border-t border-border p-3 flex items-center gap-2 bg-card safe-area-bottom flex-wrap">
-              <div className="flex-1 text-xs text-muted-foreground">
+            <div className="border-t border-border p-3 flex flex-col sm:flex-row sm:items-center gap-2 bg-card safe-area-bottom">
+              <div className="w-full sm:flex-1 text-xs text-muted-foreground break-words">
                 Esta tarefa foi designada por voce e esta aguardando sua validacao de recebimento.
               </div>
-              <Button type="button" size="sm" variant="outline" onClick={handleDevolverDesignada} disabled={centralTransition.isPending}>
+              <Button type="button" size="sm" variant="outline" className="w-full sm:w-auto" onClick={handleDevolverDesignada} disabled={centralTransition.isPending}>
                 <RotateCcw className="w-3.5 h-3.5 mr-1" /> Devolver
               </Button>
-              <Button type="button" size="sm" onClick={handleAprovarRecebimento} disabled={centralTransition.isPending}>
+              <Button type="button" size="sm" className="w-full sm:w-auto" onClick={handleAprovarRecebimento} disabled={centralTransition.isPending}>
                 <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Aprovar Recebimento
               </Button>
             </div>

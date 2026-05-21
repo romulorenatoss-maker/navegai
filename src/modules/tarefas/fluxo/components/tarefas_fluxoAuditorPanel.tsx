@@ -94,18 +94,18 @@ export function FluxoAuditorPanel({ assignmentId }: Props) {
 
   return (
     <div className="space-y-3">
-      <Card>
+      <Card className="max-w-full overflow-hidden">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center justify-between gap-2">
-            <span>#{a.numero_tarefa} · {a.nome}</span>
+          <CardTitle className="text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0">
+            <span className="min-w-0 break-words whitespace-normal">#{a.numero_tarefa} · {a.nome}</span>
             <Badge variant="outline">{statusLabel(a.status)}</Badge>
           </CardTitle>
         </CardHeader>
       </Card>
 
-      <div className="rounded-md border border-blue-300 bg-blue-50 px-3 py-2 flex items-start gap-2">
+      <div className="rounded-md border border-blue-300 bg-blue-50 px-3 py-2 flex items-start gap-2 max-w-full overflow-hidden">
         <ShieldCheck className="h-4 w-4 text-blue-700 shrink-0 mt-0.5" />
-        <p className="text-xs text-blue-900">
+        <p className="text-xs text-blue-900 break-words">
           <strong>Modo Auditor.</strong> Revise cada pergunta. Se aprovar tudo, finalize. Se houver não-conformidade, crie um plano de ação para o aprovador na pergunta correspondente.
         </p>
       </div>
@@ -137,7 +137,7 @@ export function FluxoAuditorPanel({ assignmentId }: Props) {
               )}
 
               {avaliacao[p.fieldId] === "nao_conforme" && planosDraft[p.fieldId] && (
-                <div className="border border-purple-300 rounded-md overflow-hidden">
+                <div className="border border-purple-300 rounded-md overflow-hidden max-w-full">
                   <div className="px-3 py-2 bg-purple-50 border-b border-purple-200">
                     <span className="text-[11px] font-semibold text-purple-800">
                       Novo plano para o aprovador
@@ -183,11 +183,12 @@ export function FluxoAuditorPanel({ assignmentId }: Props) {
                         className="h-8 text-xs"
                       />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
+                        className="w-full sm:w-auto"
                         onClick={() => {
                           setAvaliacao((prev) => { const n = { ...prev }; delete n[p.fieldId]; return n; });
                           setPlanosDraft((prev) => { const n = { ...prev }; delete n[p.fieldId]; return n; });
@@ -201,7 +202,7 @@ export function FluxoAuditorPanel({ assignmentId }: Props) {
                         size="sm"
                         onClick={() => handleCriarPlano(p.fieldId)}
                         disabled={actions.isSubmitting || planosDraft[p.fieldId].itens.length === 0}
-                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                        className="w-full sm:flex-1 bg-purple-600 hover:bg-purple-700 text-white"
                       >
                         {actions.isSubmitting ? "Criando..." : "Criar plano e enviar ao aprovador"}
                       </Button>

@@ -32,9 +32,9 @@ export function FluxoPlanoAuditorCard({ plano, podeResponder, onResponder }: Pro
   })();
 
   return (
-    <div className="border-2 border-purple-300 rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between gap-2 px-3 py-2 bg-purple-50 dark:bg-purple-950/30 border-b border-purple-200">
-        <span className="text-[11px] font-semibold text-purple-800 flex items-center gap-1.5">
+    <div className="border-2 border-purple-300 rounded-lg overflow-hidden max-w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 py-2 bg-purple-50 dark:bg-purple-950/30 border-b border-purple-200">
+        <span className="text-[11px] font-semibold text-purple-800 flex items-center gap-1.5 min-w-0 break-words">
           <ShieldCheck className="h-3.5 w-3.5" />
           Plano do auditor — R{plano.rodada} (para o aprovador)
         </span>
@@ -50,16 +50,16 @@ export function FluxoPlanoAuditorCard({ plano, podeResponder, onResponder }: Pro
         {plano.instrucao && (
           <p className="text-xs text-foreground">{plano.instrucao}</p>
         )}
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 max-w-full">
           {plano.prazo_resolucao && (
-            <span className={`text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${prazoAtrasado ? "bg-rose-100 text-rose-800" : "bg-purple-50 text-purple-800"}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 max-w-full whitespace-normal break-words ${prazoAtrasado ? "bg-rose-100 text-rose-800" : "bg-purple-50 text-purple-800"}`}>
               <Clock className="h-3 w-3" />
               Prazo: {new Date(plano.prazo_resolucao).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
               {prazoAtrasado && " · atrasado"}
             </span>
           )}
           {itens.map((item, i) => (
-            <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-800">
+            <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-800 max-w-full whitespace-normal break-words">
               {item.tipo === "foto" ? "📷" : item.tipo === "video" ? "🎥" : item.tipo === "audio" ? "🎵" : "✏️"} {item.titulo || item.tipo}
             </span>
           ))}
@@ -85,8 +85,8 @@ export function FluxoPlanoAuditorCard({ plano, podeResponder, onResponder }: Pro
                     </p>
                   )}
                   {(item.tipo === "texto" || (item.tipo as string) === "descricao") && dado.valor_texto && (
-                    <div className="bg-card border rounded p-1.5">
-                      <p className="text-xs">{dado.valor_texto}</p>
+                    <div className="bg-card border rounded p-1.5 max-w-full overflow-hidden">
+                      <p className="text-xs break-words whitespace-normal">{dado.valor_texto}</p>
                     </div>
                   )}
                   {(item.tipo === "foto" || item.tipo === "video" || item.tipo === "audio") && dado.evidencia_url && (
@@ -117,7 +117,7 @@ export function FluxoPlanoAuditorCard({ plano, podeResponder, onResponder }: Pro
                 type="button"
                 size="sm"
                 onClick={onResponder}
-                className="bg-purple-600 hover:bg-purple-700 text-white"
+                className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white"
               >
                 Responder plano do auditor R{plano.rodada}
               </Button>

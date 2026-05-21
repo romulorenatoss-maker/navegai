@@ -41,16 +41,16 @@ export function FluxoPerguntaHistoricoCard({
   const r0 = pergunta.respostaOriginalExecutor;
 
   return (
-    <Card>
+    <Card className="max-w-full overflow-hidden">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm flex items-center justify-between gap-2">
-          <span>{pergunta.label}</span>
+        <CardTitle className="text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0">
+          <span className="min-w-0 break-words whitespace-normal">{pergunta.label}</span>
           {pergunta.obrigatorio && <Badge variant="outline" className="text-[10px]">Obrigatória</Badge>}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {/* R0 — Resposta original do executor (sempre read-only no histórico) */}
-        <div className="rounded-md border bg-muted/20 p-2.5 text-xs space-y-1">
+        <div className="rounded-md border bg-muted/20 p-2.5 text-xs space-y-1 max-w-full overflow-hidden break-words">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
             R0 — Resposta do executor
           </p>

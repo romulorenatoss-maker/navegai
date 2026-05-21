@@ -70,10 +70,10 @@ export function FluxoExecutorPanel({ assignmentId }: Props) {
   return (
     <div className="space-y-3">
       {/* Cabeçalho */}
-      <Card>
+      <Card className="max-w-full overflow-hidden">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center justify-between gap-2">
-            <span>#{a.numero_tarefa} · {a.nome}</span>
+          <CardTitle className="text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0">
+            <span className="min-w-0 break-words whitespace-normal">#{a.numero_tarefa} · {a.nome}</span>
             <Badge variant="outline">{statusLabel(a.status)}</Badge>
           </CardTitle>
         </CardHeader>
@@ -152,9 +152,9 @@ export function FluxoExecutorPanel({ assignmentId }: Props) {
 function ReadOnlyR0({ pergunta }: { pergunta: any }) {
   const r0 = pergunta.respostaOriginalExecutor;
   return (
-    <Card>
+    <Card className="max-w-full overflow-hidden">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm">{pergunta.label}</CardTitle>
+        <CardTitle className="text-sm break-words whitespace-normal">{pergunta.label}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-1.5 text-xs">
         {r0 ? (

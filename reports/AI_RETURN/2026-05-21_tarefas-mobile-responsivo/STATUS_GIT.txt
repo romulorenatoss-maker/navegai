@@ -1,0 +1,11 @@
+ M docs/AI/ULTIMA_ALTERACAO.md
+ M docs/AI/ULTIMO_CONTEXTO.md
+ M src/modules/tarefas/fluxo/components/tarefas_fluxoAprovadorPanel.tsx
+ M src/modules/tarefas/fluxo/components/tarefas_fluxoAuditorPanel.tsx
+ M src/modules/tarefas/fluxo/components/tarefas_fluxoExecutorPanel.tsx
+ M src/modules/tarefas/fluxo/components/tarefas_fluxoPerguntaHistoricoCard.tsx
+ M src/modules/tarefas/fluxo/components/tarefas_fluxoPlanoAprovadorCard.tsx
+ M src/modules/tarefas/fluxo/components/tarefas_fluxoPlanoAuditorCard.tsx
+ M src/modules/tarefas/pages/tarefas_minhasTarefasPage.tsx
+?? reports/AI_RETURN/2026-05-21_tarefas-mobile-responsivo/
+?? reports/AI_RETURN/mobile-layout-tarefas-minhas/

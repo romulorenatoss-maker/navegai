@@ -14,6 +14,7 @@ Data: 2026-05-21
 - A R0 do executor foi protegida contra overwrite por migration nova.
 - Artefatos finais do rebuild anterior existem como historico de deploy, mas a memoria ativa agora vive apenas em `docs/AI/`.
 - Limpeza posterior removeu os hooks legados de permissao/aprovacao/auditoria/revisao e o painel legado orfao. Grep em source sem docs deve retornar zero para esses nomes.
+- Ajuste posterior de UI corrigiu apenas responsividade mobile em `/tarefas/minhas` e paineis oficiais do fluxo, sem alterar regras, hooks, RPCs, banco ou permissoes.
 
 ## Regra de continuidade
 

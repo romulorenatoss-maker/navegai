@@ -40,9 +40,9 @@ export function FluxoPlanoAprovadorCard({ plano, podeResponder, onResponder }: P
     : "bg-emerald-50 border-emerald-300 text-emerald-800";
 
   return (
-    <div className="border-2 rounded-lg overflow-hidden">
-      <div className={`flex items-center justify-between gap-2 px-3 py-2 border-b ${corHeader}`}>
-        <span className="text-[11px] font-semibold flex items-center gap-1.5">
+    <div className="border-2 rounded-lg overflow-hidden max-w-full">
+      <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 py-2 border-b ${corHeader}`}>
+        <span className="text-[11px] font-semibold flex items-center gap-1.5 min-w-0 break-words">
           <AlertTriangle className="h-3.5 w-3.5" />
           Plano do aprovador — R{plano.rodada}
         </span>
@@ -58,16 +58,16 @@ export function FluxoPlanoAprovadorCard({ plano, podeResponder, onResponder }: P
         {plano.instrucao && (
           <p className="text-xs text-foreground">{plano.instrucao}</p>
         )}
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 max-w-full">
           {plano.prazo_resolucao && (
-            <span className={`text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${prazoAtrasado ? "bg-rose-100 text-rose-800" : "bg-blue-50 text-blue-800"}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 max-w-full whitespace-normal break-words ${prazoAtrasado ? "bg-rose-100 text-rose-800" : "bg-blue-50 text-blue-800"}`}>
               <Clock className="h-3 w-3" />
               Prazo: {new Date(plano.prazo_resolucao).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
               {prazoAtrasado && " · atrasado"}
             </span>
           )}
           {itens.map((item, i) => (
-            <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-800">
+            <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 max-w-full whitespace-normal break-words">
               {item.tipo === "foto" ? "📷" : item.tipo === "video" ? "🎥" : item.tipo === "audio" ? "🎵" : "✏️"} {item.titulo || item.tipo}
             </span>
           ))}
@@ -94,8 +94,8 @@ export function FluxoPlanoAprovadorCard({ plano, podeResponder, onResponder }: P
                     </p>
                   )}
                   {(item.tipo === "texto" || (item.tipo as string) === "descricao") && dado.valor_texto && (
-                    <div className="bg-card border rounded p-1.5">
-                      <p className="text-xs">{dado.valor_texto}</p>
+                    <div className="bg-card border rounded p-1.5 max-w-full overflow-hidden">
+                      <p className="text-xs break-words whitespace-normal">{dado.valor_texto}</p>
                     </div>
                   )}
                   {(item.tipo === "foto" || item.tipo === "video" || item.tipo === "audio") && dado.evidencia_url && (
@@ -126,6 +126,7 @@ export function FluxoPlanoAprovadorCard({ plano, podeResponder, onResponder }: P
                 type="button"
                 size="sm"
                 onClick={onResponder}
+                className="w-full sm:w-auto"
               >
                 Responder plano R{plano.rodada}
               </Button>

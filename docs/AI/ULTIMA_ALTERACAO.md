@@ -4,32 +4,29 @@ Data: 2026-05-21
 
 ## Objetivo
 
-Limpar o fluxo de tarefas para reduzir hooks/paineis legados e manter o fluxo executor/aprovador/auditor como fonte oficial em `src/modules/tarefas/fluxo`.
+Corrigir apenas responsividade mobile da tela `/tarefas/minhas` e dos paineis oficiais de tarefas.
 
 ## Arquivos alterados
 
-- `src/modules/tarefas/pages/tarefas_gestaoPage.tsx`
 - `src/modules/tarefas/pages/tarefas_minhasTarefasPage.tsx`
-- `src/modules/tarefas/hooks/tarefas_usePlanosAcao.ts`
-- `src/modules/tarefas/components/tarefas_itensPlanoBuilder.tsx`
-- `src/modules/tarefas/components/painels/tarefas_panelRegistry.ts`
+- `src/modules/tarefas/fluxo/components/tarefas_fluxoExecutorPanel.tsx`
+- `src/modules/tarefas/fluxo/components/tarefas_fluxoAprovadorPanel.tsx`
+- `src/modules/tarefas/fluxo/components/tarefas_fluxoAuditorPanel.tsx`
+- `src/modules/tarefas/fluxo/components/tarefas_fluxoPerguntaHistoricoCard.tsx`
+- `src/modules/tarefas/fluxo/components/tarefas_fluxoPlanoAprovadorCard.tsx`
+- `src/modules/tarefas/fluxo/components/tarefas_fluxoPlanoAuditorCard.tsx`
 - `docs/AI/MEMORIA_MESTRA.md`
 - `docs/AI/ULTIMO_CONTEXTO.md`
 - `docs/AI/ULTIMA_ALTERACAO.md`
 
 ## Arquivos deletados
 
-- `src/modules/tarefas/hooks/tarefas_useFlowPermissions.ts`
-- `src/modules/tarefas/hooks/tarefas_useApprovalFlow.ts`
-- `src/modules/tarefas/hooks/tarefas_useAuditFlow.ts`
-- `src/modules/tarefas/hooks/tarefas_useAssignmentReview.ts`
-- `src/modules/tarefas/components/tarefas_embeddedActionPanels.tsx`
-- `src/modules/tarefas/components/tarefas_reviewFieldCard.tsx`
+- Nenhum.
 
 ## Prova
 
-- Grep em `src/modules/tarefas` sem `docs/**` retorna zero referencias para os hooks/paineis deletados.
 - `npm.cmd run build` passou.
+- Playwright abriu `/tarefas/minhas` em mobile e desktop, mas redirecionou para `/login` por falta de sessao autenticada. Métrica capturada: sem overflow horizontal no login; validacao visual interna do drawer ficou limitada por autenticacao.
 
 ## Banco/RPC/Trigger
 
