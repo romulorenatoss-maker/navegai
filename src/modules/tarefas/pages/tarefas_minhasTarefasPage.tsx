@@ -1337,33 +1337,10 @@ export default function OperationalExecucaoPage() {
               </div>
             )}
 
-            {/* 🆕 Planos de ação PENDENTES criados pelo aprovador para o executor
-                responder. Renderizados acima dos fields para destaque máximo.
-                Card dedicado (tarefas_executorPlanoAprovadorCard) usa a RPC nova
-                tarefas_rpc_executor_responder_plano_aprovador.
+            {/* 🆕 Helper inline: renderiza planos de ação PENDENTES de um field
+                logo ABAIXO da pergunta correspondente. Substitui o bloco antigo
+                que agrupava tudo no topo (Regra 0.7 — 1 lugar por responsabilidade).
                 Doc: src/modules/tarefas/docs/tarefas_arquitetura_planos_acao.md */}
-            {isEditable && selectedAssignment && viewMode === "registro" && planos.planosAprovadorPendentes.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
-                  📨 Planos de ação aguardando sua resposta ({planos.planosAprovadorPendentes.length})
-                </p>
-                {planos.planosAprovadorPendentes.map((p) => {
-                  const field = effectiveFields.find((f) => f.id === p.field_id);
-                  return (
-                    <ExecutorPlanoAprovadorCard
-                      key={p.id}
-                      plano={p}
-                      fieldLabel={field?.label}
-                      assignmentId={selectedAssignment.id}
-                      isResponding={planos.responderPlanoAprovador.isPending}
-                      onResponder={async (input) => {
-                        await planos.responderPlanoAprovador.mutateAsync(input);
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            )}
 
             {isEditable && selectedAssignment?.status !== "pendente" && viewMode === "registro" && (
               <>
@@ -1372,25 +1349,40 @@ export default function OperationalExecucaoPage() {
                     {effectiveFields.map(f => {
                       const latestReview = exec.getLatestReview(f.id);
                       const fieldDevolvido = latestReview?.devolvido === true;
+                      const planosDoField = planos.planosAprovadorPorField(f.id).filter(p => !p.respondido);
                       return (
-                      <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
-                        review={latestReview} userRole="executor"
-                        disabled={fieldDevolvido ? false : (isDevolvida && !fieldDevolvido)}
-                        allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id}
-                        numeroTarefa={selectedAssignment.numero_tarefa ?? 0}
-                        nomeTarefa={selectedAssignment.template_snapshot?.nome ?? "tarefa"}
-                        origemTarefa={(selectedAssignment.origem ?? "rotina") as "rotina" | "ad_hoc"}
-                        showValidation={submitAttempted}
-                        approverPlan={approverPlanByField[f.id]}
-                        allReviews={exec.getAllReviews(f.id)}
-                        horarioLimite={selectedAssignment?.horario_limite}
-                        dataPrevista={selectedAssignment?.data_prevista}
-                        profileId={profile?.id}
-                        responsavelId={selectedAssignment?.responsavel_id}
-                        setorExecutorId={selectedAssignment?.setor_executor_id}
-                        meusSetorIds={meusSetorIds}
-                        isAdmin={isAdmin}
-                      />
+                      <div key={f.id} className="space-y-2">
+                        <DynamicFieldRenderer field={f} answer={exec.answers[f.id]}
+                          review={latestReview} userRole="executor"
+                          disabled={fieldDevolvido ? false : (isDevolvida && !fieldDevolvido)}
+                          allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id}
+                          numeroTarefa={selectedAssignment.numero_tarefa ?? 0}
+                          nomeTarefa={selectedAssignment.template_snapshot?.nome ?? "tarefa"}
+                          origemTarefa={(selectedAssignment.origem ?? "rotina") as "rotina" | "ad_hoc"}
+                          showValidation={submitAttempted}
+                          approverPlan={approverPlanByField[f.id]}
+                          allReviews={exec.getAllReviews(f.id)}
+                          horarioLimite={selectedAssignment?.horario_limite}
+                          dataPrevista={selectedAssignment?.data_prevista}
+                          profileId={profile?.id}
+                          responsavelId={selectedAssignment?.responsavel_id}
+                          setorExecutorId={selectedAssignment?.setor_executor_id}
+                          meusSetorIds={meusSetorIds}
+                          isAdmin={isAdmin}
+                        />
+                        {planosDoField.map((p) => (
+                          <ExecutorPlanoAprovadorCard
+                            key={p.id}
+                            plano={p}
+                            fieldLabel={f.label}
+                            assignmentId={selectedAssignment.id}
+                            isResponding={planos.responderPlanoAprovador.isPending}
+                            onResponder={async (input) => {
+                              await planos.responderPlanoAprovador.mutateAsync(input);
+                            }}
+                          />
+                        ))}
+                      </div>
                       );
                     })}
                   </div>
@@ -1445,26 +1437,43 @@ export default function OperationalExecucaoPage() {
                           </div>
                         )}
                         <div className="space-y-3">
-                          {sFields.map(f => (
-                            <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
-                              review={exec.getLatestReview(f.id)} userRole="executor"
-                              disabled={isDevolvida && exec.getLatestReview(f.id)?.devolvido !== true}
-                              allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id}
-                              numeroTarefa={selectedAssignment.numero_tarefa ?? 0}
-                              nomeTarefa={selectedAssignment.template_snapshot?.nome ?? "tarefa"}
-                              origemTarefa={(selectedAssignment.origem ?? "rotina") as "rotina" | "ad_hoc"}
-                              showValidation={submitAttempted}
-                              approverPlan={approverPlanByField[f.id]}
-                              allReviews={exec.getAllReviews(f.id)}
-                              horarioLimite={selectedAssignment?.horario_limite}
-                              dataPrevista={selectedAssignment?.data_prevista}
-                              profileId={profile?.id}
-                              responsavelId={selectedAssignment?.responsavel_id}
-                              setorExecutorId={selectedAssignment?.setor_executor_id}
-                              meusSetorIds={meusSetorIds}
-                              isAdmin={isAdmin}
-                            />
-                          ))}
+                          {sFields.map(f => {
+                            const planosDoField = planos.planosAprovadorPorField(f.id).filter(p => !p.respondido);
+                            return (
+                            <div key={f.id} className="space-y-2">
+                              <DynamicFieldRenderer field={f} answer={exec.answers[f.id]}
+                                review={exec.getLatestReview(f.id)} userRole="executor"
+                                disabled={isDevolvida && exec.getLatestReview(f.id)?.devolvido !== true}
+                                allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id}
+                                numeroTarefa={selectedAssignment.numero_tarefa ?? 0}
+                                nomeTarefa={selectedAssignment.template_snapshot?.nome ?? "tarefa"}
+                                origemTarefa={(selectedAssignment.origem ?? "rotina") as "rotina" | "ad_hoc"}
+                                showValidation={submitAttempted}
+                                approverPlan={approverPlanByField[f.id]}
+                                allReviews={exec.getAllReviews(f.id)}
+                                horarioLimite={selectedAssignment?.horario_limite}
+                                dataPrevista={selectedAssignment?.data_prevista}
+                                profileId={profile?.id}
+                                responsavelId={selectedAssignment?.responsavel_id}
+                                setorExecutorId={selectedAssignment?.setor_executor_id}
+                                meusSetorIds={meusSetorIds}
+                                isAdmin={isAdmin}
+                              />
+                              {planosDoField.map((p) => (
+                                <ExecutorPlanoAprovadorCard
+                                  key={p.id}
+                                  plano={p}
+                                  fieldLabel={f.label}
+                                  assignmentId={selectedAssignment.id}
+                                  isResponding={planos.responderPlanoAprovador.isPending}
+                                  onResponder={async (input) => {
+                                    await planos.responderPlanoAprovador.mutateAsync(input);
+                                  }}
+                                />
+                              ))}
+                            </div>
+                            );
+                          })}
                         </div>
                       </div>
                     );
