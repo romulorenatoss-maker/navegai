@@ -81,7 +81,6 @@ export function useFluxoTarefa(assignmentId: string | null): UseFluxoTarefaResul
         .from("tarefas_planos_acao_aprovador")
         .select("*")
         .eq("assignment_id", assignmentId)
-        .is("deleted_at", null)
         .order("rodada", { ascending: true });
       if (error) throw error;
       return (data ?? []) as PlanoAprovador[];

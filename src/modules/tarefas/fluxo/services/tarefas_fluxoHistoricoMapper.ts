@@ -132,7 +132,7 @@ export function montarPerguntas(args: {
       respostasOriginais.find((r) => r.field_id === p.id) ?? null;
 
     const planosDoCampoAprov = planosAprovador
-      .filter((x) => x.field_id === p.id)
+      .filter((x) => x.field_id === p.id && (x.respondido || !x.deleted_at))
       .sort((a, b) => (a.rodada || 0) - (b.rodada || 0));
 
     const planosDoCampoAudit = planosAuditor
@@ -204,7 +204,7 @@ export function construirTarefaFluxoData(args: {
     assignment: args.assignment,
     perguntas,
     papelUsuario: papel,
-    planosAprovadorPendentes: args.planosAprovador.filter((p) => !p.respondido),
+    planosAprovadorPendentes: args.planosAprovador.filter((p) => !p.respondido && !p.deleted_at),
     planosAuditorPendentes: args.planosAuditor.filter((p) => !p.respondido),
   };
 }

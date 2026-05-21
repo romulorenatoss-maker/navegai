@@ -78,6 +78,8 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
     <div className="space-y-3">
       {data.perguntas.map((pergunta) => {
         const planosDaPergunta = [...pergunta.planosAprovador].sort((aPlano, bPlano) => aPlano.rodada - bPlano.rodada);
+        const planosRespondidos = planosDaPergunta.filter((plano) => plano.respondido);
+        const planosPendentes = planosDaPergunta.filter((plano) => !plano.respondido);
         const perguntaReadonly = !perms.podeEditarOriginal || planosDaPergunta.length > 0;
 
         return (
@@ -113,15 +115,15 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
                   Historico incremental desta pergunta ({planosDaPergunta.length})
                 </p>
-                {planosDaPergunta.map((plano) =>
-                  plano.respondido ? (
+                {planosRespondidos.map((plano) => (
                     <FluxoPlanoAprovadorCard
                       key={plano.id}
                       plano={plano}
                       papel="executor"
                       podeResponder={false}
                     />
-                  ) : (
+                ))}
+                {planosPendentes.map((plano) => (
                     <ExecutorPlanoAprovadorCard
                       key={plano.id}
                       plano={plano}
@@ -135,8 +137,7 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
                         await actions.responderPlanoAprovador.mutateAsync(input);
                       }}
                     />
-                  )
-                )}
+                ))}
               </div>
             )}
           </div>
