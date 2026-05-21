@@ -112,6 +112,57 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
           </div>
         </ScrollArea>
 
+        <div className="px-4 py-3 border-t bg-muted/20 space-y-1.5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Resumo da nota
+          </p>
+          {(() => {
+            const todas = [...resumo.perguntasAutomaticas, ...resumo.perguntasManuais];
+            const algumPendente = todas.some(
+              (p) => p.descontoAplicado === null || p.descontoAplicado === undefined,
+            );
+            const mantidos = todas.reduce(
+              (acc, p) =>
+                p.descontoAplicado !== null && p.descontoAplicado !== undefined && (p.descontoAplicado as number) <= 0
+                  ? acc + p.peso
+                  : acc,
+              0,
+            );
+            const descontos = todas.reduce(
+              (acc, p) =>
+                p.descontoAplicado !== null && p.descontoAplicado !== undefined && (p.descontoAplicado as number) > 0
+                  ? acc + (p.descontoAplicado as number)
+                  : acc,
+              0,
+            );
+            const devolvidosNa = resumo.perguntasManuais.reduce((acc, p) => {
+              const r = respostas[p.id];
+              return r?.na ? acc + p.pontoDevolvidoNa : acc;
+            }, 0);
+            const notaFinal =
+              modo === "aprovador"
+                ? resumo.scoreExistente.aprovacao
+                : resumo.scoreExistente.aprovador ?? resumo.scoreExistente.auditor;
+
+            return (
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                <span className="text-emerald-700">
+                  Pontos mantidos: {algumPendente ? "pendente de backend" : `+${mantidos}`}
+                </span>
+                <span className="text-red-700">
+                  Descontos: {algumPendente ? "pendente de backend" : `-${descontos}`}
+                </span>
+                <span className="text-blue-700">
+                  Pontos devolvidos por N/A: {devolvidosNa}
+                </span>
+                <span className="font-semibold text-foreground">
+                  Nota final: {notaFinal ?? "pendente de backend"}
+                </span>
+              </div>
+            );
+          })()}
+        </div>
+
         <DialogFooter className="px-4 py-3 border-t">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancelar
