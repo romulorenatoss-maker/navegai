@@ -20,6 +20,12 @@ export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange }: Props)
   const isManual = pergunta.origem === "manual";
   const marcadaNa = !!resposta?.na;
 
+  const desconto = pergunta.descontoAplicado;
+  const descontoPendente = desconto === null || desconto === undefined;
+  const ganhou = !descontoPendente && (desconto as number) <= 0;
+  const pontosMantidos = ganhou ? pergunta.peso : 0;
+  const pontosPerdidos = !descontoPendente && (desconto as number) > 0 ? (desconto as number) : 0;
+
   return (
     <div className="rounded-md border bg-card p-3 space-y-2 max-w-full overflow-hidden">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
@@ -32,6 +38,42 @@ export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange }: Props)
         <Badge variant={pergunta.origem === "automatica" ? "secondary" : "outline"} className="w-fit">
           {pergunta.origem === "automatica" ? "Automática" : "Manual"}
         </Badge>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        {descontoPendente ? (
+          <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+            Pontuação pendente de backend
+          </span>
+        ) : (
+          <>
+            {pontosMantidos > 0 && (
+              <span className="rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 font-medium">
+                +{pontosMantidos} pts
+              </span>
+            )}
+            {pontosPerdidos > 0 && (
+              <span className="rounded-full bg-red-100 text-red-700 px-2 py-0.5 font-medium">
+                -{pontosPerdidos} pts
+              </span>
+            )}
+            {pontosMantidos === 0 && pontosPerdidos === 0 && (
+              <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+                Sem variação
+              </span>
+            )}
+          </>
+        )}
+        {marcadaNa && pergunta.pontoDevolvidoNa > 0 && (
+          <span className="rounded-full bg-blue-100 text-blue-700 px-2 py-0.5 font-medium">
+            N/A devolve {pergunta.pontoDevolvidoNa} pts
+          </span>
+        )}
+        {pergunta.metricaPendente && (
+          <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 font-medium">
+            Pendente backend
+          </span>
+        )}
       </div>
 
       <div className="rounded bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground break-words">
