@@ -12,14 +12,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Send, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { useFluxoTarefa } from "../hooks/tarefas_useFluxoTarefa";
 import { useExecutorActions } from "../hooks/tarefas_useExecutorActions";
 import { useFluxoPermissoes } from "../hooks/tarefas_useFluxoPermissoes";
-import { statusLabel } from "../services/tarefas_fluxoStatusMachine";
 import { ExecutorPlanoAprovadorCard } from "@/modules/tarefas/components/tarefas_executorPlanoAprovadorCard";
 import { DynamicFieldRenderer } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import type { ExecutorRespostaInput } from "../services/tarefas_fluxoRpcService";
@@ -69,16 +67,6 @@ export function FluxoExecutorPanel({ assignmentId }: Props) {
 
   return (
     <div className="space-y-3">
-      {/* Cabeçalho */}
-      <Card className="max-w-full overflow-hidden">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0">
-            <span className="min-w-0 break-words whitespace-normal">#{a.numero_tarefa} · {a.nome}</span>
-            <Badge variant="outline">{statusLabel(a.status)}</Badge>
-          </CardTitle>
-        </CardHeader>
-      </Card>
-
       {/* Planos pendentes do aprovador (alta prioridade — topo) */}
       {data.planosAprovadorPendentes.length > 0 && (
         <div className="space-y-2">

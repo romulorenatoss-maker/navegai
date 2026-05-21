@@ -752,13 +752,13 @@ export default function OperationalExecucaoPage() {
             <SheetTitle>{selectedAssignment?.template_snapshot?.nome || selectedAssignment?.operational_templates?.nome || "Tarefa"}</SheetTitle>
           </VisuallyHidden>
 
-          <div className="p-4 border-b border-border max-w-full overflow-hidden">
+          <div className="p-3 sm:p-4 border-b border-border max-w-full overflow-hidden">
             <div className="flex items-start gap-2 min-w-0">
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={closeExecution}>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0" onClick={closeExecution}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               <div className="flex-1 min-w-0">
-                <h2 className="text-sm font-semibold text-foreground flex flex-wrap items-center gap-2 min-w-0 break-words">
+                <h2 className="text-sm sm:text-base font-semibold text-foreground flex flex-wrap items-center gap-2 min-w-0 break-words whitespace-normal leading-snug">
                   {selectedAssignment?.numero_tarefa && (
                     <span className="text-[11px] font-mono font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded shrink-0">
                       #{String(selectedAssignment.numero_tarefa).padStart(4, "0")}
@@ -766,15 +766,15 @@ export default function OperationalExecucaoPage() {
                   )}
                   {selectedAssignment?.template_snapshot?.nome || selectedAssignment?.operational_templates?.nome || "Tarefa"}
                 </h2>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap mt-1">
                   {selectedAssignment?.data_prevista && <span>{selectedAssignment.data_prevista}</span>}
                   {selectedAssignment?.horario_limite && (
-                    <span className="flex items-center gap-1 font-medium text-foreground">
+                    <span className="flex items-center gap-1 font-medium text-foreground whitespace-nowrap">
                       <Clock className="w-3 h-3" /> ate {selectedAssignment.horario_limite}
                     </span>
                   )}
                   {selectedAssignment?.status && (
-                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${STATUS_CONFIG[selectedAssignment.status]?.class || ""}`}>
+                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border whitespace-normal break-words ${STATUS_CONFIG[selectedAssignment.status]?.class || ""}`}>
                       {STATUS_CONFIG[selectedAssignment.status]?.label || selectedAssignment.status}
                     </span>
                   )}

@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Upload, X, AlertTriangle, RotateCcw, Camera, Eye, Clock, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AnexoViewer } from "@/modules/tarefas/components/anexos/AnexoViewer";
@@ -474,7 +475,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
             ];
         const isNaSelected = val.valor_texto === "na" && val.valor_booleano == null;
         return (
-          <div className="flex gap-2 flex-wrap">
+          <div className={`grid grid-cols-1 ${opts.length >= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-2 w-full`}>
             {opts.map(opt => {
               const selected = opt.valorTexto === "na"
                 ? isNaSelected
@@ -485,7 +486,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                     ? update({ valor_booleano: null, valor_texto: "na" })
                     : update({ valor_booleano: opt.val, valor_texto: null })
                   }
-                  className={`flex-1 min-w-[100px] px-3 py-2 rounded-md border text-sm font-medium transition-colors ${selected ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditableEfetivo ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
+                  className={`w-full min-h-10 px-3 py-2 rounded-md border text-sm font-medium transition-colors whitespace-normal break-words ${selected ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditableEfetivo ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
                   {opt.label}
                 </button>
               );
@@ -510,7 +511,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
             ];
         const isNaSelectedSN = val.valor_texto === "na" && val.valor_booleano == null;
         return (
-          <div className="flex gap-2 flex-wrap">
+          <div className={`grid grid-cols-1 ${optsSimNao.length >= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-2 w-full`}>
             {optsSimNao.map(opt => {
               const selected = opt.valorTexto === "na"
                 ? isNaSelectedSN
@@ -521,7 +522,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                     ? update({ valor_booleano: null, valor_texto: "na" })
                     : update({ valor_booleano: opt.val, valor_texto: null })
                   }
-                  className={`flex-1 min-w-[100px] px-3 py-2 rounded-md border text-sm font-medium transition-colors ${selected ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditableEfetivo ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
+                  className={`w-full min-h-10 px-3 py-2 rounded-md border text-sm font-medium transition-colors whitespace-normal break-words ${selected ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditableEfetivo ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
                   {opt.label}
                 </button>
               );
@@ -621,9 +622,10 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
   };
 
   return (
-    <div className={`space-y-1.5 p-3 rounded-lg border transition-colors ${isReturned ? "border-amber-400 bg-amber-50/50" : error && !disabled ? "border-destructive/30 bg-destructive/5" : "border-border bg-card"}`}>
-      <div className="flex items-start justify-between gap-2">
-        <Label className="text-sm font-medium flex items-center gap-1.5">
+    <Card className={`w-full max-w-full rounded-lg overflow-hidden transition-colors ${isReturned ? "border-amber-400 bg-amber-50/50" : error && !disabled ? "border-destructive/30 bg-destructive/5" : "border-border bg-card"}`}>
+      <CardContent className="p-3 sm:p-4 space-y-3">
+      <div className="flex items-start justify-between gap-2 min-w-0">
+        <Label className="text-sm font-medium flex items-start gap-1.5 min-w-0 break-words whitespace-normal">
           {field.label}
           {field.obrigatorio && <span className="text-destructive ml-0.5">*</span>}
           {field.instrucao_url && (
@@ -637,10 +639,10 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
             </button>
           )}
         </Label>
-        {field.criticidade === "critica" && <span className="text-[10px] bg-red-100 text-red-700 border border-red-200 px-1.5 py-0.5 rounded">Crítico</span>}
-        {field.criticidade === "alta" && <span className="text-[10px] bg-orange-100 text-orange-700 border border-orange-200 px-1.5 py-0.5 rounded">Alta</span>}
+        {field.criticidade === "critica" && <span className="text-[10px] bg-red-100 text-red-700 border border-red-200 px-1.5 py-0.5 rounded shrink-0">Crítico</span>}
+        {field.criticidade === "alta" && <span className="text-[10px] bg-orange-100 text-orange-700 border border-orange-200 px-1.5 py-0.5 rounded shrink-0">Alta</span>}
       </div>
-      {field.descricao && <p className="text-xs text-muted-foreground">{field.descricao}</p>}
+      {field.descricao && <p className="text-xs text-muted-foreground break-words whitespace-normal">{field.descricao}</p>}
 
       {renderInput()}
 
@@ -1038,6 +1040,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
           <AlertTriangle className="w-3 h-3" /> {error}
         </p>
       )}
-    </div>
+      </CardContent>
+    </Card>
   );
 }
