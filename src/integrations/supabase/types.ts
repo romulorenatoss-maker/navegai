@@ -5923,7 +5923,47 @@ export type Database = {
         Args: { _cargo: string; _user_id: string }
         Returns: undefined
       }
+      tarefas_rpc_aprovador_aprovar_para_auditoria: {
+        Args: { p_assignment_id: string; p_notas?: Json }
+        Returns: {
+          assignment_id: string
+          novo_status: string
+        }[]
+      }
       tarefas_rpc_aprovador_criar_plano_acao: {
+        Args: {
+          p_assignment_id: string
+          p_criticidade?: string
+          p_field_id: string
+          p_instrucao: string
+          p_itens_plano: Json
+          p_prazo_resolucao: string
+        }
+        Returns: {
+          assignment_id: string
+          criado_em: string
+          criado_por: string | null
+          criticidade: string | null
+          deleted_at: string | null
+          field_id: string
+          id: string
+          instrucao: string | null
+          itens_plano: Json
+          prazo_resolucao: string | null
+          respondido: boolean
+          respondido_em: string | null
+          respondido_por: string | null
+          resposta_valor_json: Json | null
+          rodada: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tarefas_planos_acao_aprovador"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      tarefas_rpc_aprovador_criar_plano_executor: {
         Args: {
           p_assignment_id: string
           p_criticidade?: string
@@ -5982,6 +6022,13 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      tarefas_rpc_auditor_aprovar_auditoria: {
+        Args: { p_assignment_id: string; p_notas?: Json }
+        Returns: {
+          assignment_id: string
+          novo_status: string
+        }[]
+      }
       tarefas_rpc_auditor_criar_plano_acao: {
         Args: {
           p_assignment_id: string
@@ -6014,6 +6061,47 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      tarefas_rpc_auditor_criar_plano_aprovador: {
+        Args: {
+          p_assignment_id: string
+          p_criticidade?: string
+          p_field_id: string
+          p_instrucao: string
+          p_itens_plano: Json
+          p_prazo_resolucao: string
+        }
+        Returns: {
+          assignment_id: string
+          criado_em: string
+          criado_por: string | null
+          criticidade: string | null
+          deleted_at: string | null
+          field_id: string
+          id: string
+          instrucao: string | null
+          itens_plano: Json
+          prazo_resolucao: string | null
+          respondido: boolean
+          respondido_em: string | null
+          respondido_por: string | null
+          resposta_valor_json: Json | null
+          rodada: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tarefas_planos_acao_auditor"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      tarefas_rpc_executor_enviar_respostas: {
+        Args: { p_assignment_id: string; p_respostas: Json }
+        Returns: {
+          assignment_id: string
+          novo_status: string
+          respostas_salvas: number
+        }[]
       }
       tarefas_rpc_executor_responder_plano_aprovador: {
         Args: { p_plano_id: string; p_resposta_valor_json: Json }
