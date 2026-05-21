@@ -1,18 +1,16 @@
 /**
  * tarefas_fluxoExecutorPanel.tsx
  *
- * Painel do EXECUTOR. Comportamento:
- *  - perguntas originais quando ainda não enviadas
- *  - histórico travado depois do envio
- *  - planos do aprovador pendentes (R1/R2/R3) com card de resposta
- *  - botão único "Enviar respostas" quando há rascunho
+ * Painel do EXECUTOR.
  *
- * Não permite editar resposta original depois de enviar.
+ * Regras visuais:
+ * - R0 usa o renderer original da pergunta.
+ * - Depois do envio, R0 fica read-only.
+ * - Planos R1/R2/R3 do aprovador aparecem abaixo da pergunta vinculada.
  */
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Send, Loader2, CheckCircle2 } from "lucide-react";
+import { Send, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -34,7 +32,6 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
   const actions = useExecutorActions(assignmentId);
   const perms = useFluxoPermissoes(data, meusSetorIds);
 
-  // Rascunho local da resposta R0 (antes do envio)
   const [rascunho, setRascunho] = useState<Record<string, ExecutorRespostaInput>>({});
 
   if (isLoading || !data) {
@@ -46,6 +43,7 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
   }
 
   const a = data.assignment;
+
   const updateRascunho = (fieldId: string, patch: Partial<ExecutorRespostaInput>) => {
     setRascunho((prev) => ({
       ...prev,
@@ -59,56 +57,46 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
       toast.error("Preencha pelo menos uma resposta antes de enviar.");
       return;
     }
+
     try {
       await actions.enviarRespostas.mutateAsync({ assignmentId, respostas });
       setRascunho({});
       invalidate();
     } catch {
-      // toast já é mostrado pelo hook
+      // O hook ja mostra o toast de erro.
     }
   };
 
+  const respostasPorPergunta = data.perguntas.reduce<Record<string, any>>((acc, pergunta) => {
+    const resposta = (rascunho[pergunta.fieldId] as any) ?? (pergunta.respostaOriginalExecutor as any);
+    if (resposta) acc[pergunta.fieldId] = resposta;
+    return acc;
+  }, {});
+
   return (
     <div className="space-y-3">
-      {/* Planos pendentes do aprovador (alta prioridade — topo) */}
-      {data.planosAprovadorPendentes.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-            📨 Planos de ação aguardando sua resposta ({data.planosAprovadorPendentes.length})
-          </p>
-          {data.planosAprovadorPendentes.map((p) => {
-            const pergunta = data.perguntas.find((q) => q.fieldId === p.field_id);
-            return (
-              <ExecutorPlanoAprovadorCard
-                key={p.id}
-                plano={p}
-                fieldLabel={pergunta?.label}
-                assignmentId={a.id}
-                tipoTarefa={(a.origem ?? "rotina") as string}
-                codigoTarefa={`#${String(a.numero_tarefa ?? "").padStart(4, "0")}`}
-                nomeTarefa={a.nome ?? "tarefa"}
-                isResponding={actions.responderPlanoAprovador.isPending}
-                onResponder={async (input) => {
-                  await actions.responderPlanoAprovador.mutateAsync(input);
-                }}
-              />
-            );
-          })}
-        </div>
-      )}
+      {data.perguntas.map((pergunta) => {
+        const planosPendentesDaPergunta = data.planosAprovadorPendentes.filter(
+          (plano) => plano.field_id === pergunta.fieldId
+        );
+        const perguntaReadonly = !perms.podeEditarOriginal || planosPendentesDaPergunta.length > 0;
 
-      {/* Perguntas: R0 editável apenas se podeEditarOriginal; senão histórico read-only */}
-      {data.perguntas.map((p) => (
-        <div key={p.fieldId} className="space-y-2">
-          {perms.podeEditarOriginal ? (
+        return (
+          <div key={pergunta.fieldId} className="space-y-2 max-w-full">
             <DynamicFieldRenderer
-              field={p.snapshot as any}
-              answer={(rascunho[p.fieldId] as any) ?? (p.respostaOriginalExecutor as any) ?? null}
+              field={pergunta.snapshot as any}
+              answer={
+                perguntaReadonly
+                  ? ((pergunta.respostaOriginalExecutor as any) ?? null)
+                  : ((rascunho[pergunta.fieldId] as any) ?? (pergunta.respostaOriginalExecutor as any) ?? null)
+              }
               review={null as any}
               userRole="executor"
-              disabled={false}
-              allAnswers={{} as any}
-              onChange={(fid: string, patch: any) => updateRascunho(fid, patch)}
+              disabled={perguntaReadonly}
+              allAnswers={respostasPorPergunta}
+              onChange={(fieldId: string, patch: any) => {
+                if (!perguntaReadonly) updateRascunho(fieldId, patch);
+              }}
               assignmentId={a.id}
               numeroTarefa={a.numero_tarefa ?? 0}
               nomeTarefa={a.nome ?? "tarefa"}
@@ -118,15 +106,35 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
               setorExecutorId={a.setor_executor_id ?? undefined}
               meusSetorIds={meusSetorIds}
               isAdmin={isAdmin}
-              lockOriginal={false}
+              lockOriginal={perguntaReadonly}
             />
-          ) : (
-            <ReadOnlyR0 pergunta={p} />
-          )}
-        </div>
-      ))}
 
-      {/* Botão único de envio (só quando podeEnviarRespostas e há rascunho ou primeira vez) */}
+            {planosPendentesDaPergunta.length > 0 && (
+              <div className="space-y-2 pl-2 sm:pl-3 border-l-2 border-amber-300 max-w-full">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                  Planos de acao desta pergunta ({planosPendentesDaPergunta.length})
+                </p>
+                {planosPendentesDaPergunta.map((plano) => (
+                  <ExecutorPlanoAprovadorCard
+                    key={plano.id}
+                    plano={plano}
+                    fieldLabel={pergunta.label}
+                    assignmentId={a.id}
+                    tipoTarefa={(a.origem ?? "rotina") as string}
+                    codigoTarefa={`#${String(a.numero_tarefa ?? "").padStart(4, "0")}`}
+                    nomeTarefa={a.nome ?? "tarefa"}
+                    isResponding={actions.responderPlanoAprovador.isPending}
+                    onResponder={async (input) => {
+                      await actions.responderPlanoAprovador.mutateAsync(input);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
       {perms.podeEnviarRespostas && data.planosAprovadorPendentes.length === 0 && (
         <div className="sticky bottom-0 bg-background pt-2 border-t">
           <Button
@@ -142,44 +150,6 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
         </div>
       )}
     </div>
-  );
-}
-
-function ReadOnlyR0({ pergunta }: { pergunta: any }) {
-  const r0 = pergunta.respostaOriginalExecutor;
-  return (
-    <Card className="max-w-full overflow-hidden">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm break-words whitespace-normal">{pergunta.label}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-1.5 text-xs">
-        {r0 ? (
-          <>
-            <div>
-              Resposta:{" "}
-              <span className="font-semibold">
-                {r0.valor_booleano === true && "Conforme/Sim"}
-                {r0.valor_booleano === false && "Não conforme/Não"}
-                {r0.valor_texto === "na" && "N/A"}
-                {r0.valor_booleano === null && r0.valor_texto !== "na" && (r0.valor_texto ?? "(sem resposta)")}
-              </span>
-            </div>
-            {r0.observacao && <div className="text-muted-foreground">Obs: {r0.observacao}</div>}
-            {r0.evidencia_url && (
-              <p className="text-[10px] text-muted-foreground">📎 evidência anexada</p>
-            )}
-            {r0.respondido_em && (
-              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                Respondida em {new Date(r0.respondido_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-              </p>
-            )}
-          </>
-        ) : (
-          <p className="italic text-muted-foreground">Sem resposta.</p>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 

@@ -1,0 +1,41 @@
+{
+  "tarefa": "layout_r1_abaixo_da_pergunta_original",
+  "data": "2026-05-21",
+  "escopo": {
+    "alterou_sql": false,
+    "alterou_rpc": false,
+    "alterou_rotas": false,
+    "alterou_menu": false,
+    "alterou_regra_negocio": false,
+    "criou_componente_paralelo": false
+  },
+  "arquivos_lidos": [
+    "src/modules/tarefas/pages/tarefas_execucaoPage.tsx",
+    "src/modules/tarefas/fluxo/components/tarefas_fluxoExecutorPanel.tsx",
+    "src/modules/tarefas/fluxo/components/tarefas_fluxoPerguntaHistoricoCard.tsx",
+    "src/modules/tarefas/fluxo/components/tarefas_fluxoPlanoAprovadorCard.tsx",
+    "src/modules/tarefas/components/tarefas_dynamicFieldRenderer.tsx",
+    "src/modules/tarefas/components/tarefas_executorPlanoAprovadorCard.tsx"
+  ],
+  "arquivos_alterados": [
+    {
+      "path": "src/modules/tarefas/fluxo/components/tarefas_fluxoExecutorPanel.tsx",
+      "tipo": "renderizacao_visual",
+      "alteracao": "moveu planos R1 pendentes do topo para abaixo da pergunta original correspondente"
+    }
+  ],
+  "componentes_reutilizados": [
+    "DynamicFieldRenderer",
+    "ExecutorPlanoAprovadorCard"
+  ],
+  "validacao_estatica": {
+    "git_diff_check": "ok",
+    "npm_run_build": "nao executado: npm nao reconhecido no ambiente local"
+  },
+  "resultado": {
+    "pergunta_original_primeiro": true,
+    "r1_como_subbloco_da_pergunta": true,
+    "multiplos_r1_agrupados_por_field_id": true,
+    "resposta_original_readonly_quando_enviada": true
+  }
+}

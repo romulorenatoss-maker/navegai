@@ -157,7 +157,7 @@ canApproverFinalize =
 
 | Métrica | Pergunta-padrão | "Sim" tira ponto? | Lógica |
 |---|---|---|---|
-| `executor_entregou_no_prazo` / `executor_atrasou` | Executor entregou no prazo? | Sim = atrasou (tira) | `finalizado_em > prazo_execucao` ou `flag_sla_estourado` |
+| `executor_entregou_no_prazo` / `executor_atrasou` | Executor entregou no prazo? | Sim = atrasou (tira) | `fim_em > prazo_execucao` ou `flag_sla_estourado` |
 | `executor_teve_atraso_etapa` | Houve atraso em alguma etapa? | Sim tira | contingência com `resolvida_em > prazo_resolucao` |
 | `executor_obrigatorias_respondidas` | Todas obrigatórias respondidas? | **Não** tira | conta `fields[obrigatorio=true]` sem resposta em fieldAnswers |
 | `executor_evidencias_anexadas` | Evidências obrigatórias anexadas? | **Não** tira | conta `fields[exige_evidencia=true]` sem evidencia_url |
