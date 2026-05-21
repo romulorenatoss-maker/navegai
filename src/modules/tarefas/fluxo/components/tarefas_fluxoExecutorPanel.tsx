@@ -19,6 +19,7 @@ import { useExecutorActions } from "../hooks/tarefas_useExecutorActions";
 import { useFluxoPermissoes } from "../hooks/tarefas_useFluxoPermissoes";
 import { ExecutorPlanoAprovadorCard } from "@/modules/tarefas/components/tarefas_executorPlanoAprovadorCard";
 import { DynamicFieldRenderer } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
+import { FluxoPlanoAprovadorCard } from "./tarefas_fluxoPlanoAprovadorCard";
 import type { ExecutorRespostaInput } from "../services/tarefas_fluxoRpcService";
 
 interface Props {
@@ -76,10 +77,8 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
   return (
     <div className="space-y-3">
       {data.perguntas.map((pergunta) => {
-        const planosPendentesDaPergunta = data.planosAprovadorPendentes.filter(
-          (plano) => plano.field_id === pergunta.fieldId
-        );
-        const perguntaReadonly = !perms.podeEditarOriginal || planosPendentesDaPergunta.length > 0;
+        const planosDaPergunta = [...pergunta.planosAprovador].sort((aPlano, bPlano) => aPlano.rodada - bPlano.rodada);
+        const perguntaReadonly = !perms.podeEditarOriginal || planosDaPergunta.length > 0;
 
         return (
           <div key={pergunta.fieldId} className="space-y-2 max-w-full">
@@ -109,26 +108,35 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
               lockOriginal={perguntaReadonly}
             />
 
-            {planosPendentesDaPergunta.length > 0 && (
+            {planosDaPergunta.length > 0 && (
               <div className="space-y-2 pl-2 sm:pl-3 border-l-2 border-amber-300 max-w-full">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-                  Planos de acao desta pergunta ({planosPendentesDaPergunta.length})
+                  Historico incremental desta pergunta ({planosDaPergunta.length})
                 </p>
-                {planosPendentesDaPergunta.map((plano) => (
-                  <ExecutorPlanoAprovadorCard
-                    key={plano.id}
-                    plano={plano}
-                    fieldLabel={pergunta.label}
-                    assignmentId={a.id}
-                    tipoTarefa={(a.origem ?? "rotina") as string}
-                    codigoTarefa={`#${String(a.numero_tarefa ?? "").padStart(4, "0")}`}
-                    nomeTarefa={a.nome ?? "tarefa"}
-                    isResponding={actions.responderPlanoAprovador.isPending}
-                    onResponder={async (input) => {
-                      await actions.responderPlanoAprovador.mutateAsync(input);
-                    }}
-                  />
-                ))}
+                {planosDaPergunta.map((plano) =>
+                  plano.respondido ? (
+                    <FluxoPlanoAprovadorCard
+                      key={plano.id}
+                      plano={plano}
+                      papel="executor"
+                      podeResponder={false}
+                    />
+                  ) : (
+                    <ExecutorPlanoAprovadorCard
+                      key={plano.id}
+                      plano={plano}
+                      fieldLabel={pergunta.label}
+                      assignmentId={a.id}
+                      tipoTarefa={(a.origem ?? "rotina") as string}
+                      codigoTarefa={`#${String(a.numero_tarefa ?? "").padStart(4, "0")}`}
+                      nomeTarefa={a.nome ?? "tarefa"}
+                      isResponding={actions.responderPlanoAprovador.isPending}
+                      onResponder={async (input) => {
+                        await actions.responderPlanoAprovador.mutateAsync(input);
+                      }}
+                    />
+                  )
+                )}
               </div>
             )}
           </div>
