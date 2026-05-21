@@ -17,14 +17,36 @@ import { Send, Upload, Loader2, CheckCircle2, AlertTriangle, Clock } from "lucid
 import { supabase } from "@/integrations/supabase/client";
 import { EvidenciaPreview } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import { toast } from "sonner";
-import type {
-  PlanoAcaoRow,
-  PlanoAcaoItem,
-  PlanoAcaoRespostaPayload,
-} from "@/modules/tarefas/hooks/tarefas_usePlanosAcao";
+// Tipos locais permissivos para aceitar tanto PlanoAcaoRow (hook legacy) quanto
+// PlanoAprovador (novo fluxo). Mantém comportamento idêntico — apenas relaxa
+// o contrato estrutural para o build passar nos dois consumidores.
+export interface PlanoAcaoItem {
+  tipo: "foto" | "video" | "audio" | "texto" | "descricao";
+  titulo: string;
+  obrigatorio: boolean;
+}
+
+export interface PlanoAcaoRespostaItem {
+  tipo?: "foto" | "video" | "audio" | "texto" | "descricao";
+  evidencia_url?: string;
+  evidencia_anexo_id?: string;
+  evidencia_mime_type?: string;
+  valor_texto?: string;
+}
+
+export type PlanoAcaoRespostaPayload = Record<string, PlanoAcaoRespostaItem>;
+
+interface PlanoCardShape {
+  id: string;
+  rodada: number;
+  instrucao: string | null;
+  itens_plano: PlanoAcaoItem[] | Array<{ tipo: string; titulo: string; obrigatorio: boolean }>;
+  prazo_resolucao: string | null;
+  criticidade: "baixa" | "media" | "alta" | null;
+}
 
 interface Props {
-  plano: PlanoAcaoRow;
+  plano: PlanoCardShape;
   fieldLabel?: string;
   assignmentId: string;
   /** Origem da tarefa: "rotina" ou "ad_hoc". Usado para montar o path no Drive. */
@@ -33,7 +55,7 @@ interface Props {
   codigoTarefa: string;
   /** Nome da tarefa (do template). Vira slug na pasta do Drive. */
   nomeTarefa: string;
-  onResponder: (input: { planoId: string; respostaValorJson: PlanoAcaoRespostaPayload }) => Promise<unknown>;
+  onResponder: (input: { planoId: string; respostaValorJson: any }) => Promise<unknown>;
   isResponding?: boolean;
 }
 
