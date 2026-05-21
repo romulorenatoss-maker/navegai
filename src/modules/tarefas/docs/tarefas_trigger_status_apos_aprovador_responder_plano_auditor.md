@@ -16,8 +16,13 @@ Quando a coluna `respondido` é atualizada em `tarefas_planos_acao_auditor` (i.e
 
 Se `NEW.respondido = true` e `OLD.respondido != true`:
 
-- Atualiza `operational_assignments.status = 'aguardando_auditoria'`
-- Só executa se o status atual está em `'aguardando_aprovacao'`.
+1. **Resolve contingências legacy abertas** (`operational_contingencies`):
+   - `status = 'resolvida'`, `resolvida_em = now()`, `dentro_prazo` derivado do prazo.
+   - Cobre o gap do trigger legacy `check_contingency_block`.
+2. Atualiza `operational_assignments.status = 'aguardando_auditoria'`.
+   - Só executa se o status atual está em `'aguardando_aprovacao'`.
+
+**Migration de patch:** `supabase/migrations/20260520200000_tarefas_resolver_contingencias_apos_responder.sql` (CREATE OR REPLACE).
 
 ## Função associada
 

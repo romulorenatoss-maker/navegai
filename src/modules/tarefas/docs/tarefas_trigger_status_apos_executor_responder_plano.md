@@ -16,8 +16,13 @@ Quando a coluna `respondido` é atualizada em `tarefas_planos_acao_aprovador` (i
 
 Se `NEW.respondido = true` e `OLD.respondido != true` (transição de pendente → respondido):
 
-- Atualiza `operational_assignments.status = 'aguardando_aprovacao'`
-- Só executa se o status atual está em `'devolvida'` ou `'em_andamento'`.
+1. **Resolve contingências legacy abertas** (`operational_contingencies`):
+   - `status = 'resolvida'`, `resolvida_em = now()`, `dentro_prazo` derivado do prazo.
+   - Cobre o gap do trigger legacy `check_contingency_block` que rejeitaria a transição.
+2. Atualiza `operational_assignments.status = 'aguardando_aprovacao'`.
+   - Só executa se o status atual está em `'devolvida'` ou `'em_andamento'`.
+
+**Migration de patch:** `supabase/migrations/20260520200000_tarefas_resolver_contingencias_apos_responder.sql` (CREATE OR REPLACE).
 
 ## Função associada
 
