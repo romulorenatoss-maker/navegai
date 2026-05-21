@@ -53,10 +53,15 @@ const allNavSections = [
   {
     title: "Tarefas",
     items: [
-      { to: "/tarefas/gestao", icon: FolderKanban, label: "Dash de Tarefas" },
-      { to: "/tarefas/minhas", icon: PlayCircle, label: "Minhas Tarefas" },
-      { to: "/tarefas/rotinas", icon: ListChecks, label: "Rotinas Operacionais" },
+      { to: "/tarefas/dashboard", icon: FolderKanban, label: "Dashboard" },
+      { to: "/tarefas/lista", icon: ClipboardList, label: "Lista" },
+      { to: "/tarefas/execucao", icon: PlayCircle, label: "Execução" },
+      { to: "/tarefas/rotinas", icon: ListChecks, label: "Rotinas" },
+      { to: "/tarefas/agendamentos", icon: Clock, label: "Agenda" },
+      { to: "/tarefas/historico", icon: History, label: "Histórico" },
       { to: "/tarefas/desempenho", icon: PieChart, label: "Desempenho" },
+      { to: "/tarefas/relatorios", icon: FileBarChart, label: "Relatórios" },
+      { to: "/tarefas/configuracoes", icon: Settings, label: "Configurações" },
     ],
   },
   {
@@ -79,7 +84,6 @@ const allNavSections = [
     title: "Relatórios",
     items: [
       { to: "/relatorios", icon: BarChart3, label: "Relatórios de OS" },
-      { to: "/relatorios/tarefas", icon: FileBarChart, label: "Relatório de Tarefas" },
       { to: "/leads/relatorios", icon: FileBarChart, label: "Relatórios de Leads" },
     ],
   },

@@ -16,7 +16,7 @@ import { useContingencyManagement } from "@/modules/tarefas/hooks/tarefas_useCon
 import { useOperationalTransition } from "@/modules/tarefas/hooks/tarefas_useTransition";
 import { useAprovadorActions } from "@/modules/tarefas/fluxo/hooks/tarefas_useAprovadorActions";
 
-export default function OperationalGestaoPage() {
+export default function TarefasDashboardPage() {
   const { profile } = useAuth();
   const qc = useQueryClient();
   const [periodoInicio, setPeriodoInicio] = useState(() => {

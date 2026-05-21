@@ -16,6 +16,7 @@ Data: 2026-05-21
 - Limpeza posterior removeu os hooks legados de permissao/aprovacao/auditoria/revisao e o painel legado orfao. Grep em source sem docs deve retornar zero para esses nomes.
 - Ajuste posterior de UI corrigiu apenas responsividade mobile em `/tarefas/minhas` e paineis oficiais do fluxo, sem alterar regras, hooks, RPCs, banco ou permissoes.
 - Ajuste posterior refinou o padrao visual do drawer de `/tarefas/minhas`: removeu o card duplicado do executor e padronizou o `DynamicFieldRenderer` como card responsivo, sem alterar regras, hooks, RPCs, banco, triggers, status ou permissoes.
+- Ajuste posterior reorganizou o modulo Tarefas para rotas oficiais (`/tarefas`, `/tarefas/dashboard`, `/tarefas/lista`, `/tarefas/detalhes/:id`, `/tarefas/rotinas`, `/tarefas/agendamentos`, `/tarefas/execucao`, `/tarefas/historico`, `/tarefas/configuracoes`, `/tarefas/desempenho`, `/tarefas/relatorios`), removeu redirects funcionais antigos e apagou `TarefasResponsaveisV2`.
 
 ## Regra de continuidade
 

@@ -25,7 +25,7 @@ const PlanoAcao = lazy(() =>
 );
 // Avaliacao panel removido — fluxo consolidado em Executor (responde) → Aprovador.
 // Aprovacao principal fica fora deste router auxiliar.
-// diretamente em /tarefas/minhas (resposta executor + anexos + plano de ação final).
+// diretamente em /tarefas/execucao (resposta executor + anexos + plano de ação final).
 
 export const PANEL_REGISTRY: PanelEntry[] = [
   // === Aceite de prazo (executor ou solicitante decidindo renegociação) ===
@@ -80,7 +80,7 @@ export const PANEL_REGISTRY: PanelEntry[] = [
   // === Avaliação técnica REMOVIDA — Executor já responde; próxima etapa = Aprovador ===
 
   // === Aprovação removida do router declarativo ===
-  // Renderizacao principal fica no fluxo oficial de /tarefas/minhas
+  // Renderizacao principal fica no fluxo oficial de /tarefas/execucao
   // (mostra respostas/anexos do executor, anexo opcional do aprovador,
   // hidrata auto-save, e abre etapa final de Plano de Ação consolidada).
 ];

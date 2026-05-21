@@ -1,5 +1,5 @@
 /**
- * Camada de services do módulo operacional.
+ * Camada de services do módulo Tarefas.
  * Centraliza leituras e mutations comuns de tabelas operational_*.
  * Regra: UI e hooks devem preferir chamar estes métodos em vez de acessar supabase direto.
  */

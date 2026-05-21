@@ -4,27 +4,28 @@ Data: 2026-05-21
 
 ## Objetivo
 
-Corrigir somente o padrao visual do drawer oficial de `/tarefas/minhas` em mobile e desktop, mantendo a mesma estrutura de formulario nos dois tamanhos.
+Reorganizar o modulo Tarefas para rotas oficiais, menu oficial, estrutura final e remocao de arquivos mortos/legados.
 
-## Arquivos alterados
+## Rotas oficiais
 
-- `src/modules/tarefas/pages/tarefas_minhasTarefasPage.tsx`
-- `src/modules/tarefas/fluxo/components/tarefas_fluxoExecutorPanel.tsx`
-- `src/modules/tarefas/components/tarefas_dynamicFieldRenderer.tsx`
-- `docs/AI/ULTIMO_CONTEXTO.md`
-- `docs/AI/ULTIMA_ALTERACAO.md`
-- `reports/AI_RETURN/2026-05-21_tarefas-padrao-visual-mobile-desktop/`
-
-## Arquivos deletados
-
-- Nenhum.
-
-## Prova
-
-- `npm.cmd run build` passou.
-- `git diff --check` passou, com avisos normais de LF/CRLF no Windows.
-- Playwright abriu `/tarefas/minhas` em mobile e desktop, mas redirecionou para `/login` por falta de sessao autenticada local.
+- `/tarefas`
+- `/tarefas/dashboard`
+- `/tarefas/lista`
+- `/tarefas/detalhes/:id`
+- `/tarefas/rotinas`
+- `/tarefas/agendamentos`
+- `/tarefas/execucao`
+- `/tarefas/historico`
+- `/tarefas/configuracoes`
+- `/tarefas/desempenho`
+- `/tarefas/relatorios`
 
 ## Banco/RPC/Trigger
 
-- Nenhum banco, RPC, trigger, hook, status ou permissao alterado nesta tarefa.
+- Nenhum banco, RPC ou trigger alterado.
+
+## Validacao
+
+- `npm run build` passou.
+- `npm run lint` foi executado e falhou por erros globais preexistentes fora do escopo; log completo em `reports/AI_RETURN/2026-05-21_tarefas-rotas-menu-estrutura-final/LINT.log`.
+- Grep funcional final zerou referencias a `TarefasResponsaveisV2`, `V2`, `/operacional/*`, `/checklists/*`, `/tarefas/minhas`, `/tarefas/gestao`, `/tarefas/aprovacao`, `/tarefas/avaliacao`, `/tarefas/contingencias`, `/relatorios/tarefas` e `/desempenho/operacional`.

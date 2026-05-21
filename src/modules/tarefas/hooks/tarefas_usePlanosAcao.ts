@@ -1,22 +1,11 @@
 /**
- * @deprecated REBUILD 2026-05-21 — Substituído por `fluxo/hooks/tarefas_useFluxoTarefa.ts`
- * (leitura) + `fluxo/hooks/useExecutorActions|useAprovadorActions|useAuditorActions` (writes).
- * Não usar em código novo.
- * Doc: src/modules/tarefas/docs/tarefas_arquivos_deprecated.md
- *
- * tarefas_usePlanosAcao.ts (LEGACY)
- *
- * Hook UTILITÁRIO que abstrai as novas tabelas e RPCs de planos de ação
+ * Hook utilitario que abstrai as tabelas e RPCs de planos de acao
  * separados por setor (tarefas_planos_acao_aprovador / tarefas_planos_acao_auditor).
  *
  * Doc da arquitetura: src/modules/tarefas/docs/tarefas_arquitetura_planos_acao.md
  *
  * - READ: queries diretas nas duas tabelas (RLS controla tenant)
- * - WRITE: somente via RPCs (políticas bloqueiam INSERT/UPDATE direto)
- *
- * Coexistência com legacy:
- *   operational_field_reviews continua sendo lida por hooks antigos
- *   fluxos antigos de aprovacao/auditoria. Este hook só toca nas tabelas novas.
+ * - WRITE: somente via RPCs (politicas bloqueiam INSERT/UPDATE direto)
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";

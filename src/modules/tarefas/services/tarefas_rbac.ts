@@ -1,5 +1,5 @@
 /**
- * RBAC do módulo operacional.
+ * RBAC do módulo Tarefas.
  *
  * Perfis: EXECUTOR | AVALIADOR | APROVADOR | GESTOR | ADMIN | CRIADOR_DESIGNANTE
  *
@@ -14,7 +14,7 @@ import type { EffectivePermission } from "@/hooks/usePermissions";
 export type OperationalRole = "EXECUTOR" | "AVALIADOR" | "APROVADOR" | "GESTOR" | "ADMIN" | "CRIADOR_DESIGNANTE";
 
 export type OperationalAction =
-  // legados — mantidos
+  // Permissões históricas preservadas por compatibilidade de dados.
   | "executar_tarefa"
   | "avaliar_tarefa"
   | "aprovar_tarefa"

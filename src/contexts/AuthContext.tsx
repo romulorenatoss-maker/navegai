@@ -23,30 +23,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const LEGACY_PATH_MAP: Record<string, string> = {
-  // legados /checklists/*
-  "/checklists/execucao": "/tarefas/minhas",
-  "/checklists/gestao": "/tarefas/gestao",
-  "/checklists/cadastro": "/tarefas/rotinas",
-  "/checklists/avaliacao": "/tarefas/avaliacao",
-  "/checklists/aprovacao": "/tarefas/aprovacao",
-  "/checklists/contingencias": "/tarefas/contingencias",
-  // legados /operacional/*
-  "/operacional/execucao": "/tarefas/minhas",
-  "/operacional/gestao": "/tarefas/gestao",
-  "/operacional/cadastro": "/tarefas/rotinas",
-  "/operacional/avaliacao": "/tarefas/avaliacao",
-  "/operacional/aprovacao": "/tarefas/aprovacao",
-  "/operacional/contingencias": "/tarefas/contingencias",
-  // outros legados
-  "/relatorios/tarefas": "/tarefas/relatorios",
-  "/desempenho/operacional": "/tarefas/desempenho",
-  "/desempenho/tempo-avaliacoes": "/avaliacoes/tempo-avaliacoes",
-  "/tarefas/tempo-avaliacoes": "/avaliacoes/tempo-avaliacoes",
-};
-
 function normalizeAllowedScreens(paths: string[]) {
-  return Array.from(new Set(paths.map((path) => LEGACY_PATH_MAP[path] ?? path)));
+  return Array.from(new Set(paths));
 }
 
 function AuthProviderInner({ children }: { children: ReactNode }) {
@@ -68,8 +46,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
 
   const canViewPath = useCallback((path: string): boolean => {
     if (isAdmin) return true;
-    const normalizedPath = LEGACY_PATH_MAP[path] ?? path;
-    return allowedScreens.includes(normalizedPath);
+    return allowedScreens.includes(path);
   }, [isAdmin, allowedScreens]);
 
   const fetchProfileAndRoles = useCallback(async (userId: string) => {

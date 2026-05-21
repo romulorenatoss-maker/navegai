@@ -1,0 +1,3124 @@
+diff --git a/docs/AI/ULTIMA_ALTERACAO.md b/docs/AI/ULTIMA_ALTERACAO.md
+index 4f2984d3..925a66cb 100644
+--- a/docs/AI/ULTIMA_ALTERACAO.md
++++ b/docs/AI/ULTIMA_ALTERACAO.md
+@@ -4,27 +4,28 @@ Data: 2026-05-21
+ 
+ ## Objetivo
+ 
+-Corrigir somente o padrao visual do drawer oficial de `/tarefas/minhas` em mobile e desktop, mantendo a mesma estrutura de formulario nos dois tamanhos.
++Reorganizar o modulo Tarefas para rotas oficiais, menu oficial, estrutura final e remocao de arquivos mortos/legados.
++
++## Rotas oficiais
++
++- `/tarefas`
++- `/tarefas/dashboard`
++- `/tarefas/lista`
++- `/tarefas/detalhes/:id`
++- `/tarefas/rotinas`
++- `/tarefas/agendamentos`
++- `/tarefas/execucao`
++- `/tarefas/historico`
++- `/tarefas/configuracoes`
++- `/tarefas/desempenho`
++- `/tarefas/relatorios`
+ 
+-## Arquivos alterados
+-
+-- `src/modules/tarefas/pages/tarefas_minhasTarefasPage.tsx`
+-- `src/modules/tarefas/fluxo/components/tarefas_fluxoExecutorPanel.tsx`
+-- `src/modules/tarefas/components/tarefas_dynamicFieldRenderer.tsx`
+-- `docs/AI/ULTIMO_CONTEXTO.md`
+-- `docs/AI/ULTIMA_ALTERACAO.md`
+-- `reports/AI_RETURN/2026-05-21_tarefas-padrao-visual-mobile-desktop/`
+-
+-## Arquivos deletados
+-
+-- Nenhum.
+-
+-## Prova
++## Banco/RPC/Trigger
+ 
+-- `npm.cmd run build` passou.
+-- `git diff --check` passou, com avisos normais de LF/CRLF no Windows.
+-- Playwright abriu `/tarefas/minhas` em mobile e desktop, mas redirecionou para `/login` por falta de sessao autenticada local.
++- Nenhum banco, RPC ou trigger alterado.
+ 
+-## Banco/RPC/Trigger
++## Validacao
+ 
+-- Nenhum banco, RPC, trigger, hook, status ou permissao alterado nesta tarefa.
++- `npm run build` passou.
++- `npm run lint` foi executado e falhou por erros globais preexistentes fora do escopo; log completo em `reports/AI_RETURN/2026-05-21_tarefas-rotas-menu-estrutura-final/LINT.log`.
++- Grep funcional final zerou referencias a `TarefasResponsaveisV2`, `V2`, `/operacional/*`, `/checklists/*`, `/tarefas/minhas`, `/tarefas/gestao`, `/tarefas/aprovacao`, `/tarefas/avaliacao`, `/tarefas/contingencias`, `/relatorios/tarefas` e `/desempenho/operacional`.
+diff --git a/docs/AI/ULTIMO_CONTEXTO.md b/docs/AI/ULTIMO_CONTEXTO.md
+index 61b8ae64..8c9ae6f9 100644
+--- a/docs/AI/ULTIMO_CONTEXTO.md
++++ b/docs/AI/ULTIMO_CONTEXTO.md
+@@ -16,6 +16,7 @@ Data: 2026-05-21
+ - Limpeza posterior removeu os hooks legados de permissao/aprovacao/auditoria/revisao e o painel legado orfao. Grep em source sem docs deve retornar zero para esses nomes.
+ - Ajuste posterior de UI corrigiu apenas responsividade mobile em `/tarefas/minhas` e paineis oficiais do fluxo, sem alterar regras, hooks, RPCs, banco ou permissoes.
+ - Ajuste posterior refinou o padrao visual do drawer de `/tarefas/minhas`: removeu o card duplicado do executor e padronizou o `DynamicFieldRenderer` como card responsivo, sem alterar regras, hooks, RPCs, banco, triggers, status ou permissoes.
++- Ajuste posterior reorganizou o modulo Tarefas para rotas oficiais (`/tarefas`, `/tarefas/dashboard`, `/tarefas/lista`, `/tarefas/detalhes/:id`, `/tarefas/rotinas`, `/tarefas/agendamentos`, `/tarefas/execucao`, `/tarefas/historico`, `/tarefas/configuracoes`, `/tarefas/desempenho`, `/tarefas/relatorios`), removeu redirects funcionais antigos e apagou `TarefasResponsaveisV2`.
+ 
+ ## Regra de continuidade
+ 
+diff --git a/src/App.tsx b/src/App.tsx
+index 7d5e9f33..94ad92bb 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -14,11 +14,12 @@ import ColaboradoresPage from "./pages/ColaboradoresPage";
+ import TiposServicoPage from "./pages/TiposServicoPage";
+ 
+ import PerguntasPage from "./pages/PerguntasPage";
+-import OperationalCadastroPage from "./modules/tarefas/pages/tarefas_rotinasPage";
+-import OperationalExecucaoPage from "./modules/tarefas/pages/tarefas_minhasTarefasPage";
+-import OperationalGestaoPage from "./modules/tarefas/pages/tarefas_gestaoPage";
+-
+-// Fase C: páginas legadas (avaliacao/aprovacao/contingencias) removidas — rotas viraram wrappers Navigate
++import TarefasRotinasPage from "./modules/tarefas/pages/tarefas_rotinasPage";
++import TarefasExecucaoPage from "./modules/tarefas/pages/tarefas_execucaoPage";
++import TarefasDashboardPage from "./modules/tarefas/pages/tarefas_dashboardPage";
++import TarefasAgendamentosPage from "./modules/tarefas/pages/tarefas_agendamentosPage";
++import TarefasHistoricoPage from "./modules/tarefas/pages/tarefas_historicoPage";
++import TarefasConfiguracoesPage from "./modules/tarefas/pages/tarefas_configuracoesPage";
+ 
+ import CadastroEnderecosPage from "./pages/CadastroEnderecosPage";
+ import ClientesPage from "./pages/ClientesPage";
+@@ -27,7 +28,7 @@ import PlaceholderPage from "./pages/PlaceholderPage";
+ import RelatoriosPage from "./pages/RelatoriosPage";
+ import RelatorioTarefasPage from "./modules/tarefas/pages/tarefas_relatoriosPage";
+ import DesempenhoColaboradorPage from "./pages/DesempenhoColaboradorPage";
+-import DesempenhoOperacionalPage from "./modules/tarefas/pages/tarefas_desempenhoPage";
++import TarefasDesempenhoPage from "./modules/tarefas/pages/tarefas_desempenhoPage";
+ import DashboardTempoAvaliacoes from "./modules/avaliacoes/pages/avaliacoes_tempoAvaliacoesPage";
+ 
+ import LeadsPage from "./pages/LeadsPage";
+@@ -84,29 +85,18 @@ const App = () => (
+               <Route path="/avaliacoes/pesquisa" element={<AvaliacaoOSPage />} />
+               <Route path="/avaliacoes/perguntas" element={<PerguntasPage />} />
+               <Route path="/avaliacoes/minhas" element={<MinhasAvaliacoesPage />} />
+-              {/* MÓDULO TAREFAS */}
+-              <Route path="/tarefas/rotinas" element={<OperationalCadastroPage />} />
+-              <Route path="/tarefas/minhas" element={<OperationalExecucaoPage />} />
+-              <Route path="/tarefas/gestao" element={<OperationalGestaoPage />} />
+-              {/* Aba "Avaliação do Avaliador" foi unificada na aba Aprovador (perguntas replicadas + AUTO). Rota antiga redireciona. */}
+-              <Route path="/tarefas/avaliacao-avaliador/:id" element={<Navigate to="/tarefas/minhas?chip=aprovar" replace />} />
+-              {/* Fase B: rotas legadas viram wrappers que abrem /tarefas/minhas com chip pré-selecionado */}
+-              <Route path="/tarefas/avaliacao" element={<Navigate to="/tarefas/minhas?chip=avaliar&from=avaliacao" replace />} />
+-              <Route path="/tarefas/aprovacao" element={<Navigate to="/tarefas/minhas?chip=aprovar&from=aprovacao" replace />} />
+-              <Route path="/tarefas/contingencias" element={<Navigate to="/tarefas/minhas?chip=contingencias&from=contingencias" replace />} />
+-              {/* Redirects legados (/operacional/* e /checklists/*) */}
+-              <Route path="/operacional/cadastro" element={<Navigate to="/tarefas/rotinas" replace />} />
+-              <Route path="/operacional/execucao" element={<Navigate to="/tarefas/minhas" replace />} />
+-              <Route path="/operacional/gestao" element={<Navigate to="/tarefas/gestao" replace />} />
+-              <Route path="/operacional/avaliacao" element={<Navigate to="/tarefas/minhas?chip=avaliar&from=operacional_avaliacao" replace />} />
+-              <Route path="/operacional/aprovacao" element={<Navigate to="/tarefas/minhas?chip=aprovar&from=operacional_aprovacao" replace />} />
+-              <Route path="/operacional/contingencias" element={<Navigate to="/tarefas/minhas?chip=contingencias&from=operacional_contingencias" replace />} />
+-              <Route path="/checklists/execucao" element={<Navigate to="/tarefas/minhas" replace />} />
+-              <Route path="/checklists/gestao" element={<Navigate to="/tarefas/gestao" replace />} />
+-              <Route path="/checklists/cadastro" element={<Navigate to="/tarefas/rotinas" replace />} />
+-              <Route path="/checklists/avaliacao" element={<Navigate to="/tarefas/minhas?chip=avaliar&from=checklists_avaliacao" replace />} />
+-              <Route path="/checklists/aprovacao" element={<Navigate to="/tarefas/minhas?chip=aprovar&from=checklists_aprovacao" replace />} />
+-              <Route path="/checklists/contingencias" element={<Navigate to="/tarefas/minhas?chip=contingencias&from=checklists_contingencias" replace />} />
++              {/* MÓDULO TAREFAS — rotas oficiais */}
++              <Route path="/tarefas" element={<TarefasDashboardPage />} />
++              <Route path="/tarefas/dashboard" element={<TarefasDashboardPage />} />
++              <Route path="/tarefas/lista" element={<TarefasExecucaoPage />} />
++              <Route path="/tarefas/detalhes/:id" element={<TarefasExecucaoPage />} />
++              <Route path="/tarefas/rotinas" element={<TarefasRotinasPage />} />
++              <Route path="/tarefas/agendamentos" element={<TarefasAgendamentosPage />} />
++              <Route path="/tarefas/execucao" element={<TarefasExecucaoPage />} />
++              <Route path="/tarefas/historico" element={<TarefasHistoricoPage />} />
++              <Route path="/tarefas/configuracoes" element={<TarefasConfiguracoesPage />} />
++              <Route path="/tarefas/desempenho" element={<TarefasDesempenhoPage />} />
++              <Route path="/tarefas/relatorios" element={<RelatorioTarefasPage />} />
+               
+               
+               <Route path="/cadastros/setores" element={<SetoresPage />} />
+@@ -117,8 +107,6 @@ const App = () => (
+               <Route path="/cadastros/enderecos" element={<CadastroEnderecosPage />} />
+               
+               <Route path="/relatorios" element={<RelatoriosPage />} />
+-              <Route path="/tarefas/relatorios" element={<RelatorioTarefasPage />} />
+-              <Route path="/relatorios/tarefas" element={<Navigate to="/tarefas/relatorios" replace />} />
+               <Route path="/leads" element={<LeadsPage />} />
+               <Route path="/leads/fila" element={<FilaLeadsPage />} />
+               <Route path="/leads/fila-tarefas" element={<FilaLeadsPage />} />
+@@ -133,10 +121,7 @@ const App = () => (
+               <Route path="/leads/objecoes" element={<ObjecoesLeadsPage />} />
+               <Route path="/leads/relatorios" element={<RelatoriosLeadsPage />} />
+               <Route path="/desempenho" element={<DesempenhoColaboradorPage />} />
+-              <Route path="/tarefas/desempenho" element={<DesempenhoOperacionalPage />} />
+               <Route path="/avaliacoes/tempo-avaliacoes" element={<DashboardTempoAvaliacoes />} />
+-              <Route path="/tarefas/tempo-avaliacoes" element={<Navigate to="/avaliacoes/tempo-avaliacoes" replace />} />
+-              <Route path="/desempenho/operacional" element={<Navigate to="/tarefas/desempenho" replace />} />
+               <Route path="/desempenho/tempo-avaliacoes" element={<Navigate to="/avaliacoes/tempo-avaliacoes" replace />} />
+               <Route path="/assistente" element={<AssistentePage />} />
+               {/* MÓDULO PROPOSTAS — isolado */}
+diff --git a/src/components/AppLayout.tsx b/src/components/AppLayout.tsx
+index 6127e54b..2a73ecd8 100644
+--- a/src/components/AppLayout.tsx
++++ b/src/components/AppLayout.tsx
+@@ -45,9 +45,8 @@ export function AppLayout() {
+     if (pendingEvaluations > 0) counts["/avaliacoes/pesquisa"] = pendingEvaluations;
+     if (pendingLeadDecisions > 0) counts["/leads/fila"] = pendingLeadDecisions;
+     if (pendingMyLeads > 0) counts["/leads"] = pendingMyLeads;
+-    if (pendingDesignadas > 0) counts["/tarefas/minhas"] = pendingDesignadas;
+-    if (pendingContingencias > 0) counts["/tarefas/contingencias"] = pendingContingencias;
+-    if (pendingAprovacoes > 0) counts["/tarefas/aprovacao"] = pendingAprovacoes;
++    const pendingTarefas = pendingDesignadas + pendingContingencias + pendingAprovacoes;
++    if (pendingTarefas > 0) counts["/tarefas/execucao"] = pendingTarefas;
+     return counts;
+   }, [pendingEvaluations, pendingLeadDecisions, pendingMyLeads, pendingDesignadas, pendingContingencias, pendingAprovacoes]);
+ 
+diff --git a/src/components/AppSidebar.tsx b/src/components/AppSidebar.tsx
+index 575b90da..4b1b1b34 100644
+--- a/src/components/AppSidebar.tsx
++++ b/src/components/AppSidebar.tsx
+@@ -53,10 +53,15 @@ const allNavSections = [
+   {
+     title: "Tarefas",
+     items: [
+-      { to: "/tarefas/gestao", icon: FolderKanban, label: "Dash de Tarefas" },
+-      { to: "/tarefas/minhas", icon: PlayCircle, label: "Minhas Tarefas" },
+-      { to: "/tarefas/rotinas", icon: ListChecks, label: "Rotinas Operacionais" },
++      { to: "/tarefas/dashboard", icon: FolderKanban, label: "Dashboard" },
++      { to: "/tarefas/lista", icon: ClipboardList, label: "Lista" },
++      { to: "/tarefas/execucao", icon: PlayCircle, label: "Execução" },
++      { to: "/tarefas/rotinas", icon: ListChecks, label: "Rotinas" },
++      { to: "/tarefas/agendamentos", icon: Clock, label: "Agenda" },
++      { to: "/tarefas/historico", icon: History, label: "Histórico" },
+       { to: "/tarefas/desempenho", icon: PieChart, label: "Desempenho" },
++      { to: "/tarefas/relatorios", icon: FileBarChart, label: "Relatórios" },
++      { to: "/tarefas/configuracoes", icon: Settings, label: "Configurações" },
+     ],
+   },
+   {
+@@ -79,7 +84,6 @@ const allNavSections = [
+     title: "Relatórios",
+     items: [
+       { to: "/relatorios", icon: BarChart3, label: "Relatórios de OS" },
+-      { to: "/relatorios/tarefas", icon: FileBarChart, label: "Relatório de Tarefas" },
+       { to: "/leads/relatorios", icon: FileBarChart, label: "Relatórios de Leads" },
+     ],
+   },
+diff --git a/src/contexts/AuthContext.tsx b/src/contexts/AuthContext.tsx
+index 652d7a0d..3cb932d3 100644
+--- a/src/contexts/AuthContext.tsx
++++ b/src/contexts/AuthContext.tsx
+@@ -23,30 +23,8 @@ interface AuthContextType {
+ 
+ const AuthContext = createContext<AuthContextType | undefined>(undefined);
+ 
+-const LEGACY_PATH_MAP: Record<string, string> = {
+-  // legados /checklists/*
+-  "/checklists/execucao": "/tarefas/minhas",
+-  "/checklists/gestao": "/tarefas/gestao",
+-  "/checklists/cadastro": "/tarefas/rotinas",
+-  "/checklists/avaliacao": "/tarefas/avaliacao",
+-  "/checklists/aprovacao": "/tarefas/aprovacao",
+-  "/checklists/contingencias": "/tarefas/contingencias",
+-  // legados /operacional/*
+-  "/operacional/execucao": "/tarefas/minhas",
+-  "/operacional/gestao": "/tarefas/gestao",
+-  "/operacional/cadastro": "/tarefas/rotinas",
+-  "/operacional/avaliacao": "/tarefas/avaliacao",
+-  "/operacional/aprovacao": "/tarefas/aprovacao",
+-  "/operacional/contingencias": "/tarefas/contingencias",
+-  // outros legados
+-  "/relatorios/tarefas": "/tarefas/relatorios",
+-  "/desempenho/operacional": "/tarefas/desempenho",
+-  "/desempenho/tempo-avaliacoes": "/avaliacoes/tempo-avaliacoes",
+-  "/tarefas/tempo-avaliacoes": "/avaliacoes/tempo-avaliacoes",
+-};
+-
+ function normalizeAllowedScreens(paths: string[]) {
+-  return Array.from(new Set(paths.map((path) => LEGACY_PATH_MAP[path] ?? path)));
++  return Array.from(new Set(paths));
+ }
+ 
+ function AuthProviderInner({ children }: { children: ReactNode }) {
+@@ -68,8 +46,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
+ 
+   const canViewPath = useCallback((path: string): boolean => {
+     if (isAdmin) return true;
+-    const normalizedPath = LEGACY_PATH_MAP[path] ?? path;
+-    return allowedScreens.includes(normalizedPath);
++    return allowedScreens.includes(path);
+   }, [isAdmin, allowedScreens]);
+ 
+   const fetchProfileAndRoles = useCallback(async (userId: string) => {
+diff --git a/src/lib/screen-permissions.ts b/src/lib/screen-permissions.ts
+index 4211c935..b5fa583d 100644
+--- a/src/lib/screen-permissions.ts
++++ b/src/lib/screen-permissions.ts
+@@ -30,16 +30,18 @@ export const ALL_SCREENS: ScreenDef[] = [
+   { path: "/leads/importador", label: "Importador de Leads", group: "Leads" },
+   { path: "/leads/gerenciamento", label: "Gerenciamento de Leads", group: "Leads" },
+   { path: "/leads/campanhas", label: "Campanhas", group: "Leads" },
+-  // Tarefas (menu principal)
+-  { path: "/tarefas/gestao", label: "Dash de Tarefas", group: "Tarefas" },
+-  { path: "/tarefas/minhas", label: "Minhas Tarefas", group: "Tarefas" },
+-  { path: "/tarefas/rotinas", label: "Rotinas Operacionais", group: "Tarefas" },
+-  { path: "/tarefas/relatorios", label: "Relatórios de Tarefas", group: "Tarefas" },
++  // Tarefas
++  { path: "/tarefas", label: "Tarefas", group: "Tarefas" },
++  { path: "/tarefas/dashboard", label: "Dashboard", group: "Tarefas" },
++  { path: "/tarefas/lista", label: "Lista", group: "Tarefas" },
++  { path: "/tarefas/detalhes/:id", label: "Detalhes", group: "Tarefas" },
++  { path: "/tarefas/rotinas", label: "Rotinas", group: "Tarefas" },
++  { path: "/tarefas/agendamentos", label: "Agenda", group: "Tarefas" },
++  { path: "/tarefas/execucao", label: "Execução", group: "Tarefas" },
++  { path: "/tarefas/historico", label: "Histórico", group: "Tarefas" },
++  { path: "/tarefas/configuracoes", label: "Configurações", group: "Tarefas" },
+   { path: "/tarefas/desempenho", label: "Desempenho", group: "Tarefas" },
+-  // Tarefas — rotas internas (acessadas via /tarefas/minhas, mantidas para permissionamento e links diretos)
+-  { path: "/tarefas/avaliacao", label: "Avaliação de Tarefas (interna)", group: "Tarefas" },
+-  { path: "/tarefas/aprovacao", label: "Aprovação de Tarefas (interna)", group: "Tarefas" },
+-  { path: "/tarefas/contingencias", label: "Contingências (interna)", group: "Tarefas" },
++  { path: "/tarefas/relatorios", label: "Relatórios", group: "Tarefas" },
+   // Cadastros
+   { path: "/cadastros/setores", label: "Setores", group: "Cadastros" },
+   { path: "/cadastros/servicos", label: "Tipos de Serviço", group: "Cadastros" },
+@@ -52,7 +54,6 @@ export const ALL_SCREENS: ScreenDef[] = [
+   { path: "/leads/rotina", label: "Rotina de Tentativas", group: "Configurações" },
+   // Relatórios
+   { path: "/relatorios", label: "Relatórios de OS", group: "Relatórios" },
+-  { path: "/relatorios/tarefas", label: "Relatório de Tarefas", group: "Relatórios" },
+   { path: "/leads/relatorios", label: "Relatórios de Leads", group: "Relatórios" },
+ ];
+ 
+diff --git a/src/modules/tarefas/components/painels/tarefas_panelRegistry.ts b/src/modules/tarefas/components/painels/tarefas_panelRegistry.ts
+index 28eff293..e05dca8a 100644
+--- a/src/modules/tarefas/components/painels/tarefas_panelRegistry.ts
++++ b/src/modules/tarefas/components/painels/tarefas_panelRegistry.ts
+@@ -25,7 +25,7 @@ const PlanoAcao = lazy(() =>
+ );
+ // Avaliacao panel removido — fluxo consolidado em Executor (responde) ? Aprovador.
+ // Aprovacao principal fica fora deste router auxiliar.
+-// diretamente em /tarefas/minhas (resposta executor + anexos + plano de ação final).
++// diretamente em /tarefas/execucao (resposta executor + anexos + plano de ação final).
+ 
+ export const PANEL_REGISTRY: PanelEntry[] = [
+   // === Aceite de prazo (executor ou solicitante decidindo renegociação) ===
+@@ -80,7 +80,7 @@ export const PANEL_REGISTRY: PanelEntry[] = [
+   // === Avaliação técnica REMOVIDA — Executor já responde; próxima etapa = Aprovador ===
+ 
+   // === Aprovação removida do router declarativo ===
+-  // Renderizacao principal fica no fluxo oficial de /tarefas/minhas
++  // Renderizacao principal fica no fluxo oficial de /tarefas/execucao
+   // (mostra respostas/anexos do executor, anexo opcional do aprovador,
+   // hidrata auto-save, e abre etapa final de Plano de Ação consolidada).
+ ];
+diff --git a/src/modules/tarefas/components/responsaveis/TarefasResponsaveisBlocks.tsx b/src/modules/tarefas/components/responsaveis/TarefasResponsaveisBlocks.tsx
+index e5c79430..11d25739 100644
+--- a/src/modules/tarefas/components/responsaveis/TarefasResponsaveisBlocks.tsx
++++ b/src/modules/tarefas/components/responsaveis/TarefasResponsaveisBlocks.tsx
+@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
+ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+ 
+-export type RespMode = "individual" | "setorial";
++export type RespMode = "individual" | "setor_todo";
+ 
+ export interface RespValue {
+   mode: RespMode;
+@@ -20,16 +20,18 @@ export interface RespValue {
+ export const emptyResp: RespValue = { mode: "individual", profileIds: [], setorId: "" };
+ 
+ export interface RespBlocksValue {
++  respondente: RespValue;
+   avaliado: RespValue;
+   avaliador: RespValue;
+-  aprovador: RespValue;
++  aprovadorFinal: RespValue;
+   validadorFinal: RespValue;
+ }
+ 
+ export const emptyRespBlocks: RespBlocksValue = {
++  respondente: { ...emptyResp },
+   avaliado: { ...emptyResp },
+   avaliador: { ...emptyResp },
+-  aprovador: { ...emptyResp },
++  aprovadorFinal: { ...emptyResp },
+   validadorFinal: { ...emptyResp },
+ };
+ 
+@@ -47,9 +49,11 @@ interface BlockSpec {
+ }
+ 
+ const BLOCKS: BlockSpec[] = [
+-  { key: "avaliado", num: 1, title: "Executor / Avaliado", hint: "Pessoa que executa a tarefa, responde perguntas e recebe a nota.", required: true, Icon: User },
+-  { key: "aprovador", num: 2, title: "Aprovador", hint: "Aprova/reprova, cria plano de ação e define impacto operacional.", required: false, Icon: Award },
+-  { key: "validadorFinal", num: 3, title: "Auditor", hint: "Auditoria posterior do processo. Não altera notas.", required: false, Icon: UserCheck },
++  { key: "respondente", num: 1, title: "Executor", hint: "Quem executa a tarefa e responde as perguntas.", required: true, Icon: User },
++  { key: "avaliado", num: 2, title: "Avaliado", hint: "Quem recebe a nota e fica vinculado ao resultado.", required: true, Icon: Users },
++  { key: "avaliador", num: 3, title: "Responsável pelo plano", hint: "Quem recebe pendências e planos de ação operacionais.", required: false, Icon: ShieldCheck },
++  { key: "aprovadorFinal", num: 4, title: "Aprovador", hint: "Aprova/reprova, cria plano de ação e define impacto operacional.", required: false, Icon: Award },
++  { key: "validadorFinal", num: 5, title: "Auditor", hint: "Auditoria posterior do processo. Não altera notas.", required: false, Icon: UserCheck },
+ ];
+ 
+ interface Props {
+@@ -121,7 +125,7 @@ export function TarefasResponsaveisBlocks({
+ 
+               {/* Toggle de modo segmentado */}
+               <div className="inline-flex rounded-md border border-border bg-background p-0.5 shrink-0">
+-                {(["individual", "setorial"] as RespMode[]).map((m) => (
++                {(["individual", "setor_todo"] as RespMode[]).map((m) => (
+                   <button
+                     key={m}
+                     type="button"
+@@ -252,7 +256,7 @@ function MultiProfileSelect({ options, selected, onChange, placeholder, disabled
+ export const respLegacyProfileId = (v: RespValue): string =>
+   v.mode === "individual" ? (v.profileIds[0] || "") : "";
+ export const respLegacySetorId = (v: RespValue): string =>
+-  v.mode === "setorial" ? (v.setorId || "") : "";
++  v.mode === "setor_todo" ? (v.setorId || "") : "";
+ 
+ export const isRespFilled = (v: RespValue): boolean =>
+   v.mode === "individual" ? v.profileIds.length > 0 : !!v.setorId;
+diff --git a/src/modules/tarefas/components/responsaveis/TarefasResponsaveisV2.tsx b/src/modules/tarefas/components/responsaveis/TarefasResponsaveisV2.tsx
+deleted file mode 100644
+index a914cdea..00000000
+--- a/src/modules/tarefas/components/responsaveis/TarefasResponsaveisV2.tsx
++++ /dev/null
+@@ -1,472 +0,0 @@
+-/**
+- * Tarefas — Responsáveis V2
+- *
+- * Fluxo oficial (4 papéis):
+- *   - Executor (Respondente): executa, responde, envia evidências, marca conforme/não conforme inicial.
+- *   - Avaliado: recebe a nota/impacto (pode ser o próprio executor).
+- *   - Aprovador: aprova/reprova, cria plano de ação, define impacto operacional.
+- *   - Auditor: auditoria posterior; não altera notas.
+- *
+- * O bloco "Avaliador (Conferência)" foi removido — era duplicidade semântica com Executor.
+- *
+- * Mapeamento legacy mantido para compat de leitura/gravação:
+- *   respondente   ? executor_*
+- *   avaliado      ? avaliado_*       (fallback = executor_*)
+- *   aprovadorFinal ? aprovador_*
+- *   validadorFinal ? auditor_*
+- */
+-import { useMemo, useState } from "react";
+-import {
+-  Check, ChevronDown, ChevronRight, Info, HelpCircle,
+-  User, ShieldCheck, Award, Eye, ClipboardList, AlertTriangle,
+-} from "lucide-react";
+-import { cn } from "@/lib/utils";
+-import { Label } from "@/components/ui/label";
+-import { Button } from "@/components/ui/button";
+-import { Badge } from "@/components/ui/badge";
+-import { Checkbox } from "@/components/ui/checkbox";
+-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+-import { useIsMobile } from "@/hooks/use-mobile";
+-
+-/* ---------------- Tipos ---------------- */
+-
+-export type RespModeV2 = "setor_todo" | "individual" | null;
+-
+-export interface RespValueV2 {
+-  setorId: string;
+-  mode: RespModeV2;
+-  /** Quando mode = "individual". Quando "setor_todo" deve ficar vazio. */
+-  profileIds: string[];
+-}
+-
+-export type RespRoleKey =
+-  | "respondente"
+-  | "avaliado"
+-  | "avaliador"
+-  | "aprovadorFinal"
+-  | "validadorFinal";
+-
+-export type RespBlocksValueV2 = Record<RespRoleKey, RespValueV2>;
+-
+-export const emptyRespV2: RespValueV2 = { setorId: "", mode: null, profileIds: [] };
+-
+-export const emptyRespBlocksV2: RespBlocksValueV2 = {
+-  respondente: { ...emptyRespV2 },
+-  avaliado: { ...emptyRespV2 },
+-  avaliador: { ...emptyRespV2 },
+-  aprovadorFinal: { ...emptyRespV2 },
+-  validadorFinal: { ...emptyRespV2 },
+-};
+-
+-export const isRespV2Filled = (v: RespValueV2): boolean =>
+-  !!v.setorId && (v.mode === "setor_todo" || (v.mode === "individual" && v.profileIds.length > 0));
+-
+-/** Helpers para colunas legacy: retorna primeiro profile_id quando individual; setor_id quando setor_todo. */
+-export const respV2LegacyProfileId = (v: RespValueV2): string =>
+-  v.mode === "individual" ? (v.profileIds[0] || "") : "";
+-export const respV2LegacySetorId = (v: RespValueV2): string =>
+-  v.mode === "setor_todo" ? (v.setorId || "") : "";
+-
+-interface Profile { id: string; nome: string }
+-interface Setor { id: string; nome: string }
+-interface ColabSetor { profile_id: string; setor_id: string }
+-
+-interface BlockSpec {
+-  key: RespRoleKey;
+-  num: number;
+-  title: string;
+-  required: boolean;
+-  description: string;
+-  example: string;
+-  Icon: React.ComponentType<{ className?: string }>;
+-  /** Mensagem de apoio (caixa azul/cinza). */
+-  helper: string;
+-  helperVariant: "info" | "warn";
+-}
+-
+-const BLOCKS: BlockSpec[] = [
+-  {
+-    key: "respondente", num: 1, title: "Executor", required: true,
+-    description: "Quem executa a tarefa: responde as perguntas, envia evidências e marca conforme/não conforme inicial.",
+-    example: "Ex.: técnico, operador, equipe responsável pela execução.", Icon: User,
+-    helper: "Primeiro selecione o setor. Depois escolha \"Setor todo\" OU selecione colaboradores individuais (não é permitido os dois).",
+-    helperVariant: "info",
+-  },
+-  {
+-    key: "avaliado", num: 2, title: "Avaliado", required: true,
+-    description: "Quem recebe a nota/impacto final desta tarefa (pode ser o próprio executor).",
+-    example: "Ex.: pessoa, equipe ou setor avaliado.", Icon: User,
+-    helper: "A nota final pertence a este responsável/setor configurado.",
+-    helperVariant: "info",
+-  },
+-  {
+-    key: "aprovadorFinal", num: 3, title: "Aprovador", required: false,
+-    description: "Quem aprova/reprova a execução, cria o plano de ação, define impacto operacional e encerra pendências.",
+-    example: "Ex.: gestor, coordenador, gerente.", Icon: Award,
+-    helper: "Somente o aprovador pode criar o plano de ação, devolver, aumentar prazo e definir a nota final.",
+-    helperVariant: "warn",
+-  },
+-  {
+-    key: "validadorFinal", num: 4, title: "Auditor", required: false,
+-    description: "Quem realiza a auditoria posterior do processo (executor + aprovador). Não altera notas.",
+-    example: "Ex.: auditor, qualidade, compliance.", Icon: Eye,
+-    helper: "Auditoria posterior. Não altera notas nem fluxo operacional.",
+-    helperVariant: "info",
+-  },
+-];
+-
+-/* ---------------- Componente ---------------- */
+-
+-interface Props {
+-  value: RespBlocksValueV2;
+-  onChange: (next: RespBlocksValueV2) => void;
+-  setores: Setor[];
+-  colaboradores: Profile[];
+-  colaboradorSetores: ColabSetor[];
+-  /** Mostrar título "Definir Responsáveis" + banner topo. Default true. */
+-  showHeader?: boolean;
+-  /** Esconder bloco 5 (auditoria) — caso tela do AdA seja em outro local. */
+-  hideValidadorFinal?: boolean;
+-  className?: string;
+-}
+-
+-export function TarefasResponsaveisV2({
+-  value, onChange, setores, colaboradores, colaboradorSetores,
+-  showHeader = true, hideValidadorFinal = false, className,
+-}: Props) {
+-  const isMobile = useIsMobile();
+-
+-  const setorMembros = useMemo(() => {
+-    const m = new Map<string, Set<string>>();
+-    for (const cs of colaboradorSetores) {
+-      if (!m.has(cs.setor_id)) m.set(cs.setor_id, new Set());
+-      m.get(cs.setor_id)!.add(cs.profile_id);
+-    }
+-    return m;
+-  }, [colaboradorSetores]);
+-
+-  const visibleBlocks = useMemo(
+-    () => hideValidadorFinal ? BLOCKS.filter(b => b.key !== "validadorFinal") : BLOCKS,
+-    [hideValidadorFinal]
+-  );
+-
+-  const update = (key: RespRoleKey, patch: Partial<RespValueV2>) => {
+-    onChange({ ...value, [key]: { ...value[key], ...patch } });
+-  };
+-
+-  return (
+-    <div className={cn("space-y-4", className)}>
+-      {showHeader && (
+-        <div className="rounded-lg border border-blue-200/60 dark:border-blue-900/40 bg-blue-50/70 dark:bg-blue-950/30 px-3 py-2.5 flex items-start gap-2">
+-          <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+-          <p className="text-[12px] text-blue-900 dark:text-blue-200 flex-1 leading-relaxed">
+-            Defina quem executa, quem recebe a nota, quem aprova e (opcional) quem audita. O plano de ação é criado pelo aprovador.
+-          </p>
+-          <button
+-            type="button"
+-            className="text-[12px] font-medium text-blue-700 dark:text-blue-300 hover:underline shrink-0 inline-flex items-center gap-1"
+-            onClick={(e) => e.preventDefault()}
+-            title="Entenda os papéis"
+-          >
+-            Entenda os papéis <HelpCircle className="w-3.5 h-3.5" />
+-          </button>
+-        </div>
+-      )}
+-
+-      {visibleBlocks.map((b) => (
+-        <RoleBlock
+-          key={b.key}
+-          spec={b}
+-          value={value[b.key]}
+-          onChange={(patch) => update(b.key, patch)}
+-          setores={setores}
+-          colaboradores={colaboradores}
+-          setorMembros={setorMembros}
+-          isMobile={isMobile}
+-        />
+-      ))}
+-
+-      {/* Legenda */}
+-      <div className="flex items-center gap-3 pt-1">
+-        <span className="text-[11px] text-muted-foreground">Legenda:</span>
+-        <Badge className="text-[10px] h-5 px-2 bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 hover:bg-blue-100 border-0">Obrigatório</Badge>
+-        <Badge variant="outline" className="text-[10px] h-5 px-2">Opcional</Badge>
+-      </div>
+-    </div>
+-  );
+-}
+-
+-/* ---------------- Bloco individual ---------------- */
+-
+-interface RoleBlockProps {
+-  spec: BlockSpec;
+-  value: RespValueV2;
+-  onChange: (patch: Partial<RespValueV2>) => void;
+-  setores: Setor[];
+-  colaboradores: Profile[];
+-  setorMembros: Map<string, Set<string>>;
+-  isMobile: boolean;
+-}
+-
+-function RoleBlock({ spec, value, onChange, setores, colaboradores, setorMembros, isMobile }: RoleBlockProps) {
+-  const [open, setOpen] = useState(spec.required); // mobile: obrigatórios já abertos
+-
+-  const setorSelected = !!value.setorId;
+-  const memberIds = value.setorId ? (setorMembros.get(value.setorId) || new Set<string>()) : new Set<string>();
+-  const colabOptions = useMemo(
+-    () => colaboradores.filter((c) => memberIds.has(c.id)),
+-    [colaboradores, memberIds]
+-  );
+-
+-  /* Regras: setor_todo XOR individual; trocar setor limpa seleção. */
+-  const handleSetor = (sid: string) => {
+-    if (sid === value.setorId) return;
+-    onChange({ setorId: sid, mode: null, profileIds: [] });
+-  };
+-  const toggleSetorTodo = (checked: boolean) => {
+-    if (!value.setorId) return;
+-    onChange(checked
+-      ? { mode: "setor_todo", profileIds: [] }
+-      : { mode: null });
+-  };
+-  const handleIndividual = (ids: string[]) => {
+-    if (!value.setorId) return;
+-    onChange(ids.length === 0
+-      ? { mode: null, profileIds: [] }
+-      : { mode: "individual", profileIds: ids });
+-  };
+-
+-  const Helper = (
+-    <div className={cn(
+-      "flex items-start gap-2 rounded-md px-2.5 py-2 text-[11.5px] leading-relaxed",
+-      spec.helperVariant === "warn"
+-        ? "bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 border border-amber-200/60 dark:border-amber-900/40"
+-        : "bg-muted/50 text-muted-foreground border border-border/50"
+-    )}>
+-      {spec.helperVariant === "warn"
+-        ? <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-600" />
+-        : <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-muted-foreground" />}
+-      <span>{spec.helper}</span>
+-    </div>
+-  );
+-
+-  const Header = (
+-    <div className="flex items-center gap-3 min-w-0 flex-1">
+-      <div className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-semibold shrink-0">
+-        {spec.num}
+-      </div>
+-      <spec.Icon className="w-4 h-4 text-muted-foreground shrink-0" />
+-      <div className="min-w-0 flex-1">
+-        <div className="flex items-center gap-2 flex-wrap">
+-          <p className="text-sm font-semibold text-foreground truncate">{spec.title}</p>
+-          {spec.required
+-            ? <Badge className="text-[10px] h-4 px-1.5 bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 hover:bg-blue-100 border-0">Obrigatório</Badge>
+-            : <Badge variant="outline" className="text-[10px] h-4 px-1.5">Opcional</Badge>}
+-        </div>
+-        {!isMobile && (
+-          <>
+-            <p className="text-[11.5px] text-muted-foreground mt-0.5">{spec.description}</p>
+-            <p className="text-[10.5px] text-muted-foreground/80 italic mt-0.5">{spec.example}</p>
+-          </>
+-        )}
+-      </div>
+-    </div>
+-  );
+-
+-  /* --------- DESKTOP --------- */
+-  if (!isMobile) {
+-    return (
+-      <div className="rounded-lg border border-border bg-card overflow-hidden">
+-        <div className="grid grid-cols-12 gap-4 p-4">
+-          {/* Esquerda: header */}
+-          <div className="col-span-4 border-r border-border pr-4">
+-            {Header}
+-          </div>
+-
+-          {/* Direita: 3 campos */}
+-          <div className="col-span-8 grid grid-cols-3 gap-3">
+-            <div className="space-y-1.5">
+-              <Label className="text-[11px] font-medium text-muted-foreground">Setor (selecionar)</Label>
+-              <Select value={value.setorId || ""} onValueChange={handleSetor}>
+-                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecionar setor..." /></SelectTrigger>
+-                <SelectContent>
+-                  {setores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+-                </SelectContent>
+-              </Select>
+-            </div>
+-            <div className="space-y-1.5">
+-              <Label className="text-[11px] font-medium text-muted-foreground">Setor todo</Label>
+-              <div className={cn(
+-                "h-9 flex items-center gap-2 rounded-md border border-input bg-background px-3",
+-                !setorSelected && "opacity-50 pointer-events-none",
+-                value.mode === "setor_todo" && "border-primary"
+-              )}>
+-                <Checkbox
+-                  id={`${spec.key}-setor-todo`}
+-                  checked={value.mode === "setor_todo"}
+-                  onCheckedChange={(c) => toggleSetorTodo(!!c)}
+-                  disabled={!setorSelected}
+-                />
+-                <label htmlFor={`${spec.key}-setor-todo`} className="text-[12px] cursor-pointer select-none">
+-                  Marcar todos do setor
+-                </label>
+-              </div>
+-            </div>
+-            <div className="space-y-1.5">
+-              <Label className="text-[11px] font-medium text-muted-foreground">Individual (colaboradores do setor)</Label>
+-              <MultiProfile
+-                options={colabOptions}
+-                selected={value.mode === "individual" ? value.profileIds : []}
+-                onChange={handleIndividual}
+-                placeholder={!setorSelected ? "Selecione o setor primeiro" : (colabOptions.length === 0 ? "Nenhum colaborador no setor" : "Selecionar colaboradores...")}
+-                disabled={!setorSelected || value.mode === "setor_todo"}
+-              />
+-            </div>
+-          </div>
+-
+-          {/* Helper full width */}
+-          <div className="col-span-12">
+-            {Helper}
+-          </div>
+-        </div>
+-      </div>
+-    );
+-  }
+-
+-  /* --------- MOBILE: card recolhível --------- */
+-  const summary = !setorSelected
+-    ? "Não definido"
+-    : value.mode === "setor_todo"
+-    ? `Setor todo • ${setores.find((s) => s.id === value.setorId)?.nome || ""}`
+-    : value.mode === "individual"
+-    ? `${value.profileIds.length} pessoa${value.profileIds.length > 1 ? "s" : ""}`
+-    : `Setor: ${setores.find((s) => s.id === value.setorId)?.nome || ""}`;
+-
+-  return (
+-    <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border border-border bg-card overflow-hidden">
+-      <CollapsibleTrigger asChild>
+-        <button type="button" className="w-full flex items-center gap-2 p-3 text-left hover:bg-muted/30 transition-colors">
+-          {Header}
+-          <div className="flex flex-col items-end gap-0.5 shrink-0">
+-            <span className="text-[10px] text-muted-foreground">{summary}</span>
+-            <ChevronRight className={cn("w-4 h-4 text-muted-foreground transition-transform", open && "rotate-90")} />
+-          </div>
+-        </button>
+-      </CollapsibleTrigger>
+-      <CollapsibleContent>
+-        <div className="px-3 pb-3 space-y-3 border-t border-border pt-3">
+-          <div>
+-            <p className="text-[12px] text-muted-foreground">{spec.description}</p>
+-            <p className="text-[11px] text-muted-foreground/80 italic mt-0.5">{spec.example}</p>
+-          </div>
+-
+-          <div className="space-y-1.5">
+-            <Label className="text-[11px] font-medium text-muted-foreground">Setor</Label>
+-            <Select value={value.setorId || ""} onValueChange={handleSetor}>
+-              <SelectTrigger className="h-10"><SelectValue placeholder="Selecionar setor..." /></SelectTrigger>
+-              <SelectContent>
+-                {setores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+-              </SelectContent>
+-            </Select>
+-          </div>
+-
+-          <div className={cn(
+-            "flex items-center gap-2 rounded-md border border-input bg-background px-3 h-12",
+-            !setorSelected && "opacity-50 pointer-events-none"
+-          )}>
+-            <Checkbox
+-              id={`${spec.key}-m-setor-todo`}
+-              checked={value.mode === "setor_todo"}
+-              onCheckedChange={(c) => toggleSetorTodo(!!c)}
+-              disabled={!setorSelected}
+-            />
+-            <label htmlFor={`${spec.key}-m-setor-todo`} className="text-[13px] cursor-pointer select-none flex-1">
+-              Marcar todos do setor
+-            </label>
+-          </div>
+-
+-          <div className="space-y-1.5">
+-            <Label className="text-[11px] font-medium text-muted-foreground">Individual (colaboradores do setor)</Label>
+-            <MultiProfile
+-              options={colabOptions}
+-              selected={value.mode === "individual" ? value.profileIds : []}
+-              onChange={handleIndividual}
+-              placeholder={!setorSelected ? "Selecione o setor primeiro" : (colabOptions.length === 0 ? "Nenhum colaborador no setor" : "Selecionar colaboradores...")}
+-              disabled={!setorSelected || value.mode === "setor_todo"}
+-            />
+-          </div>
+-
+-          {Helper}
+-        </div>
+-      </CollapsibleContent>
+-    </Collapsible>
+-  );
+-}
+-
+-/* ---------------- MultiProfile ---------------- */
+-
+-interface MultiProps {
+-  options: Profile[];
+-  selected: string[];
+-  onChange: (ids: string[]) => void;
+-  placeholder: string;
+-  disabled?: boolean;
+-}
+-
+-function MultiProfile({ options, selected, onChange, placeholder, disabled }: MultiProps) {
+-  const [open, setOpen] = useState(false);
+-  const labelMap = useMemo(() => new Map(options.map((o) => [o.id, o.nome])), [options]);
+-  const labels = selected.map((id) => labelMap.get(id)).filter(Boolean) as string[];
+-
+-  const toggle = (id: string) => {
+-    if (selected.includes(id)) onChange(selected.filter((x) => x !== id));
+-    else onChange([...selected, id]);
+-  };
+-
+-  return (
+-    <Popover open={open} onOpenChange={setOpen}>
+-      <PopoverTrigger asChild>
+-        <Button
+-          type="button"
+-          variant="outline"
+-          disabled={disabled}
+-          className={cn("w-full justify-between h-9 font-normal text-sm", labels.length === 0 && "text-muted-foreground")}
+-        >
+-          <span className="truncate text-left">
+-            {labels.length === 0 ? placeholder
+-              : labels.length <= 2 ? labels.join(", ")
+-              : `${labels.slice(0, 2).join(", ")} +${labels.length - 2}`}
+-          </span>
+-          <ChevronDown className="w-4 h-4 opacity-60 shrink-0" />
+-        </Button>
+-      </PopoverTrigger>
+-      <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+-        <Command>
+-          <CommandInput placeholder="Buscar colaborador..." />
+-          <CommandList>
+-            <CommandEmpty>Nenhum colaborador encontrado.</CommandEmpty>
+-            <CommandGroup>
+-              {options.map((c) => {
+-                const isSelected = selected.includes(c.id);
+-                return (
+-                  <CommandItem key={c.id} value={c.nome} onSelect={() => toggle(c.id)}>
+-                    <div className={cn(
+-                      "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+-                      isSelected ? "bg-primary text-primary-foreground" : "opacity-50"
+-                    )}>
+-                      {isSelected && <Check className="h-3 w-3" />}
+-                    </div>
+-                    <span>{c.nome}</span>
+-                  </CommandItem>
+-                );
+-              })}
+-            </CommandGroup>
+-          </CommandList>
+-        </Command>
+-      </PopoverContent>
+-    </Popover>
+-  );
+-}
+diff --git a/src/modules/tarefas/components/rotinas/RotinasModal.tsx b/src/modules/tarefas/components/rotinas/RotinasModal.tsx
+index 8851808a..33332f7f 100644
+--- a/src/modules/tarefas/components/rotinas/RotinasModal.tsx
++++ b/src/modules/tarefas/components/rotinas/RotinasModal.tsx
+@@ -221,7 +221,7 @@ async function saveChecklistToDb(
+   extraPayload?: Record<string, any>
+ ) {
+   // "auditor" é salvo como "validador" no snapshot para manter compatibilidade
+-  // com tarefas_minhasTarefasPage que lê checklists.validador
++  // com tarefas_execucaoPage que lê checklists.validador
+   const chaveSnapshot = chave === "auditor" ? "validador" : "aprovador";
+ 
+   // Lê snapshot atual para não sobrescrever a outra chave
+diff --git a/src/modules/tarefas/components/tarefas_executorPlanoAprovadorCard.tsx b/src/modules/tarefas/components/tarefas_executorPlanoAprovadorCard.tsx
+index 4aaeb823..fc102a46 100644
+--- a/src/modules/tarefas/components/tarefas_executorPlanoAprovadorCard.tsx
++++ b/src/modules/tarefas/components/tarefas_executorPlanoAprovadorCard.tsx
+@@ -1,25 +1,9 @@
+ /**
+- * @deprecated REBUILD 2026-05-21 PARCIAL — Card mantido porque
+- * `fluxo/components/tarefas_fluxoExecutorPanel.tsx` ainda o reusa para
+- * upload de evidências. Futuro: absorver o form de upload dentro do
+- * FluxoPlanoAprovadorCard (já lê de tarefas_planos_acao_aprovador).
+- * Doc: src/modules/tarefas/docs/tarefas_arquivos_deprecated.md
++ * Card dedicado a resposta do executor ao plano de acao aberto pelo aprovador.
++ * Le de tarefas_planos_acao_aprovador via prop e escreve pela RPC
++ * tarefas_rpc_executor_responder_plano_aprovador.
+  *
+- * tarefas_executorPlanoAprovadorCard.tsx
+- *
+- * Card DEDICADO à resposta do EXECUTOR ao plano de ação aberto pelo aprovador.
+- * Lê de `tarefas_planos_acao_aprovador` (via prop) e escreve pela RPC
+- * `tarefas_rpc_executor_responder_plano_aprovador`.
+- *
+- * Responsabilidade ÚNICA: render + estado local + chamada à mutation.
+- * Não duplica lógica do DynamicFieldRenderer — ele continua renderizando
+- * apenas o campo original. Este card aparece em PARALELO quando há plano
+- * pendente na nova tabela.
+- *
+- * Regra 0.7 — verdade única: este card é a ÚNICA forma de responder
+- * planos do novo modelo. Dados legacy em operational_field_reviews
+- * continuam visíveis via DynamicFieldRenderer (read-only), sem permitir
+- * resposta nova nesse caminho.
++ * Responsabilidade unica: render, estado local e chamada a mutation.
+  *
+  * Doc:
+  *   src/modules/tarefas/docs/tarefas_rpc_executor_responder_plano_aprovador.md
+diff --git a/src/modules/tarefas/components/tarefas_minhasTarefasPendentesPanel.tsx b/src/modules/tarefas/components/tarefas_minhasTarefasPendentesPanel.tsx
+index 96a82201..b7676d98 100644
+--- a/src/modules/tarefas/components/tarefas_minhasTarefasPendentesPanel.tsx
++++ b/src/modules/tarefas/components/tarefas_minhasTarefasPendentesPanel.tsx
+@@ -14,7 +14,7 @@ import { ContingencyDetailDialog } from "@/modules/tarefas/components/tarefas_co
+  *  - Abertas | Em Tratamento | Vencidas | Concluídas: visão completa
+  *    (admin vê tudo; usuário comum vê apenas o que tem acesso pelo hook).
+  *
+- * Clique em um card navega para /tarefas/contingencias preservando as
++ * Clique em um card abre o detalhe oficial preservando as
+  * ações/regras existentes.
+  */
+ export function MinhasTarefasPendentesPanel({ viewAsProfileId }: { viewAsProfileId?: string | null } = {}) {
+diff --git a/src/modules/tarefas/components/tarefas_painelRetornoCard.tsx b/src/modules/tarefas/components/tarefas_painelRetornoCard.tsx
+deleted file mode 100644
+index 4fcca084..00000000
+--- a/src/modules/tarefas/components/tarefas_painelRetornoCard.tsx
++++ /dev/null
+@@ -1,157 +0,0 @@
+-/**
+- * @deprecated REBUILD 2026-05-21 — Componente legado de retorno simples.
+- * Não substituído diretamente — informações de status agora ficam nos
+- * painéis novos do fluxo. Mantido porque `minhasTarefasPage.tsx` ainda importa.
+- * Doc: src/modules/tarefas/docs/tarefas_arquivos_deprecated.md
+- */
+-import { Clock, AlertTriangle, RotateCcw, User as UserIcon, Activity, Hourglass, MessageSquare, Ban, Timer } from "lucide-react";
+-import { cn } from "@/lib/utils";
+-import { computeSla, isSemMovimento, isLate, isLimiteRenegociacaoExcedido, type AssignmentSla } from "@/modules/tarefas/services/tarefas_bucketize";
+-import { STATUS_CONFIG } from "@/modules/tarefas/hooks/tarefas_useScoring";
+-import { TASK_STATUS } from "@/modules/tarefas/services/tarefas_statusConstants";
+-
+-function fmtRemaining(ms: number | null): string {
+-  if (ms === null) return "—";
+-  const abs = Math.abs(ms);
+-  const h = Math.floor(abs / 3600000);
+-  const m = Math.floor((abs % 3600000) / 60000);
+-  const sign = ms < 0 ? "-" : "";
+-  if (h >= 24) return `${sign}${Math.floor(h / 24)}d ${h % 24}h`;
+-  return `${sign}${h}h ${m}m`;
+-}
+-
+-function SlaBadge({ sla, label }: { sla: AssignmentSla["current"]; label: string }) {
+-  const cls = sla.status === "estourado"
+-    ? "bg-destructive/10 text-destructive border-destructive/30"
+-    : sla.status === "near"
+-      ? "bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400"
+-      : sla.status === "ok"
+-        ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400"
+-        : "bg-muted text-muted-foreground border-border";
+-  return (
+-    <div className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-medium", cls)}>
+-      <Clock className="w-3 h-3" />
+-      <span>{label}</span>
+-      <span className="font-bold">{fmtRemaining(sla.msRemaining)}</span>
+-    </div>
+-  );
+-}
+-
+-interface Props {
+-  assignment: any;
+-  onClick?: (a: any) => void;
+-}
+-
+-export function PainelRetornoCard({ assignment, onClick }: Props) {
+-  const sla = computeSla(assignment);
+-  const sem = isSemMovimento(assignment);
+-  const cont = [TASK_STATUS.CONTINGENCIADO, "contingencia"].includes(assignment.status);
+-  const late = isLate(assignment);
+-  const limiteExc = isLimiteRenegociacaoExcedido(assignment);
+-  const isRenegPend = assignment.status === TASK_STATUS.AGUARDANDO_ACEITE_PRAZO;
+-  const isAguardValid = assignment.status === TASK_STATUS.AGUARDANDO_VALIDACAO;
+-  const isRespondida = isAguardValid && !assignment.seen_by_solicitante;
+-  const statusConf = STATUS_CONFIG[assignment.status];
+-  const responsavel = assignment.profiles?.nome || "—";
+-  const titulo = assignment.template_snapshot?.nome || assignment.operational_templates?.nome || "Tarefa";
+-  // Origem: null tratado como "avulsa" por compat com dados legados (sem migration).
+-  const origem = assignment.operational_templates?.origem ?? "ad_hoc";
+-  const isRotina = origem === "rotina";
+-
+-  return (
+-    <button
+-      type="button"
+-      onClick={() => onClick?.(assignment)}
+-      className={cn(
+-        "w-full text-left rounded-lg border bg-card hover:bg-muted/40 transition-colors p-3 space-y-2",
+-        cont && "border-orange-500 ring-1 ring-orange-500/40",
+-        sla.current.status === "estourado" && !cont && "border-destructive/50"
+-      )}
+-    >
+-      <div className="flex items-start justify-between gap-2">
+-        <div className="min-w-0 flex-1">
+-          <div className="flex items-center gap-1.5 flex-wrap">
+-            {assignment.numero_tarefa && (
+-              <span className="text-[10px] font-mono font-bold text-primary bg-primary/10 px-1 rounded shrink-0">
+-                #{String(assignment.numero_tarefa).padStart(4, "0")}
+-              </span>
+-            )}
+-            <span className="text-sm font-semibold truncate">{titulo}</span>
+-            <span className={cn(
+-              "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border shrink-0",
+-              isRotina
+-                ? "bg-blue-500/10 text-blue-700 border-blue-500/30 dark:text-blue-400"
+-                : "bg-purple-500/10 text-purple-700 border-purple-500/30 dark:text-purple-400"
+-            )}>
+-              {isRotina ? "Rotina" : "Avulsa"}
+-            </span>
+-            {cont && (
+-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-500 text-white animate-pulse">
+-                <AlertTriangle className="w-3 h-3" /> CONTINGÊNCIA
+-              </span>
+-            )}
+-          </div>
+-          {statusConf && (
+-            <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border mt-1", statusConf.class)}>
+-              {statusConf.label}
+-            </span>
+-          )}
+-        </div>
+-      </div>
+-
+-      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground flex-wrap">
+-        <UserIcon className="w-3 h-3" />
+-        <span className="font-medium text-foreground">{responsavel}</span>
+-        {assignment.aprovador_id && <span>· aval: {assignment.aprovador?.nome || "—"}</span>}
+-        {assignment.aprovador_id && <span>· aprov: {assignment.aprovador?.nome || "—"}</span>}
+-      </div>
+-
+-      <div className="flex items-center gap-1.5 flex-wrap">
+-        {assignment.status === TASK_STATUS.EM_PLANO_ACAO && (
+-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border bg-muted text-muted-foreground border-border text-[10px] font-medium">
+-            <Hourglass className="w-3 h-3" /> SLA pausado
+-          </span>
+-        )}
+-        {sla.operacional.due && assignment.status !== TASK_STATUS.EM_PLANO_ACAO && <SlaBadge sla={sla.operacional} label="Op" />}
+-        {sla.avaliacao.due && <SlaBadge sla={sla.avaliacao} label="Av" />}
+-        {sla.aprovacao.due && <SlaBadge sla={sla.aprovacao} label="Apr" />}
+-        {sla.total.due && <SlaBadge sla={sla.total} label="Total" />}
+-        {late && !cont && (
+-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border bg-destructive/10 text-destructive border-destructive/30 text-[10px] font-medium">
+-            <Clock className="w-3 h-3" /> Atrasada
+-          </span>
+-        )}
+-        {sem && (
+-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400 text-[10px] font-medium">
+-            <Activity className="w-3 h-3" /> Sem movimento
+-          </span>
+-        )}
+-        {isRenegPend && (
+-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border bg-yellow-500/10 text-yellow-700 border-yellow-500/30 dark:text-yellow-400 text-[10px] font-medium">
+-            <Hourglass className="w-3 h-3" /> Renegociação Pendente
+-          </span>
+-        )}
+-        {limiteExc && (
+-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border bg-red-600/10 text-red-700 border-red-600/40 dark:text-red-300 text-[10px] font-medium">
+-            <Ban className="w-3 h-3" /> Limite Excedido
+-          </span>
+-        )}
+-        {isRespondida && (
+-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400 text-[10px] font-medium">
+-            <MessageSquare className="w-3 h-3" /> Respondida pelo Executor
+-          </span>
+-        )}
+-        {isAguardValid && !isRespondida && (
+-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border bg-violet-500/10 text-violet-700 border-violet-500/30 dark:text-violet-400 text-[10px] font-medium">
+-            <Timer className="w-3 h-3" /> Aguardando Validação
+-          </span>
+-        )}
+-        {assignment.rodada_atual > 1 && (
+-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border bg-muted text-muted-foreground text-[10px]">
+-            <RotateCcw className="w-3 h-3" /> Rodada {assignment.rodada_atual}
+-          </span>
+-        )}
+-      </div>
+-    </button>
+-  );
+-}
+diff --git a/src/modules/tarefas/components/tarefas_quickCreateDialog.tsx b/src/modules/tarefas/components/tarefas_quickCreateDialog.tsx
+index c342a8e3..27af76d2 100644
+--- a/src/modules/tarefas/components/tarefas_quickCreateDialog.tsx
++++ b/src/modules/tarefas/components/tarefas_quickCreateDialog.tsx
+@@ -24,13 +24,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
+ import { DEFAULT_SOLICITACAO_CONFIG, type SolicitacaoConfig } from "@/modules/tarefas/services/tarefas_solicitacaoConfig";
+ import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
+ import {
+-  TarefasResponsaveisV2,
+-  emptyRespBlocksV2,
+-  isRespV2Filled,
+-  respV2LegacyProfileId,
+-  respV2LegacySetorId,
+-  type RespBlocksValueV2,
+-} from "@/modules/tarefas/components/responsaveis/TarefasResponsaveisV2";
++  TarefasResponsaveisBlocks,
++  emptyRespBlocks,
++  isRespFilled,
++  respLegacyProfileId,
++  respLegacySetorId,
++  type RespBlocksValue,
++} from "@/modules/tarefas/components/responsaveis/TarefasResponsaveisBlocks";
+ 
+ // localStorage keys for default penalty values (per-user defaults set via gear icon)
+ const LS_DEFAULTS_KEY = "quicktask_workflow_defaults_v1";
+@@ -66,7 +66,7 @@ interface Props {
+   /**
+    * Contexto de origem da criação:
+    * - "rotina": permite ativar recorrência (vira rotina em /tarefas/rotinas).
+-   * - "avulsa": oculta bloco de recorrência e força origem='ad_hoc'. Usado pelo botão "+" de /tarefas/minhas.
++   * - "avulsa": oculta bloco de recorrência e força origem='ad_hoc'. Usado pelo botão "+" de /tarefas/execucao.
+    * Default "rotina" para compat com chamadas existentes.
+    */
+   origemContexto?: "rotina" | "avulsa";
+@@ -112,9 +112,9 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
+   const [aprovadorId, setAprovadorId] = useState("");
+   const [aprovadorSetorId, setAprovadorSetorId] = useState("");
+ 
+-  // Novo padrão visual de Responsáveis (5 blocos V2). Substitui as toggles antigas.
++  // Padrão oficial de Responsáveis (5 blocos). Substitui as toggles antigas.
+   // Persiste array em template_snapshot.responsaveis_multi (avulso). Coluna legacy = primeiro do array.
+-  const [respBlocks, setRespBlocks] = useState<RespBlocksValueV2>(emptyRespBlocksV2);
++  const [respBlocks, setRespBlocks] = useState<RespBlocksValue>(emptyRespBlocks);
+ 
+   // Step 2 state
+   const [sections, setSections] = useState<SectionForm[]>([]);
+@@ -153,7 +153,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
+     setRequerValidacao(false); setValidadorMode("individual"); setValidadorId(""); setValidadorSetorId("");
+     setPlanoAcaoSetorId(""); setPlanoAcaoQualquer(true); setPlanoAcaoUsuarioId("");
+     setRequerAprovacao(false); setAprovadorMode("individual"); setAprovadorId(""); setAprovadorSetorId("");
+-    setRespBlocks(emptyRespBlocksV2);
++    setRespBlocks(emptyRespBlocks);
+     setSections([]); setFields([]);
+     const d = loadDefaults();
+     setSlaHoras(24);
+@@ -273,21 +273,21 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
+     setAvaliadoId(av.mode === "individual" ? (av.profileIds[0] || "") : "");
+ 
+     const a2 = respBlocks.avaliador;
+-    const a2Filled = isRespV2Filled(a2);
++    const a2Filled = isRespFilled(a2);
+     setRequerValidacao(a2Filled);
+     setValidadorMode(a2.mode === "individual" ? "individual" : "setor");
+-    setValidadorId(respV2LegacyProfileId(a2));
+-    setValidadorSetorId(respV2LegacySetorId(a2));
++    setValidadorId(respLegacyProfileId(a2));
++    setValidadorSetorId(respLegacySetorId(a2));
+     // Plano de Ação (mesmo bloco 2)
+     setPlanoAcaoSetorId(a2.mode === "setor_todo" ? a2.setorId : "");
+     setPlanoAcaoUsuarioId(a2.mode === "individual" ? (a2.profileIds[0] || "") : "");
+     setPlanoAcaoQualquer(a2.mode === "setor_todo");
+ 
+     const a3 = respBlocks.aprovadorFinal;
+-    setRequerAprovacao(isRespV2Filled(a3));
++    setRequerAprovacao(isRespFilled(a3));
+     setAprovadorMode(a3.mode === "individual" ? "individual" : "setor");
+-    setAprovadorId(respV2LegacyProfileId(a3));
+-    setAprovadorSetorId(respV2LegacySetorId(a3));
++    setAprovadorId(respLegacyProfileId(a3));
++    setAprovadorSetorId(respLegacySetorId(a3));
+   }, [respBlocks]);
+ 
+   // Validador: nunca pode ser o avaliado (não pode validar a si mesmo)
+@@ -383,7 +383,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
+   const canAdvanceStep1 = fields.length > 0 && !horarioValidationError;
+   // Avaliado é o único bloco obrigatório. Aceita Individual (profileIds) OU Setorial (setorId).
+   // Aprovador e Validador Final são opcionais. Avaliador (PA) é opcional.
+-  const avaliadoPreenchido = isRespV2Filled(respBlocks.avaliado);
++  const avaliadoPreenchido = isRespFilled(respBlocks.avaliado);
+   const canAdvanceStep2 = avaliadoPreenchido && !!dataPrevista;
+ 
+ 
+@@ -434,15 +434,15 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
+         habilitar_perguntas_automaticas: pontuacaoValida ? habilitarPerguntasAutomaticas : false,
+         ativo: true,
+         // Bloco 4 (Validador Final) ? ada_*. Opcional; se vazio, AdA fica desligado.
+-        ada_enabled: isRespV2Filled(respBlocks.validadorFinal),
+-        ada_quem_avalia_tipo: isRespV2Filled(respBlocks.validadorFinal)
++        ada_enabled: isRespFilled(respBlocks.validadorFinal),
++        ada_quem_avalia_tipo: isRespFilled(respBlocks.validadorFinal)
+           ? (respBlocks.validadorFinal.mode === "individual" ? "pessoa" : "setor")
+           : null,
+         ada_quem_avalia_profile_id: respBlocks.validadorFinal.mode === "individual"
+           ? (respBlocks.validadorFinal.profileIds[0] || null) : null,
+         ada_quem_avalia_setor_id: respBlocks.validadorFinal.mode === "setor_todo"
+           ? (respBlocks.validadorFinal.setorId || null) : null,
+-        ada_gerar_em: isRespV2Filled(respBlocks.validadorFinal) ? "pos_avaliacao" : null,
++        ada_gerar_em: isRespFilled(respBlocks.validadorFinal) ? "pos_avaliacao" : null,
+         // Recorrente vai pra "Rotinas Operacionais" (origem rotina); pontual permanece ad_hoc
+         // Tarefa avulsa (botão "+" da Minhas Tarefas) NUNCA vira rotina.
+         origem: isAvulsa ? "ad_hoc" : (recorrenciaAtiva ? "rotina" : "ad_hoc"),
+@@ -573,7 +573,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
+         }),
+         // Fase 1B.3 — Fluxo Operacional para tarefa avulsa (sem migration; lido em runtime).
+         ...(isAvulsa ? { solicitacao_config: solicitacaoConfig } : {}),
+-        // Multi-select dos 5 blocos (V2). Coluna legacy recebe primeiro do array.
++        // Multi-select dos 5 blocos. Coluna de compatibilidade recebe primeiro do array.
+         // Estrutura completa preservada para o novo runtime quando ativo.
+         responsaveis_multi: {
+           respondente: respBlocks.respondente,
+@@ -673,7 +673,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
+                   <Label className="text-sm font-semibold">Responsáveis</Label>
+                 </div>
+ 
+-                <TarefasResponsaveisV2
++                <TarefasResponsaveisBlocks
+                   value={respBlocks}
+                   onChange={setRespBlocks}
+                   setores={setores as any[]}
+diff --git a/src/modules/tarefas/components/tarefas_tabGeral.tsx b/src/modules/tarefas/components/tarefas_tabGeral.tsx
+index 14e415d1..04d10cc6 100644
+--- a/src/modules/tarefas/components/tarefas_tabGeral.tsx
++++ b/src/modules/tarefas/components/tarefas_tabGeral.tsx
+@@ -8,13 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
+ import { Users } from "lucide-react";
+ import { TemplateForm, SectionForm, StepForm } from "../types/tarefas_types";
+ import {
+-  TarefasResponsaveisV2,
+-  emptyRespBlocksV2,
+-  type RespBlocksValueV2,
+-  type RespValueV2,
+-  respV2LegacyProfileId,
+-  respV2LegacySetorId,
+-} from "@/modules/tarefas/components/responsaveis/TarefasResponsaveisV2";
++  TarefasResponsaveisBlocks,
++  emptyRespBlocks,
++  type RespBlocksValue,
++  type RespValue,
++  respLegacyProfileId,
++  respLegacySetorId,
++} from "@/modules/tarefas/components/responsaveis/TarefasResponsaveisBlocks";
+ 
+ interface Props {
+   form: TemplateForm;
+@@ -31,7 +31,7 @@ const EXEC_OPTIONS: Array<{ value: string; label: string }> = [
+ ];
+ 
+ /**
+- * Reconstrói RespBlocksValueV2 a partir de:
++ * Reconstrói RespBlocksValue a partir de:
+  *  1) form.template_snapshot.responsaveis_multi (fonte oficial nova)
+  *  2) Fallback legacy (executor_*, avaliado_*, ...) — registros antigos.
+  *
+@@ -42,14 +42,14 @@ const EXEC_OPTIONS: Array<{ value: string; label: string }> = [
+  *   aprovador_*      ? aprovadorFinal
+  *   ada_quem_avalia_* ? validadorFinal
+  */
+-function buildBlocksFromForm(form: TemplateForm): RespBlocksValueV2 {
++function buildBlocksFromForm(form: TemplateForm): RespBlocksValue {
+   const snap: any = (form as any).template_snapshot || {};
+-  const multi: Partial<RespBlocksValueV2> | undefined = snap?.responsaveis_multi;
++  const multi: Partial<RespBlocksValue> | undefined = snap?.responsaveis_multi;
+ 
+-  const fromLegacy = (profileId: string, setorId: string): RespValueV2 => {
++  const fromLegacy = (profileId: string, setorId: string): RespValue => {
+     if (profileId) return { mode: "individual", profileIds: [profileId], setorId: "" };
+     if (setorId) return { mode: "setor_todo", profileIds: [], setorId };
+-    return { ...emptyRespBlocksV2.respondente };
++    return { ...emptyRespBlocks.respondente };
+   };
+ 
+   const respondente = multi?.respondente || fromLegacy(form.executor_profile_id, form.executor_setor_id);
+@@ -59,7 +59,7 @@ function buildBlocksFromForm(form: TemplateForm): RespBlocksValueV2 {
+       ? fromLegacy(form.avaliado_profile_id, form.avaliado_setor_id)
+       : fromLegacy(form.executor_profile_id, form.executor_setor_id)
+   );
+-  const avaliador = multi?.avaliador || { ...emptyRespBlocksV2.avaliador };
++  const avaliador = multi?.avaliador || { ...emptyRespBlocks.avaliador };
+   const aprovadorFinal = multi?.aprovadorFinal || fromLegacy(form.aprovador_profile_id, form.aprovador_setor_id);
+   const validadorFinal = multi?.validadorFinal || fromLegacy(form.auditor_profile_id, form.auditor_setor_id);
+ 
+@@ -77,27 +77,27 @@ export function TabGeral({ form, set, setores, colaboradores, sections, steps }:
+   });
+ 
+   const initialBlocks = useMemo(() => buildBlocksFromForm(form), []); // só na montagem
+-  const [blocks, setBlocks] = useState<RespBlocksValueV2>(initialBlocks);
++  const [blocks, setBlocks] = useState<RespBlocksValue>(initialBlocks);
+ 
+-  const handleBlocksChange = (next: RespBlocksValueV2) => {
++  const handleBlocksChange = (next: RespBlocksValue) => {
+     setBlocks(next);
+ 
+     // 1) Atualiza colunas legacy (1º profile_id ou setor_id de cada bloco)
+-    set("executor_profile_id" as any, respV2LegacyProfileId(next.respondente) as any);
+-    set("executor_setor_id" as any, respV2LegacySetorId(next.respondente) as any);
++    set("executor_profile_id" as any, respLegacyProfileId(next.respondente) as any);
++    set("executor_setor_id" as any, respLegacySetorId(next.respondente) as any);
+ 
+-    set("avaliado_profile_id" as any, respV2LegacyProfileId(next.avaliado) as any);
+-    set("avaliado_setor_id" as any, respV2LegacySetorId(next.avaliado) as any);
++    set("avaliado_profile_id" as any, respLegacyProfileId(next.avaliado) as any);
++    set("avaliado_setor_id" as any, respLegacySetorId(next.avaliado) as any);
+ 
+     // Auditor (era avaliador legado): grava nas colunas auditor_*
+-    const audPid = respV2LegacyProfileId(next.validadorFinal);
+-    const audSid = respV2LegacySetorId(next.validadorFinal);
++    const audPid = respLegacyProfileId(next.validadorFinal);
++    const audSid = respLegacySetorId(next.validadorFinal);
+     set("auditor_profile_id" as any, audPid as any);
+     set("auditor_setor_id" as any, audSid as any);
+ 
+-    set("aprovador_profile_id" as any, respV2LegacyProfileId(next.aprovadorFinal) as any);
+-    set("aprovador_setor_id" as any, respV2LegacySetorId(next.aprovadorFinal) as any);
+-    const aprFilled = !!respV2LegacyProfileId(next.aprovadorFinal) || !!respV2LegacySetorId(next.aprovadorFinal);
++    set("aprovador_profile_id" as any, respLegacyProfileId(next.aprovadorFinal) as any);
++    set("aprovador_setor_id" as any, respLegacySetorId(next.aprovadorFinal) as any);
++    const aprFilled = !!respLegacyProfileId(next.aprovadorFinal) || !!respLegacySetorId(next.aprovadorFinal);
+     set("requer_aprovacao_gestor" as any, aprFilled as any);
+ 
+     // 2) Persistência de responsaveis_multi (snapshot completo) — Fase 2.
+@@ -148,13 +148,13 @@ export function TabGeral({ form, set, setores, colaboradores, sections, steps }:
+         </Select>
+       </div>
+ 
+-      {/* Responsáveis — novo padrão V2 (5 papéis) */}
++      {/* Responsáveis — padrão oficial (5 papéis) */}
+       <div className="border border-border rounded-lg p-4 space-y-3 bg-card">
+         <div className="flex items-center gap-2">
+           <Users className="w-4 h-4 text-primary" />
+           <Label className="text-sm font-semibold">Responsáveis</Label>
+         </div>
+-        <TarefasResponsaveisV2
++        <TarefasResponsaveisBlocks
+           value={blocks}
+           onChange={handleBlocksChange}
+           setores={setores}
+diff --git a/src/modules/tarefas/docs/MOCKUP_FLUXO_RESPOSTAS.html b/src/modules/tarefas/docs/MOCKUP_FLUXO_RESPOSTAS.html
+deleted file mode 100644
+index a469f1cb..00000000
+--- a/src/modules/tarefas/docs/MOCKUP_FLUXO_RESPOSTAS.html
++++ /dev/null
+@@ -1,402 +0,0 @@
+-<!DOCTYPE html>
+-<html lang="pt-BR">
+-<head>
+-<meta charset="UTF-8" />
+-<title>Mockup — Fluxo de Respostas (Aprovador / Auditor)</title>
+-<style>
+-  * { box-sizing: border-box; }
+-  body {
+-    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+-    background: #f8fafc;
+-    color: #1e293b;
+-    margin: 0;
+-    padding: 24px;
+-    line-height: 1.45;
+-  }
+-  h1 { font-size: 22px; margin: 0 0 8px; color: #0f172a; }
+-  h2 { font-size: 16px; margin: 24px 0 12px; color: #0f172a; }
+-  .lead { color: #64748b; font-size: 13px; margin-bottom: 24px; }
+-
+-  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 1400px; }
+-  .col h3 {
+-    font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;
+-    color: #475569; margin: 0 0 8px;
+-    border-bottom: 1px solid #cbd5e1; padding-bottom: 6px;
+-  }
+-
+-  .panel {
+-    background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+-    padding: 14px; margin-bottom: 14px;
+-  }
+-
+-  /* Tabs simulados */
+-  .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+-  .tab {
+-    padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;
+-    border: 1px solid #cbd5e1; background: #fff; color: #64748b;
+-  }
+-  .tab.active-approver { background: #ecfdf5; border-color: #10b981; color: #047857; }
+-  .tab.active-auditor  { background: #eff6ff; border-color: #3b82f6; color: #1d4ed8; }
+-
+-  /* Cards de pergunta */
+-  .pergunta {
+-    font-size: 13px; font-weight: 600; color: #0f172a;
+-    border-left: 3px solid #3b82f6; padding-left: 10px; margin-bottom: 10px;
+-  }
+-
+-  /* Caixinhas por rodada */
+-  .rodada {
+-    border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px;
+-    margin-bottom: 8px; font-size: 12.5px;
+-  }
+-  .rodada .head { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+-  .rodada.r0 .head { color: #1e40af; } .rodada.r0 { background: #eff6ff; border-color: #bfdbfe; }
+-  .rodada.r1 .head { color: #b45309; } .rodada.r1 { background: #fefce8; border-color: #fde68a; }
+-  .rodada.r2 .head { color: #be123c; } .rodada.r2 { background: #fff1f2; border-color: #fecdd3; }
+-  .rodada.aud .head { color: #6d28d9; } .rodada.aud { background: #f5f3ff; border-color: #ddd6fe; }
+-  .rodada.plano { background: #f0fdf4; border-color: #bbf7d0; }
+-  .rodada.plano .head { color: #166534; }
+-
+-  .resposta-exec {
+-    margin-top: 8px; padding: 8px 10px; background: #fff;
+-    border: 1px dashed #94a3b8; border-radius: 6px; font-size: 12px;
+-  }
+-  .resposta-exec .label {
+-    font-size: 10px; text-transform: uppercase; color: #475569; font-weight: 700; margin-bottom: 4px;
+-  }
+-
+-  /* RESPOSTA DO APROVADOR PARA AUDITOR — destaque amarelo */
+-  .resp-aprovador-auditor {
+-    margin-top: 8px;
+-    background: linear-gradient(to right, #fef3c7, #fff);
+-    border: 1px solid #f59e0b; border-radius: 6px;
+-    padding: 10px;
+-    position: relative;
+-  }
+-  .resp-aprovador-auditor::before {
+-    content: "?? Resposta do Aprovador ao Auditor";
+-    display: block; font-size: 10px; font-weight: 700;
+-    color: #92400e; margin-bottom: 6px; text-transform: uppercase;
+-  }
+-
+-  /* BOTÃO DE CONFORMIDADE — DESTAQUE */
+-  .botao-conformidade {
+-    background: #fff7ed;
+-    border: 2px dashed #fb923c;
+-    border-radius: 8px; padding: 12px;
+-    margin: 12px 0;
+-    text-align: center;
+-  }
+-  .botao-conformidade .titulo {
+-    font-size: 11px; font-weight: 700; color: #9a3412; margin-bottom: 8px;
+-    text-transform: uppercase;
+-  }
+-  .botao-conformidade .btns { display: flex; gap: 8px; justify-content: center; }
+-  .btn { padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; border: 1px solid; cursor: pointer; }
+-  .btn-conforme { background: #dcfce7; border-color: #16a34a; color: #15803d; }
+-  .btn-nc { background: #fee2e2; border-color: #dc2626; color: #b91c1c; }
+-  .botao-conformidade .obs { font-size: 10px; color: #9a3412; margin-top: 8px; }
+-
+-  /* Plano de ação card */
+-  .plano-acao {
+-    margin-top: 8px; padding: 8px;
+-    background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px;
+-    font-size: 11px;
+-  }
+-  .plano-acao .titulo { font-weight: 700; color: #92400e; margin-bottom: 4px; }
+-
+-  .legenda {
+-    background: #f1f5f9; border-radius: 6px; padding: 10px;
+-    font-size: 11px; color: #475569; margin-bottom: 20px;
+-  }
+-  .legenda strong { color: #0f172a; }
+-
+-  .nota-final {
+-    background: #ecfdf5; border: 1px solid #6ee7b7;
+-    border-radius: 6px; padding: 10px;
+-    font-size: 12px; font-weight: 600; color: #047857;
+-    margin-bottom: 10px;
+-  }
+-  .nota-final .label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #047857; margin-bottom: 4px; }
+-
+-  /* Bloco notas aprovador (perguntas auto) */
+-  .notas-aprovador {
+-    border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px;
+-    background: #f8fafc; font-size: 12px;
+-  }
+-  .notas-aprovador .item {
+-    display: flex; justify-content: space-between; padding: 6px 0;
+-    border-bottom: 1px dashed #e2e8f0;
+-  }
+-  .notas-aprovador .item:last-child { border-bottom: none; }
+-  .notas-aprovador .item .resp { font-weight: 600; }
+-  .notas-aprovador .item .resp.sim { color: #b91c1c; }
+-  .notas-aprovador .item .resp.nao { color: #15803d; }
+-
+-  .arrow-down {
+-    text-align: center; color: #94a3b8; margin: -4px 0 4px; font-size: 18px;
+-  }
+-
+-  .mark {
+-    display: inline-block; padding: 1px 6px; border-radius: 4px;
+-    font-size: 10px; font-weight: 600; margin-left: 4px;
+-  }
+-  .mark-aprovador { background: #fef3c7; color: #92400e; }
+-  .mark-auditor   { background: #ede9fe; color: #6d28d9; }
+-  .mark-executor  { background: #dbeafe; color: #1e40af; }
+-</style>
+-</head>
+-<body>
+-
+-<h1>Mockup — Fluxo de Respostas e Botão de Conformidade do Auditor</h1>
+-<p class="lead">
+-  Sequência: pergunta ? resposta executor (R0) ? devolução do aprovador (R1) ? resposta executor ? devolução do aprovador (R2) ? resposta executor ? <b>resposta do aprovador para auditor</b> ? <b>botão Conforme/NC do auditor</b> ? R1 do auditor (se devolver). Sem layout novo — só usando os blocos que já existem nos painéis.
+-</p>
+-
+-<div class="legenda">
+-  <strong>Legenda de cores:</strong>
+-  <span class="mark mark-executor">Executor</span>
+-  <span class="mark mark-aprovador">Aprovador</span>
+-  <span class="mark mark-auditor">Auditor</span>
+-  &nbsp;|&nbsp; ? = sequência cronológica
+-</div>
+-
+-<div class="row">
+-
+-  <!-- ============ COLUNA 1: ABA APROVAÇÃO ============ -->
+-  <div class="col">
+-    <h3>Tela do Aprovador (aba <code>Aprovação</code>)</h3>
+-
+-    <div class="panel">
+-      <div class="tabs">
+-        <div class="tab">Áreas Internas</div>
+-        <div class="tab active-approver">? Aprovação</div>
+-        <div class="tab">Auditor</div>
+-      </div>
+-
+-      <div class="pergunta">Pergunta: Limpar vidros <span class="mark mark-executor">do executor</span></div>
+-
+-      <!-- R0 — resposta executor -->
+-      <div class="rodada r0">
+-        <div class="head">
+-          <span>? R0 — Resposta do Executor</span>
+-          <span>20/05 14:30</span>
+-        </div>
+-        <div>Resposta: <strong>Sim</strong> · Evidência: ?? vidros.jpg · Obs: —</div>
+-      </div>
+-
+-      <!-- R1 — devolução aprovador -->
+-      <div class="rodada r1">
+-        <div class="head">
+-          <span>? R1 — Devolução do Aprovador</span>
+-          <span>20/05 14:45</span>
+-        </div>
+-        <div>Motivo: <em>primeiro teste de devolução</em></div>
+-        <div>Evidência: ?? devolver-foto.jpg</div>
+-
+-        <div class="resposta-exec">
+-          <div class="label">? Resposta do executor à R1</div>
+-          Refeito agora. Vidros limpos no horário correto. ?? r1-resposta.jpg
+-        </div>
+-      </div>
+-
+-      <!-- R2 — devolução aprovador (com plano de ação) -->
+-      <div class="rodada r2">
+-        <div class="head">
+-          <span>? R2 — Devolução do Aprovador (com plano de ação)</span>
+-          <span>20/05 15:10</span>
+-        </div>
+-        <div>Motivo: <em>ainda há marcas no vidro lateral</em></div>
+-
+-        <div class="plano-acao">
+-          <div class="titulo">?? Plano de ação criado:</div>
+-          1. Tirar foto após nova limpeza<br />
+-          2. Anexar checklist de produtos usados<br />
+-          Prazo: 20/05 16:00
+-        </div>
+-
+-        <div class="resposta-exec">
+-          <div class="label">? Resposta do executor à R2 (plano)</div>
+-          Concluído. Usado álcool isopropílico. ?? plano-r2.jpg + checklist.pdf
+-        </div>
+-      </div>
+-
+-      <!-- NOTA FINAL DO APROVADOR -->
+-      <div class="nota-final">
+-        <div class="label">? Nota Final do Aprovador (após R2)</div>
+-        Conforme — todas as evidências aceitas. Tarefa aprovada para envio ao auditor.
+-      </div>
+-
+-      <!-- ?? RESPOSTA DO APROVADOR PARA O AUDITOR (após auditor pedir algo) -->
+-      <div class="resp-aprovador-auditor">
+-        <div style="font-size:12px;">
+-          "Conferi todos os vidros pessoalmente após a R2. Foram revisados os 4 ambientes — todos limpos conforme o padrão."
+-        </div>
+-        <div style="margin-top:6px;font-size:11px;color:#64748b;">?? conferencia-aprovador.jpg · 20/05 15:35</div>
+-      </div>
+-
+-      <!-- R1 auditor (se devolver) -->
+-      <div class="rodada aud" style="opacity:0.5;">
+-        <div class="head">
+-          <span>? R1 — Auditor (caso devolva)</span>
+-          <span>aguardando ação do auditor</span>
+-        </div>
+-        <div style="font-style:italic;color:#6b7280;">— sem ação do auditor ainda —</div>
+-      </div>
+-    </div>
+-
+-    <!-- Bloco perguntas auto do aprovador -->
+-    <div class="panel">
+-      <h3 style="border:none; margin:0 0 8px; color:#475569;">?? Notas automáticas (Aprovador ? Executor)</h3>
+-      <div class="notas-aprovador">
+-        <div class="item">
+-          <span>Executor entregou no prazo?</span>
+-          <span class="resp sim">Sim</span>
+-        </div>
+-        <div class="item">
+-          <span>Houve atraso em alguma etapa?</span>
+-          <span class="resp nao">Não</span>
+-        </div>
+-        <div class="item">
+-          <span>Todas obrigatórias respondidas?</span>
+-          <span class="resp nao">Sim</span>
+-        </div>
+-        <div class="item">
+-          <span>Evidências obrigatórias anexadas?</span>
+-          <span class="resp nao">Sim</span>
+-        </div>
+-        <div class="item">
+-          <span>Execução foi devolvida?</span>
+-          <span class="resp sim">Sim — 2 devoluções</span>
+-        </div>
+-      </div>
+-      <div style="margin-top:8px; font-size:11px; color:#64748b; font-style:italic;">
+-        ? Respostas calculadas automaticamente dos dados (NÃO precisa digitar)
+-      </div>
+-    </div>
+-  </div>
+-
+-  <!-- ============ COLUNA 2: ABA AUDITOR ============ -->
+-  <div class="col">
+-    <h3>Tela do Auditor (aba <code>Auditor</code>)</h3>
+-
+-    <div class="panel">
+-      <div class="tabs">
+-        <div class="tab">Áreas Internas</div>
+-        <div class="tab">Aprovação</div>
+-        <div class="tab active-auditor">? Auditor</div>
+-      </div>
+-
+-      <div class="pergunta">Pergunta: Limpar vidros <span class="mark mark-executor">do executor</span></div>
+-
+-      <!-- ===== HISTÓRICO COMPACTO ===== -->
+-      <div class="rodada r0">
+-        <div class="head"><span>R0 — Executor</span><span>20/05 14:30</span></div>
+-        <div>Sim · ?? vidros.jpg</div>
+-      </div>
+-
+-      <div class="rodada r1">
+-        <div class="head"><span>R1 — Aprovador devolveu</span><span>20/05 14:45</span></div>
+-        <div>"primeiro teste de devolução"</div>
+-        <div class="resposta-exec"><div class="label">? Executor R1</div>Refeito. ?? r1-resposta.jpg</div>
+-      </div>
+-
+-      <div class="rodada r2">
+-        <div class="head"><span>R2 — Aprovador devolveu (plano)</span><span>20/05 15:10</span></div>
+-        <div>"marcas no vidro lateral" + plano de ação</div>
+-        <div class="resposta-exec"><div class="label">? Executor R2</div>Concluído. ?? plano-r2.jpg</div>
+-      </div>
+-
+-      <!-- NOTA FINAL DO APROVADOR (auditor vê) -->
+-      <div class="nota-final">
+-        <div class="label">? Nota Final do Aprovador</div>
+-        Conforme — após R2.
+-      </div>
+-
+-      <!-- ?? RESPOSTA DO APROVADOR PARA AUDITOR (mesma resposta da coluna 1) -->
+-      <div class="resp-aprovador-auditor">
+-        <div style="font-size:12px;">
+-          "Conferi todos os vidros pessoalmente após a R2. Foram revisados os 4 ambientes — todos limpos conforme o padrão."
+-        </div>
+-        <div style="margin-top:6px;font-size:11px;color:#64748b;">?? conferencia-aprovador.jpg · 20/05 15:35</div>
+-      </div>
+-
+-      <!-- ?? BOTÃO DE CONFORMIDADE DO AUDITOR -->
+-      <div class="arrow-down">?</div>
+-      <div class="botao-conformidade">
+-        <div class="titulo">?? Avaliação do Auditor sobre a resposta do Aprovador</div>
+-        <div class="btns">
+-          <button class="btn btn-conforme">? Conforme</button>
+-          <button class="btn btn-nc">? Não Conforme</button>
+-        </div>
+-        <div class="obs">Aparece <strong>ENTRE R2 e R1 do auditor</strong>. Se NC ? abre formulário de plano de ação para o executor (R3).</div>
+-      </div>
+-      <div class="arrow-down">?</div>
+-
+-      <!-- R1 do Auditor (caso devolva) -->
+-      <div class="rodada aud">
+-        <div class="head"><span>? R1 — Auditor (criado se NC acima)</span><span>20/05 15:50</span></div>
+-        <div>Plano para executor: "refazer com mais cuidado nos cantos"</div>
+-
+-        <div class="plano-acao">
+-          <div class="titulo">?? Plano de ação (auditor ? executor):</div>
+-          1. Refazer limpeza com foco nos cantos<br />
+-          2. Foto detalhada do canto superior-direito<br />
+-          Prazo: 20/05 16:30
+-        </div>
+-
+-        <div class="resposta-exec">
+-          <div class="label">? Resposta do executor à R1 auditor (se houver)</div>
+-          (aguardando resposta do executor — caso o auditor tenha aberto plano)
+-        </div>
+-      </div>
+-    </div>
+-
+-    <!-- Bloco perguntas auto do auditor -->
+-    <div class="panel">
+-      <h3 style="border:none; margin:0 0 8px; color:#475569;">?? Notas automáticas (Auditor ? Aprovador)</h3>
+-      <div class="notas-aprovador">
+-        <div class="item">
+-          <span>Aprovador respondeu no SLA?</span>
+-          <span class="resp nao">Não — no prazo</span>
+-        </div>
+-        <div class="item">
+-          <span>Aprovador devolveu/reabriu?</span>
+-          <span class="resp sim">Sim — 2 devoluções</span>
+-        </div>
+-        <div class="item">
+-          <span>Aprovou com pendência?</span>
+-          <span class="resp nao">Não</span>
+-        </div>
+-        <div class="item">
+-          <span>Plano de ação estourou SLA?</span>
+-          <span class="resp nao">Não</span>
+-        </div>
+-        <div class="item">
+-          <span>Prazo prorrogado?</span>
+-          <span class="resp nao">Não</span>
+-        </div>
+-      </div>
+-    </div>
+-  </div>
+-
+-</div>
+-
+-<h2 style="margin-top:36px;">?? Resumo da regra (em uma linha)</h2>
+-<div class="panel" style="font-size:13px; max-width: 1400px;">
+-  <ul style="margin:0; padding-left: 22px; line-height:1.8;">
+-    <li>Pergunta ? <b>R1 (aprovador)</b> ? resposta executor ? <b>R2 (aprovador)</b> ? resposta executor ? <b>plano de ação (se houver)</b></li>
+-    <li>Após R2 final, se auditor pedir ? aprovador responde no card ?? destacado em amarelo logo abaixo da nota final do aprovador</li>
+-    <li>Auditor vê esse card ?? + botão <b>Conforme / NC</b> ENTRE R2 do aprovador e R1 do auditor</li>
+-    <li>Se Auditor ? <b>NC</b> ? cria R1 do auditor (plano de ação para o executor)</li>
+-    <li>Se Auditor ? <b>Conforme</b> ? finaliza, sem nova rodada</li>
+-  </ul>
+-</div>
+-
+-<p style="margin-top:24px; font-size:12px; color:#64748b;">
+-  ?? Arquivo: <code>src/modules/tarefas/docs/MOCKUP_FLUXO_RESPOSTAS.html</code><br />
+-  Abra direto no Chrome (duplo clique) ou via preview do VS Code para revisar.
+-</p>
+-
+-</body>
+-</html>
+diff --git a/src/modules/tarefas/docs/checklist_tarefas_fluxo_validacao.md b/src/modules/tarefas/docs/checklist_tarefas_fluxo_validacao.md
+deleted file mode 100644
+index 75555493..00000000
+--- a/src/modules/tarefas/docs/checklist_tarefas_fluxo_validacao.md
++++ /dev/null
+@@ -1,134 +0,0 @@
+-# Checklist de validação — Rebuild do Fluxo de Tarefas
+-
+-> Antes de declarar o rebuild como **validado em produção**, executar todos os
+-> cenários abaixo. Marcar com `[x]` quando o passo passar.
+-
+----
+-
+-## Pré-requisitos
+-
+-- [ ] Migration `20260521000000_rebuild_tarefas_fluxo_executor_aprovador_auditor.sql` aplicada no Supabase
+-- [ ] Schema cache recarregado (`NOTIFY pgrst, 'reload schema'`)
+-- [ ] 7 RPCs presentes em `public.*` (confirmar com `\df public.tarefas_rpc_*`)
+-- [ ] 4 triggers de status redundantes dropados (confirmar com `\dft+ public.*`)
+-- [ ] Lovable buildou sem erros TypeScript críticos no `fluxo/`
+-- [ ] Preview do Lovable carrega sem tela branca
+-
+----
+-
+-## Cenário 1 — Fluxo feliz (sem devoluções)
+-
+-- [ ] Executor abre tarefa pendente
+-- [ ] Preenche todas as perguntas
+-- [ ] Clica "Enviar respostas ao aprovador" ? toast verde
+-- [ ] Status muda para `aguardando_aprovacao` (verificar no banco)
+-- [ ] Aprovador abre tarefa pela aba "Aprovação"
+-- [ ] Vê `FluxoAprovadorPanel` carregado com R0 do executor visível
+-- [ ] Clica "Aprovar e enviar para auditoria" ? toast verde
+-- [ ] Status muda para `aguardando_auditoria`
+-- [ ] Auditor abre tarefa pela aba "Auditor"
+-- [ ] Vê `FluxoAuditorPanel` com histórico completo
+-- [ ] Clica "Aprovar auditoria e concluir tarefa" ? toast verde
+-- [ ] Status muda para `concluida`
+-
+----
+-
+-## Cenário 2 — Plano do aprovador R1
+-
+-- [ ] Executor responde tarefa
+-- [ ] Aprovador marca uma pergunta como "Não Conforme"
+-- [ ] Form de criar plano abre com `ItensPlanoBuilder`
+-- [ ] Adiciona itens (foto + texto, ou múltiplas fotos)
+-- [ ] Clica "Criar plano e devolver"
+-- [ ] Status muda para `devolvida`
+-- [ ] Executor abre a tarefa
+-- [ ] Vê apenas o card de plano de ação pendente (não o R0 destravado)
+-- [ ] R0 da pergunta original aparece como histórico read-only
+-- [ ] Executor preenche resposta + evidências
+-- [ ] Clica "Enviar resposta ao aprovador" ? toast verde
+-- [ ] Status muda para `aguardando_aprovacao`
+-- [ ] Aprovador volta: vê R0 + plano R1 + resposta do executor em R1
+-
+----
+-
+-## Cenário 3 — Plano R2 do aprovador
+-
+-- [ ] Depois do R1, aprovador ainda marca pergunta como "Não Conforme"
+-- [ ] Cria plano R2 (rodada calculada automaticamente)
+-- [ ] Executor responde R2
+-- [ ] R1 permanece travado como histórico (não permite editar)
+-- [ ] R2 com sua resposta aparece abaixo do R1 na mesma pergunta
+-
+----
+-
+-## Cenário 4 — Plano do auditor para aprovador
+-
+-- [ ] Aprovador aprova e envia para auditoria
+-- [ ] Auditor abre a tarefa
+-- [ ] Marca uma pergunta como "Não Conforme"
+-- [ ] Cria plano R1 para aprovador
+-- [ ] Status volta para `aguardando_aprovacao`
+-- [ ] Aprovador volta: vê `FluxoBannerPendenciaAuditor` no topo
+-- [ ] Aprovador NÃO consegue clicar em "Aprovar e enviar para auditoria"
+-  (botão escondido ou bloqueado pela RPC)
+-- [ ] Aprovador responde plano do auditor
+-- [ ] Status volta para `aguardando_auditoria`
+-- [ ] Auditor vê resposta do aprovador
+-
+----
+-
+-## Cenário 5 — Auditor manda aprovador criar plano para executor
+-
+-- [ ] Auditor cria plano específico para pergunta X
+-- [ ] Aprovador só consegue criar plano de executor na **pergunta X**
+-  (nas outras perguntas, o botão NC fica disabled)
+-- [ ] Aprovador cria plano para executor na pergunta X
+-- [ ] Executor responde
+-- [ ] Aprovador responde o plano do auditor
+-- [ ] Status volta para auditoria
+-- [ ] Auditor vê todo o histórico encadeado
+-
+----
+-
+-## Cenário 6 — Bloqueios (regras imutáveis)
+-
+-- [ ] Executor NÃO consegue editar resposta original depois de enviar
+-      (lockOriginal=true por planos pendentes)
+-- [ ] Executor NÃO vê aba do aprovador/auditor
+-- [ ] Aprovador NÃO consegue aprovar com plano do aprovador pendente
+-      (RPC retorna erro "Existem N plano(s) do aprovador pendentes")
+-- [ ] Aprovador NÃO consegue aprovar com plano do auditor pendente
+-      (RPC retorna erro "Existem N plano(s) do auditor pendentes")
+-- [ ] Auditor NÃO consegue finalizar com plano do auditor pendente
+-- [ ] Plano já respondido NÃO aceita nova resposta
+-      (RPC retorna erro "Plano X já foi respondido em ...")
+-- [ ] Resposta original já enviada NÃO é editável
+-
+----
+-
+-## Cenário 7 — Verdade única (sem coexistência)
+-
+-- [ ] Painéis novos consomem APENAS `tarefas_planos_acao_aprovador` e
+-      `tarefas_planos_acao_auditor` para planos de ação
+-- [ ] `operational_field_reviews` NÃO recebe INSERT/UPDATE no fluxo novo
+-- [ ] Apenas 1 botão de envio por tela (executor / aprovador / auditor)
+-- [ ] Status muda apenas via RPC (sem triggers redundantes nem update direto
+-      no frontend para os fluxos do rebuild)
+-
+----
+-
+-## Verificações operacionais
+-
+-- [ ] Upload de evidência (foto / vídeo / áudio) funciona em planos
+-- [ ] Path no Drive segue: `tarefas/{MM-YYYY}/{DD}/{rotina|ad_hoc}/#{codigo}-{slug}/plano_acao/{arquivo}`
+-- [ ] Contingências (`operational_contingencies`) são auto-resolvidas pelas
+-      RPCs `tarefas_rpc_executor_responder_plano_aprovador` e
+-      `tarefas_rpc_aprovador_responder_plano_auditor` (não bloqueia mais
+-      transição)
+-- [ ] Histórico de respostas anteriores (R1, R2...) permanece visível e
+-      imutável após nova rodada
+-
+----
+-
+-*Checklist gerado em 2026-05-21. Atualizar marcando os checkboxes durante a
+-validação.*
+diff --git a/src/modules/tarefas/docs/diff_tarefas_fluxo_rebuild.md b/src/modules/tarefas/docs/diff_tarefas_fluxo_rebuild.md
+deleted file mode 100644
+index 67834b15..00000000
+--- a/src/modules/tarefas/docs/diff_tarefas_fluxo_rebuild.md
++++ /dev/null
+@@ -1,140 +0,0 @@
+-# DIFF — Rebuild do Fluxo de Tarefas (2026-05-21)
+-
+-> Resumo das mudanças entregues nas 7 fases do rebuild. Refere ao comando
+-> `comando_claude_reconstruir_fluxo_tarefas.md`.
+-
+----
+-
+-## COMMITS DO REBUILD
+-
+-| # | Hash | Fase | Resumo |
+-|---|---|---|---|
+-| 1 | `e6b50c44` | FASE 1 | Migration consolidada — 7 RPCs oficiais + DROP 4 triggers de status |
+-| 2 | `388e38d2` | FASE 2 | Infra frontend — pasta `fluxo/` com types + status machine + rpcService + mapper |
+-| 3 | `15ae2dd3` | FASE 3 | 5 hooks — `useFluxoTarefa` (leitura único) + actions executor/aprovador/auditor + permissões |
+-| 4 | `d31c639f` | FASE 4 | 8 componentes — 3 painéis principais + 5 cards/banners |
+-| 5 | `f6793a40` | FASE 5 | Integração em `minhasTarefasPage.tsx` (substituição de painéis antigos) |
+-| 6 | `b15bfd65` | FASE 6 | `@deprecated` em 9 arquivos legados + doc de roadmap |
+-| 7 | _este_ | FASE 7 | Entregáveis (diff, manifest, rollback, checklist) |
+-
+----
+-
+-## BANCO
+-
+-### RPCs criadas / recriadas
+-
+-| Função | Tipo | Status |
+-|---|---|---|
+-| `tarefas_rpc_executor_enviar_respostas` | NOVA | criada via CREATE OR REPLACE |
+-| `tarefas_rpc_executor_responder_plano_aprovador` | REFATORADA | controla status + resolve contingências |
+-| `tarefas_rpc_aprovador_criar_plano_executor` | NOVA (renomeada de `_criar_plano_acao`) | gate de plano auditor pendente |
+-| `tarefas_rpc_aprovador_aprovar_para_auditoria` | NOVA | bloqueia se planos pendentes |
+-| `tarefas_rpc_aprovador_responder_plano_auditor` | REFATORADA | resolve contingências + transição |
+-| `tarefas_rpc_auditor_criar_plano_aprovador` | NOVA (renomeada de `_criar_plano_acao`) | |
+-| `tarefas_rpc_auditor_aprovar_auditoria` | NOVA | finaliza tarefa |
+-
+-### Triggers removidos (status controlado pelas RPCs)
+-
+-| Trigger | Tabela |
+-|---|---|
+-| `tarefas_trigger_status_apos_aprovador_criar_plano` | `tarefas_planos_acao_aprovador` |
+-| `tarefas_trigger_status_apos_executor_responder_plano` | `tarefas_planos_acao_aprovador` |
+-| `tarefas_trigger_status_apos_auditor_criar_plano` | `tarefas_planos_acao_auditor` |
+-| `tarefas_trigger_status_apos_aprovador_responder_plano_auditor` | `tarefas_planos_acao_auditor` |
+-
+-> Funções de trigger correspondentes mantidas com `COMMENT: DEPRECATED` por compat.
+-
+-### Tabelas — papéis
+-
+-| Tabela | Papel |
+-|---|---|
+-| `tarefas_planos_acao_aprovador` | OFICIAL — planos do aprovador para o executor |
+-| `tarefas_planos_acao_auditor` | OFICIAL — planos do auditor para o aprovador |
+-| `operational_field_answers` | OFICIAL — respostas originais do executor (R0) |
+-| `operational_field_reviews` | LEGADO — não usar para plano de ação |
+-| `operational_assignments` | mantida |
+-| `operational_audit_trail` | mantida — logs de status |
+-| `operational_score_logs` | mantida |
+-| `operational_contingencies` | mantida (resolvida automaticamente pelas RPCs) |
+-
+----
+-
+-## FRONTEND
+-
+-### Criados (`src/modules/tarefas/fluxo/`)
+-
+-```
+-fluxo/
+-+-- components/
+-¦   +-- tarefas_fluxoExecutorPanel.tsx
+-¦   +-- tarefas_fluxoAprovadorPanel.tsx
+-¦   +-- tarefas_fluxoAuditorPanel.tsx
+-¦   +-- tarefas_fluxoPerguntaHistoricoCard.tsx
+-¦   +-- tarefas_fluxoPlanoAprovadorCard.tsx
+-¦   +-- tarefas_fluxoPlanoAuditorCard.tsx
+-¦   +-- tarefas_fluxoBannerPendenciaAuditor.tsx
+-¦   +-- tarefas_fluxoBotaoConformeNaoConforme.tsx
+-+-- hooks/
+-¦   +-- tarefas_useFluxoTarefa.ts        (HOOK ÚNICO de leitura)
+-¦   +-- tarefas_useExecutorActions.ts
+-¦   +-- tarefas_useAprovadorActions.ts
+-¦   +-- tarefas_useAuditorActions.ts
+-¦   +-- tarefas_useFluxoPermissoes.ts
+-+-- services/
+-¦   +-- tarefas_fluxoStatusMachine.ts    (funções puras canXxx())
+-¦   +-- tarefas_fluxoRpcService.ts       (única verdade de chamadas RPC)
+-¦   +-- tarefas_fluxoHistoricoMapper.ts
+-+-- types/
+-    +-- tarefas_fluxoTypes.ts
+-```
+-
+-### Alterados
+-
+-| Arquivo | Mudança |
+-|---|---|
+-| `pages/tarefas_minhasTarefasPage.tsx` | substitui `EmbeddedApprovalPanel`/`EmbeddedAuditPanel` por `FluxoAprovadorPanel`/`FluxoAuditorPanel` |
+-| `components/tarefas_embeddedActionPanels.tsx` | `@deprecated` JSDoc |
+-| `components/tarefas_executorPlanoAprovadorCard.tsx` | `@deprecated` JSDoc |
+-| `components/tarefas_painelRetornoCard.tsx` | `@deprecated` JSDoc |
+-| `components/tarefas_reviewFieldCard.tsx` | `@deprecated` JSDoc |
+-| `hooks/tarefas_useFlowPermissions.ts` | `@deprecated` JSDoc |
+-| `hooks/tarefas_usePlanosAcao.ts` | `@deprecated` JSDoc |
+-| `hooks/tarefas_useApprovalFlow.ts` | `@deprecated` JSDoc |
+-| `hooks/tarefas_useAuditFlow.ts` | `@deprecated` JSDoc |
+-| `hooks/tarefas_useAssignmentExecution.ts` | `@deprecated` parcial JSDoc |
+-
+-### Não deletados (consumidores legados ativos)
+-
+-Ver `tarefas_arquivos_deprecated.md` para roadmap de remoção física.
+-
+----
+-
+-## BUSCAS OBRIGATÓRIAS
+-
+-### 1. `operational_field_reviews` no fluxo NOVO
+-
+-```
+-grep -R "operational_field_reviews" -l src/modules/tarefas/fluxo
+-```
+-
+-**Resultado:** apenas `fluxo/hooks/tarefas_useFluxoTarefa.ts` (comentário NÃO referenciando a tabela). Nenhuma query/INSERT/UPDATE. ?
+-
+-### 2. RPCs antigas chamadas no frontend
+-
+-```
+-grep -R "tarefas_rpc_aprovador_criar_plano_acao\|tarefas_rpc_auditor_criar_plano_acao" -l src/modules/tarefas
+-```
+-
+-**Resultado:** zero chamadas ativas. Apenas comentários históricos em docs. ?
+-
+-### 3. Regra "TASK_STATUS.DEVOLVIDA libera edição"
+-
+-```
+-grep -R "status === TASK_STATUS.DEVOLVIDA" src/modules/tarefas
+-```
+-
+-**Resultado:** apenas em código legacy (deprecated) e regra de UI de botão "Iniciar para Responder" (que é OK — só inicia, não edita). ?
+-
+----
+-
+-*Gerado em 2026-05-21.*
+diff --git a/src/modules/tarefas/docs/manifest_tarefas_fluxo_rebuild.json b/src/modules/tarefas/docs/manifest_tarefas_fluxo_rebuild.json
+deleted file mode 100644
+index 364d2b43..00000000
+--- a/src/modules/tarefas/docs/manifest_tarefas_fluxo_rebuild.json
++++ /dev/null
+@@ -1,103 +0,0 @@
+-{
+-  "rebuild": "tarefas_fluxo_executor_aprovador_auditor",
+-  "data": "2026-05-21",
+-  "commits": [
+-    { "hash": "e6b50c44", "fase": 1, "resumo": "Migration consolidada das RPCs" },
+-    { "hash": "388e38d2", "fase": 2, "resumo": "Infra frontend (types/services)" },
+-    { "hash": "15ae2dd3", "fase": 3, "resumo": "Hooks" },
+-    { "hash": "d31c639f", "fase": 4, "resumo": "Componentes" },
+-    { "hash": "f6793a40", "fase": 5, "resumo": "Integração nas páginas" },
+-    { "hash": "b15bfd65", "fase": 6, "resumo": "Deprecation markers" }
+-  ],
+-  "arquivos_deletados": [],
+-  "arquivos_criados": [
+-    "supabase/migrations/20260521000000_rebuild_tarefas_fluxo_executor_aprovador_auditor.sql",
+-    "src/modules/tarefas/docs/tarefas_rpc_executor_enviar_respostas.md",
+-    "src/modules/tarefas/docs/tarefas_rpc_aprovador_criar_plano_executor.md",
+-    "src/modules/tarefas/docs/tarefas_rpc_aprovador_aprovar_para_auditoria.md",
+-    "src/modules/tarefas/docs/tarefas_rpc_auditor_criar_plano_aprovador.md",
+-    "src/modules/tarefas/docs/tarefas_rpc_auditor_aprovar_auditoria.md",
+-    "src/modules/tarefas/docs/tarefas_arquivos_deprecated.md",
+-    "src/modules/tarefas/docs/diff_tarefas_fluxo_rebuild.md",
+-    "src/modules/tarefas/docs/manifest_tarefas_fluxo_rebuild.json",
+-    "src/modules/tarefas/docs/rollback_tarefas_fluxo_rebuild.sql",
+-    "src/modules/tarefas/docs/checklist_tarefas_fluxo_validacao.md",
+-    "src/modules/tarefas/fluxo/types/tarefas_fluxoTypes.ts",
+-    "src/modules/tarefas/fluxo/services/tarefas_fluxoStatusMachine.ts",
+-    "src/modules/tarefas/fluxo/services/tarefas_fluxoRpcService.ts",
+-    "src/modules/tarefas/fluxo/services/tarefas_fluxoHistoricoMapper.ts",
+-    "src/modules/tarefas/fluxo/hooks/tarefas_useFluxoTarefa.ts",
+-    "src/modules/tarefas/fluxo/hooks/tarefas_useExecutorActions.ts",
+-    "src/modules/tarefas/fluxo/hooks/tarefas_useAprovadorActions.ts",
+-    "src/modules/tarefas/fluxo/hooks/tarefas_useAuditorActions.ts",
+-    "src/modules/tarefas/fluxo/hooks/tarefas_useFluxoPermissoes.ts",
+-    "src/modules/tarefas/fluxo/components/tarefas_fluxoExecutorPanel.tsx",
+-    "src/modules/tarefas/fluxo/components/tarefas_fluxoAprovadorPanel.tsx",
+-    "src/modules/tarefas/fluxo/components/tarefas_fluxoAuditorPanel.tsx",
+-    "src/modules/tarefas/fluxo/components/tarefas_fluxoPerguntaHistoricoCard.tsx",
+-    "src/modules/tarefas/fluxo/components/tarefas_fluxoPlanoAprovadorCard.tsx",
+-    "src/modules/tarefas/fluxo/components/tarefas_fluxoPlanoAuditorCard.tsx",
+-    "src/modules/tarefas/fluxo/components/tarefas_fluxoBannerPendenciaAuditor.tsx",
+-    "src/modules/tarefas/fluxo/components/tarefas_fluxoBotaoConformeNaoConforme.tsx"
+-  ],
+-  "arquivos_alterados": [
+-    "src/modules/tarefas/pages/tarefas_minhasTarefasPage.tsx",
+-    "src/modules/tarefas/components/tarefas_embeddedActionPanels.tsx",
+-    "src/modules/tarefas/components/tarefas_executorPlanoAprovadorCard.tsx",
+-    "src/modules/tarefas/components/tarefas_painelRetornoCard.tsx",
+-    "src/modules/tarefas/components/tarefas_reviewFieldCard.tsx",
+-    "src/modules/tarefas/hooks/tarefas_useFlowPermissions.ts",
+-    "src/modules/tarefas/hooks/tarefas_usePlanosAcao.ts",
+-    "src/modules/tarefas/hooks/tarefas_useApprovalFlow.ts",
+-    "src/modules/tarefas/hooks/tarefas_useAuditFlow.ts",
+-    "src/modules/tarefas/hooks/tarefas_useAssignmentExecution.ts"
+-  ],
+-  "imports_ajustados": [
+-    "tarefas_minhasTarefasPage.tsx: removeu EmbeddedApprovalPanel/EmbeddedAuditPanel; adicionou FluxoAprovadorPanel/FluxoAuditorPanel"
+-  ],
+-  "rotas_telas_impactadas": [
+-    "/tarefas/minhas — drawer da tarefa selecionada"
+-  ],
+-  "rpcs_criadas_ou_atualizadas": [
+-    "public.tarefas_rpc_executor_enviar_respostas",
+-    "public.tarefas_rpc_executor_responder_plano_aprovador",
+-    "public.tarefas_rpc_aprovador_criar_plano_executor",
+-    "public.tarefas_rpc_aprovador_aprovar_para_auditoria",
+-    "public.tarefas_rpc_aprovador_responder_plano_auditor",
+-    "public.tarefas_rpc_auditor_criar_plano_aprovador",
+-    "public.tarefas_rpc_auditor_aprovar_auditoria"
+-  ],
+-  "rpcs_descontinuadas": [
+-    "public.tarefas_rpc_aprovador_criar_plano_acao (DEPRECATED)",
+-    "public.tarefas_rpc_auditor_criar_plano_acao (DEPRECATED)"
+-  ],
+-  "triggers_criados": [],
+-  "triggers_removidos": [
+-    "tarefas_trigger_status_apos_aprovador_criar_plano",
+-    "tarefas_trigger_status_apos_executor_responder_plano",
+-    "tarefas_trigger_status_apos_auditor_criar_plano",
+-    "tarefas_trigger_status_apos_aprovador_responder_plano_auditor"
+-  ],
+-  "tabelas_usadas_no_fluxo_novo": [
+-    "operational_assignments",
+-    "operational_field_answers",
+-    "operational_contingencies",
+-    "operational_audit_trail",
+-    "operational_execution_logs",
+-    "tarefas_planos_acao_aprovador",
+-    "tarefas_planos_acao_auditor"
+-  ],
+-  "tabelas_legadas_nao_usadas_no_fluxo_novo": [
+-    "operational_field_reviews (read-only de histórico)"
+-  ],
+-  "componentes_renderizados_por_tela": {
+-    "/tarefas/minhas": {
+-      "drawer.executor": [
+-        "DynamicFieldRenderer (R0 ainda usa o renderer atual)",
+-        "ExecutorPlanoAprovadorCard (resposta a planos do aprovador)"
+-      ],
+-      "drawer.aprovador": ["FluxoAprovadorPanel"],
+-      "drawer.auditor": ["FluxoAuditorPanel"]
+-    }
+-  }
+-}
+diff --git a/src/modules/tarefas/docs/rollback_tarefas_fluxo_rebuild.sql b/src/modules/tarefas/docs/rollback_tarefas_fluxo_rebuild.sql
+deleted file mode 100644
+index 2fc37ec1..00000000
+--- a/src/modules/tarefas/docs/rollback_tarefas_fluxo_rebuild.sql
++++ /dev/null
+@@ -1,55 +0,0 @@
+--- =============================================================================
+--- ROLLBACK — Rebuild do Fluxo de Tarefas (2026-05-21)
+--- =============================================================================
+--- Use APENAS se precisar reverter completamente o rebuild. Restaura triggers
+--- de status removidos e devolve o COMMENT das RPCs antigas para neutro.
+---
+--- Não dropa as RPCs novas — elas convivem se você quiser rolar parcialmente.
+--- Para drop completo das RPCs novas, descomente a seção opcional no final.
+---
+--- Antes de rodar: confirme que NÃO há dados em tarefas_planos_acao_*  cujo
+--- workflow dependa dos triggers/RPCs novas.
+--- =============================================================================
+-
+--- 1. Restaurar triggers de status removidos (apontavam para as funções
+---    *_fn_trigger_apos_* que ainda existem no banco, marcadas como deprecated)
+-
+-CREATE TRIGGER tarefas_trigger_status_apos_aprovador_criar_plano
+-  AFTER INSERT ON public.tarefas_planos_acao_aprovador
+-  FOR EACH ROW
+-  EXECUTE FUNCTION public.tarefas_fn_trigger_apos_aprovador_criar_plano();
+-
+-CREATE TRIGGER tarefas_trigger_status_apos_executor_responder_plano
+-  AFTER UPDATE OF respondido ON public.tarefas_planos_acao_aprovador
+-  FOR EACH ROW
+-  EXECUTE FUNCTION public.tarefas_fn_trigger_apos_executor_responder_plano();
+-
+-CREATE TRIGGER tarefas_trigger_status_apos_auditor_criar_plano
+-  AFTER INSERT ON public.tarefas_planos_acao_auditor
+-  FOR EACH ROW
+-  EXECUTE FUNCTION public.tarefas_fn_trigger_apos_auditor_criar_plano();
+-
+-CREATE TRIGGER tarefas_trigger_status_apos_aprovador_responder_plano_auditor
+-  AFTER UPDATE OF respondido ON public.tarefas_planos_acao_auditor
+-  FOR EACH ROW
+-  EXECUTE FUNCTION public.tarefas_fn_trigger_apos_aprovador_responder_plano_auditor();
+-
+--- 2. Remover deprecation markers das RPCs antigas
+-COMMENT ON FUNCTION public.tarefas_rpc_aprovador_criar_plano_acao IS NULL;
+-COMMENT ON FUNCTION public.tarefas_rpc_auditor_criar_plano_acao IS NULL;
+-
+--- =============================================================================
+--- 3. (OPCIONAL) Dropar as 7 RPCs novas — só faça se for rollback TOTAL
+--- =============================================================================
+--- DROP FUNCTION IF EXISTS public.tarefas_rpc_executor_enviar_respostas(uuid, jsonb);
+--- DROP FUNCTION IF EXISTS public.tarefas_rpc_executor_responder_plano_aprovador(uuid, jsonb);
+--- DROP FUNCTION IF EXISTS public.tarefas_rpc_aprovador_criar_plano_executor(uuid, uuid, text, jsonb, timestamptz, text);
+--- DROP FUNCTION IF EXISTS public.tarefas_rpc_aprovador_aprovar_para_auditoria(uuid, jsonb);
+--- DROP FUNCTION IF EXISTS public.tarefas_rpc_aprovador_responder_plano_auditor(uuid, jsonb);
+--- DROP FUNCTION IF EXISTS public.tarefas_rpc_auditor_criar_plano_aprovador(uuid, uuid, text, jsonb, timestamptz, text);
+--- DROP FUNCTION IF EXISTS public.tarefas_rpc_auditor_aprovar_auditoria(uuid, jsonb);
+-
+--- =============================================================================
+--- 4. Recarregar schema cache
+--- =============================================================================
+-NOTIFY pgrst, 'reload schema';
+diff --git a/src/modules/tarefas/docs/tarefas_arquivos_deprecated.md b/src/modules/tarefas/docs/tarefas_arquivos_deprecated.md
+deleted file mode 100644
+index cf5806af..00000000
+--- a/src/modules/tarefas/docs/tarefas_arquivos_deprecated.md
++++ /dev/null
+@@ -1,54 +0,0 @@
+-# Arquivos legados deprecated (rebuild do fluxo — 2026-05-21)
+-
+-> Estes arquivos foram **DEPRECATED** durante a Fase 6 do rebuild do fluxo de tarefas.
+-> Eles ainda existem porque têm consumidores **fora do escopo** do rebuild (gestaoPage, avaliador legado).
+-> **Não usar em código novo.** Toda regra de fluxo executor?aprovador?auditor mora em `src/modules/tarefas/fluxo/`.
+-
+----
+-
+-## Hooks deprecated
+-
+-| Arquivo | Substituto | Notas |
+-|---|---|---|
+-| `hooks/tarefas_useFlowPermissions.ts` | `fluxo/hooks/tarefas_useFluxoPermissoes.ts` | Mesmas regras, novo nome em pt-br |
+-| `hooks/tarefas_usePlanosAcao.ts` | `fluxo/hooks/tarefas_useFluxoTarefa.ts` + `useExecutorActions` / `useAprovadorActions` / `useAuditorActions` | Hook único de leitura + actions separadas |
+-| `hooks/tarefas_useApprovalFlow.ts` | `fluxo/hooks/tarefas_useFluxoTarefa.ts` + `useAprovadorActions` | gestaoPage ainda usa para aprovação rápida — futuro: migrar |
+-| `hooks/tarefas_useAuditFlow.ts` | `fluxo/hooks/tarefas_useFluxoTarefa.ts` + `useAuditorActions` | sem consumidor ativo após rebuild |
+-| `hooks/tarefas_useAssignmentExecution.ts` | (não substituído) | mantido por enquanto — gerencia respostas locais antes do envio R0. Futuro: integrar ao FluxoExecutorPanel |
+-
+-## Componentes deprecated
+-
+-| Arquivo | Substituto | Notas |
+-|---|---|---|
+-| `components/tarefas_embeddedActionPanels.tsx` | `fluxo/components/tarefas_fluxoAprovadorPanel.tsx` + `tarefas_fluxoAuditorPanel.tsx` | `EmbeddedReviewPanel` (avaliador legado) ainda presente — fora do escopo do rebuild |
+-| `components/tarefas_executorPlanoAprovadorCard.tsx` | (manter por compat) | reusado pelo `FluxoExecutorPanel`. Futuro: absorver no novo componente |
+-| `components/tarefas_painelRetornoCard.tsx` | (não substituído) | renderiza retorno simples ao executor — manter |
+-| `components/tarefas_reviewFieldCard.tsx` | (não substituído) | usado pelo avaliador legado |
+-
+----
+-
+-## Resumo arquitetural
+-
+-| Camada | Antigo | Novo (oficial) |
+-|---|---|---|
+-| **Banco — RPCs** | `tarefas_rpc_aprovador_criar_plano_acao`, `tarefas_rpc_auditor_criar_plano_acao` | `tarefas_rpc_executor_enviar_respostas`, `tarefas_rpc_executor_responder_plano_aprovador`, `tarefas_rpc_aprovador_criar_plano_executor`, `tarefas_rpc_aprovador_aprovar_para_auditoria`, `tarefas_rpc_aprovador_responder_plano_auditor`, `tarefas_rpc_auditor_criar_plano_aprovador`, `tarefas_rpc_auditor_aprovar_auditoria` |
+-| **Banco — Tabelas (plano)** | `operational_field_reviews` (legacy, só leitura) | `tarefas_planos_acao_aprovador`, `tarefas_planos_acao_auditor` |
+-| **Banco — Triggers de status** | 4 triggers `tarefas_trigger_status_apos_*` (drop em 20260521) | Status controlado pelas RPCs |
+-| **Frontend — Leitura** | `useApprovalFlow` + `useAuditFlow` + `usePlanosAcao` (3 hooks distintos) | `useFluxoTarefa` (hook único) |
+-| **Frontend — Actions** | mutations espalhadas | `useExecutorActions`, `useAprovadorActions`, `useAuditorActions` |
+-| **Frontend — Permissões** | `useFlowPermissions` (regras misturadas) | `useFluxoPermissoes` + `tarefas_fluxoStatusMachine` (funções puras) |
+-| **Frontend — Painéis** | `EmbeddedApprovalPanel`, `EmbeddedAuditPanel` | `FluxoAprovadorPanel`, `FluxoAuditorPanel`, `FluxoExecutorPanel` |
+-| **Frontend — RPC calls** | espalhados pelos hooks | `tarefasFluxoRpcService` (única verdade) |
+-
+----
+-
+-## Roadmap pós-deprecation
+-
+-1. **Migrar `gestaoPage.tsx`** para usar `useAprovadorActions.aprovarParaAuditoria` em vez de `useApprovalFlow.finalDecision` ? permite remover `useApprovalFlow.ts`.
+-2. **Refatorar avaliador legado** (`EmbeddedReviewPanel`) para integrar ao novo fluxo ou descontinuar — remove `tarefas_reviewFieldCard.tsx` e o resto de `embeddedActionPanels.tsx`.
+-3. **Absorver R0 do executor** dentro do `FluxoExecutorPanel` (sem `useAssignmentExecution`) ? remove o hook.
+-4. **Excluir fisicamente** os 9 arquivos quando não houver consumidor.
+-
+----
+-
+-*Documento criado durante Fase 6 do rebuild — 2026-05-21.*
+diff --git a/src/modules/tarefas/hooks/tarefas_useAssignmentExecution.ts b/src/modules/tarefas/hooks/tarefas_useAssignmentExecution.ts
+deleted file mode 100644
+index f9edfd7b..00000000
+--- a/src/modules/tarefas/hooks/tarefas_useAssignmentExecution.ts
++++ /dev/null
+@@ -1,680 +0,0 @@
+-/**
+- * @deprecated REBUILD 2026-05-21 PARCIAL — Para envio R0 do executor use
+- * `fluxo/hooks/tarefas_useExecutorActions.enviarRespostas` (chama a RPC
+- * `tarefas_rpc_executor_enviar_respostas`). Este hook ainda é usado por
+- * `minhasTarefasPage` para gerenciar respostas locais em rascunho antes
+- * do envio — futuro: absorver no FluxoExecutorPanel.
+- * Doc: src/modules/tarefas/docs/tarefas_arquivos_deprecated.md
+- */
+-import { useState, useEffect, useCallback, useRef } from "react";
+-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+-import { supabase } from "@/integrations/supabase/client";
+-import { useAuth } from "@/contexts/AuthContext";
+-import { toast } from "sonner";
+-import { FieldAnswer, SnapshotField, evaluateVisibility, validateField } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
+-import { useOperationalTransition } from "@/modules/tarefas/hooks/tarefas_useTransition";
+-
+-export function useAssignmentExecution(assignmentId: string | null) {
+-  const { profile } = useAuth();
+-  const qc = useQueryClient();
+-  const { transition } = useOperationalTransition();
+-  const [answers, setAnswers] = useState<Record<string, FieldAnswer>>({});
+-  const [dirty, setDirty] = useState(false);
+-  const pendingFieldsRef = useRef<Set<string>>(new Set());
+-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+-  // FIX: Use a ref to always access the latest answers in saveFieldsNow
+-  const answersRef = useRef<Record<string, FieldAnswer>>({});
+-  answersRef.current = answers;
+-
+-  // Load existing answers
+-  const { data: savedAnswers = [] } = useQuery({
+-    queryKey: ["operational_field_answers", assignmentId],
+-    queryFn: async () => {
+-      if (!assignmentId) return [];
+-      const { data, error } = await (supabase as any).from("operational_field_answers")
+-        .select("*, profiles:respondido_por(nome)").eq("assignment_id", assignmentId).order("created_at", { ascending: false });
+-      if (error) throw error;
+-      return data;
+-    },
+-    enabled: !!assignmentId,
+-  });
+-
+-  // Load reviews for this assignment
+-  const { data: reviews = [] } = useQuery({
+-    queryKey: ["operational_field_reviews", assignmentId],
+-    queryFn: async () => {
+-      if (!assignmentId) return [];
+-      const { data, error } = await (supabase as any).from("operational_field_reviews")
+-        .select("*").eq("assignment_id", assignmentId).order("rodada", { ascending: false });
+-      if (error) throw error;
+-      return data;
+-    },
+-    enabled: !!assignmentId,
+-    staleTime: 0,
+-    refetchOnMount: true,
+-    refetchOnWindowFocus: true,
+-  });
+-
+-  // Load execution logs (audit trail)
+-  const { data: executionLogs = [], refetch: refetchLogs } = useQuery({
+-    queryKey: ["operational_execution_logs", assignmentId],
+-    queryFn: async () => {
+-      if (!assignmentId) return [];
+-      const { data, error } = await (supabase as any).from("operational_execution_logs")
+-        .select("*, profiles:executado_por(nome)")
+-        .eq("assignment_id", assignmentId)
+-        .order("created_at", { ascending: true });
+-      if (error) throw error;
+-      return data;
+-    },
+-    enabled: !!assignmentId,
+-  });
+-
+-  // Reset state when assignmentId changes (anti-contaminação entre tarefas)
+-  useEffect(() => {
+-    setAnswers({});
+-    setDirty(false);
+-    pendingFieldsRef.current.clear();
+-    loggedFieldsRef.current.clear();
+-    answersRef.current = {};
+-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+-    // Não cancelar queries aqui — o cancelamento genérico cancela a query
+-    // da tarefa atual que acabou de ser montada, deixando a tela em branco.
+-    // O key={assignmentId} no Sheet já garante isolamento entre tarefas.
+-  }, [assignmentId, qc]);
+-
+-  // Hydrate answers from DB
+-  useEffect(() => {
+-    if (!savedAnswers.length) {
+-      setAnswers({});
+-      return;
+-    }
+-    const map: Record<string, FieldAnswer> = {};
+-    for (const a of savedAnswers) {
+-      // Guard defensivo: nunca hidratar resposta de outra tarefa (cache stale)
+-      if (assignmentId && a.assignment_id && a.assignment_id !== assignmentId) continue;
+-      if (!map[a.field_id]) {
+-        map[a.field_id] = {
+-          field_id: a.field_id,
+-          valor_texto: a.valor_texto,
+-          valor_numero: a.valor_numero,
+-          valor_booleano: a.valor_booleano,
+-          valor_data: a.valor_data,
+-          valor_json: a.valor_json,
+-          evidencia_url: a.evidencia_url,
+-          evidencia_anexo_id: a.evidencia_anexo_id ?? null,
+-          evidencia_mime_type: a.evidencia_mime_type ?? null,
+-          respondido_por_nome: a.profiles?.nome || null,
+-          respondido_em: a.respondido_em,
+-          versao: a.versao || 1,
+-          historico_alteracoes: a.historico_alteracoes || [],
+-        };
+-        // Reidrata itens do plano de ação salvos no valor_json
+-        if (a.valor_json && typeof a.valor_json === "object") {
+-          for (const [chave, valor] of Object.entries(a.valor_json as Record<string, any>)) {
+-            if (chave.startsWith("__plano_acao__")) {
+-              const itemFieldId = `${a.field_id}${chave}`;
+-              map[itemFieldId] = { field_id: itemFieldId, ...valor };
+-            }
+-          }
+-        }
+-      }
+-    }
+-    setAnswers(map);
+-    setDirty(false);
+-  }, [savedAnswers, assignmentId]);
+-
+-  // Helper: extract display value from an answer for logging
+-  const getDisplayValue = useCallback((entry: FieldAnswer): string => {
+-    if (entry.valor_booleano === true) return "Sim / Conforme";
+-    if (entry.valor_booleano === false) return "Não / Não Conforme";
+-    if (entry.valor_numero != null) return String(entry.valor_numero);
+-    if (entry.valor_data) return entry.valor_data;
+-    if (entry.valor_texto) return entry.valor_texto.length > 80 ? entry.valor_texto.slice(0, 80) + "…" : entry.valor_texto;
+-    if (entry.valor_json) return JSON.stringify(entry.valor_json).slice(0, 80);
+-    if (entry.evidencia_url) return "[evidência anexada]";
+-    return "";
+-  }, []);
+-
+-  // Ref to track fields we've logged the first interaction for
+-  const loggedFieldsRef = useRef<Set<string>>(new Set());
+-  // Ref to store field labels for detailed logging
+-  const fieldLabelsRef = useRef<Record<string, string>>({});
+-
+-  const setFieldLabels = useCallback((fields: SnapshotField[]) => {
+-    const map: Record<string, string> = {};
+-    for (const f of fields) map[f.id] = f.label;
+-    fieldLabelsRef.current = map;
+-  }, []);
+-
+-  const updateAnswer = useCallback((fieldId: string, patch: Partial<FieldAnswer>) => {
+-    // Chaves compostas de itens do plano: persistir no valor_json do campo pai
+-    if (fieldId.includes("__plano_acao__")) {
+-      const campoId = fieldId.split("__plano_acao__")[0];
+-      const chaveItem = fieldId.substring(campoId.length); // "__plano_acao__r1__audio"
+-      setAnswers(prev => {
+-        const pai = prev[campoId] || { field_id: campoId };
+-        const planosJson = (pai.valor_json as any) || {};
+-        const novoJson = { ...planosJson, [chaveItem]: { ...(planosJson[chaveItem] || {}), ...patch } };
+-        return {
+-          ...prev,
+-          [fieldId]: { ...prev[fieldId], field_id: fieldId, ...patch },
+-          [campoId]: { ...pai, field_id: campoId, valor_json: novoJson },
+-        };
+-      });
+-      setDirty(true);
+-      pendingFieldsRef.current.add(campoId);
+-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+-      saveTimerRef.current = setTimeout(() => saveFieldsNow().catch(console.error), 800);
+-      return;
+-    }
+-    setAnswers(prev => ({
+-      ...prev,
+-      [fieldId]: { ...prev[fieldId], field_id: fieldId, ...patch },
+-    }));
+-    setDirty(true);
+-    pendingFieldsRef.current.add(fieldId);
+-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+-    saveTimerRef.current = setTimeout(() => {
+-      saveFieldsNow().catch((e) => { console.error("Auto-save failed:", e); });
+-    }, 800);
+-  }, [assignmentId, profile?.id]);
+-
+-  // Save only pending fields — reads from answersRef to avoid stale closure
+-  const saveFieldsNow = useCallback(async () => {
+-    if (!assignmentId || !profile?.id) return;
+-    const fieldsToSave = Array.from(pendingFieldsRef.current);
+-    if (fieldsToSave.length === 0) return;
+-    pendingFieldsRef.current.clear();
+-
+-    const currentAnswers = answersRef.current;
+-
+-    try {
+-      for (const fieldId of fieldsToSave) {
+-        // Ignorar chaves compostas de itens do plano de ação — não são UUIDs válidos
+-        if (fieldId.includes("__plano_acao__")) continue;
+-        const entry = currentAnswers[fieldId];
+-        if (!entry) continue;
+-        const now = new Date().toISOString();
+-        const fieldLabel = fieldLabelsRef.current[fieldId] || fieldId;
+-        const displayValue = getDisplayValue(entry);
+-
+-        const { data: existing, error: existingError } = await (supabase as any).from("operational_field_answers")
+-          .select("id, versao, historico_alteracoes").eq("assignment_id", assignmentId).eq("field_id", fieldId).limit(1);
+-        if (existingError) throw existingError;
+-
+-        if (existing && existing.length > 0) {
+-          const oldVersao = existing[0].versao || 1;
+-          const newVersao = oldVersao + 1;
+-          const oldHistory = existing[0].historico_alteracoes || [];
+-          const newHistory = [...oldHistory, {
+-            nome: profile.nome || "Usuário",
+-            data: now,
+-            versao: newVersao,
+-            campo: fieldLabel,
+-            resposta: displayValue,
+-          }];
+-
+-          const { error: updateError } = await (supabase as any).from("operational_field_answers")
+-            .update({
+-              valor_texto: entry.valor_texto ?? null,
+-              valor_numero: entry.valor_numero ?? null,
+-              valor_booleano: entry.valor_booleano ?? null,
+-              valor_data: entry.valor_data ?? null,
+-              valor_json: entry.valor_json ?? null,
+-              evidencia_url: entry.evidencia_url ?? null,
+-              evidencia_anexo_id: entry.evidencia_anexo_id ?? null,
+-              evidencia_mime_type: entry.evidencia_mime_type ?? null,
+-              respondido_em: now,
+-              versao: newVersao,
+-              historico_alteracoes: newHistory,
+-            })
+-            .eq("id", existing[0].id);
+-          if (updateError) throw updateError;
+-        } else {
+-          const initialHistory = [{
+-            nome: profile.nome || "Usuário",
+-            data: now,
+-            versao: 1,
+-            campo: fieldLabel,
+-            resposta: displayValue,
+-          }];
+-          const { error: insertError } = await (supabase as any).from("operational_field_answers")
+-            .insert({
+-              assignment_id: assignmentId,
+-              field_id: fieldId,
+-              valor_texto: entry.valor_texto ?? null,
+-              valor_numero: entry.valor_numero ?? null,
+-              valor_booleano: entry.valor_booleano ?? null,
+-              valor_data: entry.valor_data ?? null,
+-              valor_json: entry.valor_json ?? null,
+-              evidencia_url: entry.evidencia_url ?? null,
+-              evidencia_anexo_id: entry.evidencia_anexo_id ?? null,
+-              evidencia_mime_type: entry.evidencia_mime_type ?? null,
+-              respondido_por: profile.id,
+-              historico_alteracoes: initialHistory,
+-            });
+-          if (insertError) throw insertError;
+-        }
+-
+-        // Update local state with save metadata so UI shows immediately
+-        setAnswers(prev => ({
+-          ...prev,
+-          [fieldId]: {
+-            ...prev[fieldId],
+-            respondido_por_nome: profile.nome || "Usuário",
+-            respondido_em: now,
+-            versao: (prev[fieldId]?.versao || 0) + 1,
+-            historico_alteracoes: [
+-              ...(prev[fieldId]?.historico_alteracoes || []),
+-              {
+-                nome: profile.nome || "Usuário",
+-                data: now,
+-                versao: (prev[fieldId]?.versao || 0) + 1,
+-                campo: fieldLabel,
+-                resposta: displayValue,
+-              },
+-            ],
+-          },
+-        }));
+-
+-        // Log every field interaction to execution logs (not just first time)
+-        (supabase as any).from("operational_execution_logs").insert({
+-          assignment_id: assignmentId,
+-          acao: "preencheu_campo",
+-          executado_por: profile.id,
+-          detalhes: {
+-            field_id: fieldId,
+-            field_label: fieldLabel,
+-            resposta: displayValue,
+-            respondido_em: now,
+-            versao: (currentAnswers[fieldId]?.versao || 0) + 1,
+-          },
+-        }).then(() => refetchLogs());
+-      }
+-      setDirty(false);
+-    } catch (e: any) {
+-      console.error("Auto-save failed:", e);
+-      // Re-add fields that failed so they retry
+-      for (const fid of fieldsToSave) pendingFieldsRef.current.add(fid);
+-      throw e;
+-    }
+-  }, [assignmentId, profile?.id, profile?.nome, getDisplayValue, refetchLogs]);
+-
+-  // Keep saveDraft for close/submit compatibility
+-  const saveDraft = useCallback(async () => {
+-    const currentAnswers = answersRef.current;
+-    const allFieldIds = Object.keys(currentAnswers).filter(fid => currentAnswers[fid]?.field_id);
+-    for (const fid of allFieldIds) pendingFieldsRef.current.add(fid);
+-    await saveFieldsNow();
+-  }, [saveFieldsNow]);
+-
+-  // Validate all visible fields
+-  const validateAll = useCallback((fields: SnapshotField[], assignmentStatus: string): string[] => {
+-    const errors: string[] = [];
+-    const STRUCTURAL = new Set(["secao", "divisor", "titulo"]);
+-    const hasAnswerValue = (a: any) =>
+-      !!a && (
+-        (a.valor_texto != null && a.valor_texto !== "") ||
+-        a.valor_numero != null ||
+-        a.valor_booleano != null ||
+-        a.valor_data != null ||
+-        a.valor_json != null ||
+-        (a.evidencia_url != null && a.evidencia_url !== "")
+-      );
+-    for (const f of fields) {
+-      if (!evaluateVisibility(f.condicao_visibilidade, answers)) continue;
+-      if (assignmentStatus === "devolvida") {
+-        const review = getLatestReview(f.id);
+-        if (!review?.devolvido) continue;
+-
+-        // Validar itens do plano de ação
+-        const itens: Array<{tipo: string; titulo: string; obrigatorio: boolean}> =
+-          Array.isArray(review.itens_plano) && review.itens_plano.length > 0
+-            ? review.itens_plano
+-            : review.tipo_evidencia_exigida && review.tipo_evidencia_exigida !== "nenhuma"
+-              ? [{ tipo: review.tipo_evidencia_exigida, titulo: "", obrigatorio: true }]
+-              : [];
+-
+-        const planRound = Number(review.rodada ?? 1);
+-        const planResponseFieldId = `${f.id}__plano_acao__r${planRound}`;
+-
+-        for (const item of itens) {
+-          if (!item.obrigatorio) continue;
+-          const itemFieldId = `${planResponseFieldId}__${item.tipo}`;
+-          const itemAnswer = answers[itemFieldId];
+-          const nomeItem = item.titulo || item.tipo;
+-          if (item.tipo === "texto" || item.tipo === "descricao") {
+-            if (!(itemAnswer as any)?.valor_texto?.trim()) {
+-              errors.push(`${f.label} ? Plano de ação: falta preencher "${nomeItem}"`);
+-            }
+-          } else {
+-            if (!(itemAnswer as any)?.evidencia_url) {
+-              const tipoLabel = item.tipo === "foto" ? "foto" : item.tipo === "video" ? "vídeo" : "áudio";
+-              errors.push(`${f.label} ? Plano de ação: falta anexar ${tipoLabel} em "${nomeItem}"`);
+-            }
+-          }
+-        }
+-        continue;
+-      }
+-      const err = validateField(f, answers[f.id]);
+-      if (err) {
+-        errors.push(`${f.label}: ${err}`);
+-        continue;
+-      }
+-      // Reforço C: perguntas que serão revisadas (aprovador/auditor) exigem resposta
+-      // mesmo quando o template não marcou `obrigatorio`.
+-      const willBeReviewed = (f as any).aprovador_verificar === true || (f as any).auditor_verificar === true;
+-      if (
+-        willBeReviewed &&
+-        !STRUCTURAL.has(String((f as any).tipo)) &&
+-        !hasAnswerValue(answers[f.id])
+-      ) {
+-        errors.push(`${f.label}: resposta obrigatória (será revisada)`);
+-      }
+-    }
+-    return errors;
+-  }, [answers, reviews]);
+-
+-  const getLatestReview = useCallback((fieldId: string) => {
+-    // Exclui reviews do auditor — eles têm rodada mais alta mas são para o aprovador, não o executor
+-    return reviews.find((r: any) => r.field_id === fieldId && r.criado_por_papel !== "auditor");
+-  }, [reviews]);
+-
+-  const getAllReviews = useCallback((fieldId: string) => {
+-    // Exclui reviews do auditor para não confundir planRound do executor
+-    return (reviews as any[])
+-      .filter((r: any) => r.field_id === fieldId && r.criado_por_papel !== "auditor")
+-      .sort((a: any, b: any) => (a.rodada || 0) - (b.rodada || 0));
+-  }, [reviews]);
+-
+-  // Submit
+-  const submit = useMutation({
+-    mutationFn: async ({ assignment, fields }: { assignment: any; fields: SnapshotField[] }) => {
+-      if (!profile?.id) throw new Error("Não autenticado");
+-
+-      await saveDraft();
+-
+-      const now = new Date().toISOString();
+-      const tempoGasto = assignment.inicio_em
+-        ? Math.round((Date.now() - new Date(assignment.inicio_em).getTime()) / 60000)
+-        : null;
+-
+-      // Check if late based on last mandatory field timestamp
+-      const currentAnswers = answersRef.current;
+-      let ultimoCampoObrigatorio: string | null = null;
+-      let ultimoTimestamp: string | null = null;
+-
+-      for (const f of fields) {
+-        if (!f.obrigatorio) continue;
+-        const ans = currentAnswers[f.id];
+-        if (ans?.respondido_em) {
+-          if (!ultimoTimestamp || ans.respondido_em > ultimoTimestamp) {
+-            ultimoTimestamp = ans.respondido_em;
+-            ultimoCampoObrigatorio = f.label;
+-          }
+-        }
+-      }
+-
+-      const atrasado = (() => {
+-        if (!assignment.horario_limite || !assignment.data_prevista) return false;
+-        const limite = new Date(`${assignment.data_prevista}T${assignment.horario_limite}`);
+-        const referencia = ultimoTimestamp ? new Date(ultimoTimestamp) : new Date();
+-        return referencia > limite;
+-      })();
+-
+-      // Sempre buscar regras vivas do template para refletir edições posteriores
+-      // do template em tarefas em andamento (snapshot pode estar desatualizado).
+-      let liveFieldRulesMap: Record<string, any[]> = {};
+-      let liveFieldByLabelSection: Record<string, any[]> = {};
+-      let liveFieldByLabelOnly: Record<string, any[]> = {};
+-      if (assignment.template_id) {
+-        const { data: liveFields } = await (supabase as any)
+-          .from("operational_template_fields")
+-          .select("id, label, section_id, opcoes_regras")
+-          .eq("template_id", assignment.template_id);
+-        if (liveFields) {
+-          const better = (a: any[] | undefined, b: any[]) =>
+-            (Array.isArray(a) && a.length > 0) ? a : b;
+-          for (const lf of liveFields) {
+-            if (!Array.isArray(lf.opcoes_regras) || lf.opcoes_regras.length === 0) continue;
+-            liveFieldRulesMap[lf.id] = better(liveFieldRulesMap[lf.id], lf.opcoes_regras);
+-            const sKey = `${lf.section_id || ""}|${(lf.label || "").trim().toLowerCase()}`;
+-            liveFieldByLabelSection[sKey] = better(liveFieldByLabelSection[sKey], lf.opcoes_regras);
+-            const lKey = (lf.label || "").trim().toLowerCase();
+-            liveFieldByLabelOnly[lKey] = better(liveFieldByLabelOnly[lKey], lf.opcoes_regras);
+-          }
+-        }
+-      }
+-
+-      const contingencyFields: { field: SnapshotField; answer: FieldAnswer }[] = [];
+-      for (const f of fields) {
+-        if (!evaluateVisibility(f.condicao_visibilidade, currentAnswers)) continue;
+-        const ans = currentAnswers[f.id];
+-        if (!ans) continue;
+-        const sKey = `${(f as any).section_id || ""}|${(f.label || "").trim().toLowerCase()}`;
+-        const lKey = (f.label || "").trim().toLowerCase();
+-        const rules =
+-          liveFieldRulesMap[f.id] ||
+-          liveFieldByLabelSection[sKey] ||
+-          liveFieldByLabelOnly[lKey] ||
+-          (Array.isArray(f.opcoes_regras) ? f.opcoes_regras : []);
+-        let triggers = false;
+-        if (f.tipo === "conforme") {
+-          triggers = ans.valor_booleano === false && rules.some((r: any) => r?.valor === "nao_conforme" && r?.gera_contingencia);
+-        } else if (f.tipo === "sim_nao") {
+-          triggers = ans.valor_booleano === false && rules.some((r: any) => r?.valor === "nao" && r?.gera_contingencia);
+-        } else if (f.tipo === "select") {
+-          triggers = rules.some((r: any) => r?.label === ans.valor_texto && r?.gera_contingencia);
+-        }
+-        if (triggers) contingencyFields.push({ field: f, answer: ans });
+-      }
+-
+-      // Quando devolvida: não gera contingência nova — vai direto para aprovação
+-      const isDevolvida = assignment.status === "devolvida";
+-
+-      // Busca rodada_atual fresco do banco (state pode estar stale)
+-      const { data: freshAssignment } = await (supabase as any)
+-        .from("operational_assignments")
+-        .select("rodada_atual, status")
+-        .eq("id", assignment.id)
+-        .single();
+-      const veioDeDevolucaoFinal =
+-        isDevolvida ||
+-        (freshAssignment?.status === "devolvida") ||
+-        ((freshAssignment?.rodada_atual ?? 1) > 1) ||
+-        ((assignment.rodada_atual ?? 1) > 1);
+-
+-      // SEMPRE fechar contingências abertas antes de qualquer verificação
+-      // quando é reenvio pós-devolução (rodada > 1 ou status devolvida)
+-      if (veioDeDevolucaoFinal) {
+-        const nowTs = new Date().toISOString();
+-        const { error: abrirTratamentoError } = await (supabase as any)
+-          .from("operational_contingencies")
+-          .update({ status: "em_andamento", updated_at: nowTs })
+-          .eq("assignment_id", assignment.id)
+-          .eq("status", "aberta");
+-        if (abrirTratamentoError) throw abrirTratamentoError;
+-
+-        const { error: resolverTratamentoError } = await (supabase as any)
+-          .from("operational_contingencies")
+-          .update({ status: "resolvida", resolvida_em: nowTs, dentro_prazo: true, updated_at: nowTs })
+-          .eq("assignment_id", assignment.id)
+-          .eq("status", "em_andamento");
+-        if (resolverTratamentoError) throw resolverTratamentoError;
+-
+-        await qc.invalidateQueries({ queryKey: ["operational_contingencies"] });
+-        await qc.invalidateQueries({ queryKey: ["operational_contingencies_management"] });
+-      }
+-
+-      if (contingencyFields.length > 0 && !isDevolvida && !veioDeDevolucaoFinal) {
+-        // Create contingencies and set status to contingenciado
+-        await transition.mutateAsync({
+-          assignmentId: assignment.id,
+-          action: "enviar_contingencia",
+-          origem: "execucao",
+-          extraData: { tempoGasto, atrasado },
+-        });
+-
+-        // Set fim_em and tempo_gasto
+-        await (supabase as any).from("operational_assignments")
+-          .update({ fim_em: now, tempo_gasto_minutos: tempoGasto })
+-          .eq("id", assignment.id);
+-
+-        // Create contingency records
+-        for (const { field } of contingencyFields) {
+-          const prazoSla = assignment.template_snapshot?.sla_horas
+-            ? new Date(Date.now() + (assignment.template_snapshot.sla_horas || 24) * 3600000).toISOString()
+-            : new Date(Date.now() + 24 * 3600000).toISOString();
+-
+-          await (supabase as any).from("operational_contingencies").insert({
+-            assignment_id: assignment.id,
+-            descricao: `Campo "${field.label}" gerou plano de ação automaticamente`,
+-            responsavel_id: assignment.responsavel_id,
+-            origin_field_id: field.id,
+-            prazo_sla: prazoSla,
+-            status: "aberta",
+-          });
+-        }
+-      } else {
+-        // Decide fluxo: tarefa designada (created_by ? executor e sem avaliador padrão) ? aguardando_validacao
+-        // caso contrário ? aguardando_avaliacao (fluxo tradicional)
+-        const isDesignada = !!assignment.created_by
+-          && assignment.created_by !== assignment.responsavel_id
+-          && !assignment.aprovador_id;
+-        const actionFinal = assignment.status === "devolvida"
+-          ? "enviar_avaliacao"
+-          : isDesignada ? "enviar_validacao_designante" : "enviar_avaliacao";
+-        await transition.mutateAsync({
+-          assignmentId: assignment.id,
+-          action: actionFinal,
+-          origem: "execucao",
+-          extraData: { tempoGasto, atrasado, rodadaAtual: freshAssignment?.rodada_atual ?? assignment.rodada_atual ?? 1, contingenciesCleanupDone: veioDeDevolucaoFinal },
+-        });
+-      }
+-
+-      // Detailed submit log
+-      await (supabase as any).from("operational_execution_logs").insert({
+-        assignment_id: assignment.id,
+-        acao: "enviou_para_avaliacao",
+-        executado_por: profile.id,
+-        detalhes: {
+-          tempo_gasto_minutos: tempoGasto,
+-          total_campos: Object.keys(currentAnswers).length,
+-          atrasado,
+-          enviado_em: now,
+-          ultimo_campo_obrigatorio: ultimoCampoObrigatorio,
+-          ultimo_timestamp_campo: ultimoTimestamp,
+-        },
+-      });
+-
+-      // Log late completion if applicable
+-      if (atrasado && assignment.horario_limite && assignment.data_prevista) {
+-        const limite = new Date(`${assignment.data_prevista}T${assignment.horario_limite}`);
+-        const ref = ultimoTimestamp ? new Date(ultimoTimestamp) : new Date();
+-        const diffMin = Math.round((ref.getTime() - limite.getTime()) / 60000);
+-
+-        await (supabase as any).from("operational_execution_logs").insert({
+-          assignment_id: assignment.id,
+-          acao: "TAREFA_ATRASADA",
+-          executado_por: profile.id,
+-          detalhes: {
+-            prazo_esperado: limite.toISOString(),
+-            horario_real_conclusao: ref.toISOString(),
+-            atraso_minutos: diffMin,
+-            campo_final: ultimoCampoObrigatorio,
+-          },
+-        });
+-      }
+-    },
+-    onSuccess: (_data, vars) => {
+-      qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
+-      qc.invalidateQueries({ queryKey: ["operational_field_answers"] });
+-      qc.invalidateQueries({ queryKey: ["operational_contingencies_management"] });
+-      // Check if contingencies were created by looking at the fields
+-      toast.success("Formulário enviado!");
+-    },
+-    onError: (e: any) => toast.error(e.message),
+-  });
+-
+-  // Start task — with late-start detection
+-  const startTask = useMutation({
+-    mutationFn: async (args: string | { assignmentId: string; horarioInicioPrevisto?: string | null; dataPrevista?: string | null }) => {
+-      if (!profile?.id) throw new Error("Não autenticado");
+-
+-      const aId = typeof args === "string" ? args : args.assignmentId;
+-      const horarioInicio = typeof args === "string" ? null : args.horarioInicioPrevisto;
+-      const dataPrevista = typeof args === "string" ? null : args.dataPrevista;
+-
+-      const now = new Date().toISOString();
+-
+-      // Use centralized transition
+-      await transition.mutateAsync({
+-        assignmentId: aId,
+-        action: "iniciar",
+-        origem: "execucao",
+-      });
+-
+-      // Set inicio_em separately (transition handles status).
+-      // Auto-claim: se a tarefa estava aberta para o setor (responsavel_id = null),
+-      // o primeiro do setor a iniciar passa a ser o responsável.
+-      await (supabase as any).from("operational_assignments")
+-        .update({ inicio_em: now, responsavel_id: profile.id })
+-        .eq("id", aId)
+-        .is("responsavel_id", null);
+-      await (supabase as any).from("operational_assignments")
+-        .update({ inicio_em: now })
+-        .eq("id", aId)
+-        .not("responsavel_id", "is", null);
+-
+-      await (supabase as any).from("operational_execution_logs").insert({
+-        assignment_id: aId,
+-        acao: "iniciou",
+-        executado_por: profile.id,
+-        detalhes: { iniciado_em: now },
+-      });
+-
+-      // Check late start
+-      if (horarioInicio && dataPrevista) {
+-        const esperado = new Date(`${dataPrevista}T${horarioInicio}`);
+-        const agora = new Date(now);
+-        if (agora > esperado) {
+-          const diffMin = Math.round((agora.getTime() - esperado.getTime()) / 60000);
+-          await (supabase as any).from("operational_execution_logs").insert({
+-            assignment_id: aId,
+-            acao: "INICIO_FORA_DO_PRAZO",
+-            executado_por: profile.id,
+-            detalhes: {
+-              horario_esperado: esperado.toISOString(),
+-              horario_real_inicio: now,
+-              atraso_minutos: diffMin,
+-            },
+-          });
+-        }
+-      }
+-    },
+-    onSuccess: () => {
+-      qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
+-      refetchLogs();
+-      toast.success("Tarefa iniciada!");
+-    },
+-    onError: (e: any) => toast.error(e.message),
+-  });
+-
+-  return {
+-    answers,
+-    reviews,
+-    dirty,
+-    executionLogs,
+-    updateAnswer,
+-    saveDraft,
+-    validateAll,
+-    getLatestReview,
+-    getAllReviews,
+-    submit,
+-    startTask,
+-    isSubmitting: submit.isPending,
+-    refetchLogs,
+-    setFieldLabels,
+-  };
+-}
+diff --git a/src/modules/tarefas/hooks/tarefas_usePlanosAcao.ts b/src/modules/tarefas/hooks/tarefas_usePlanosAcao.ts
+index 13e6f2bf..5736d9e6 100644
+--- a/src/modules/tarefas/hooks/tarefas_usePlanosAcao.ts
++++ b/src/modules/tarefas/hooks/tarefas_usePlanosAcao.ts
+@@ -1,22 +1,11 @@
+ /**
+- * @deprecated REBUILD 2026-05-21 — Substituído por `fluxo/hooks/tarefas_useFluxoTarefa.ts`
+- * (leitura) + `fluxo/hooks/useExecutorActions|useAprovadorActions|useAuditorActions` (writes).
+- * Não usar em código novo.
+- * Doc: src/modules/tarefas/docs/tarefas_arquivos_deprecated.md
+- *
+- * tarefas_usePlanosAcao.ts (LEGACY)
+- *
+- * Hook UTILITÁRIO que abstrai as novas tabelas e RPCs de planos de ação
++ * Hook utilitario que abstrai as tabelas e RPCs de planos de acao
+  * separados por setor (tarefas_planos_acao_aprovador / tarefas_planos_acao_auditor).
+  *
+  * Doc da arquitetura: src/modules/tarefas/docs/tarefas_arquitetura_planos_acao.md
+  *
+  * - READ: queries diretas nas duas tabelas (RLS controla tenant)
+- * - WRITE: somente via RPCs (políticas bloqueiam INSERT/UPDATE direto)
+- *
+- * Coexistência com legacy:
+- *   operational_field_reviews continua sendo lida por hooks antigos
+- *   fluxos antigos de aprovacao/auditoria. Este hook só toca nas tabelas novas.
++ * - WRITE: somente via RPCs (politicas bloqueiam INSERT/UPDATE direto)
+  */
+ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+ import { supabase } from "@/integrations/supabase/client";
+diff --git a/src/modules/tarefas/pages/tarefas_dashboardPage.tsx b/src/modules/tarefas/pages/tarefas_dashboardPage.tsx
+index f062d5c0..2a82f907 100644
+--- a/src/modules/tarefas/pages/tarefas_dashboardPage.tsx
++++ b/src/modules/tarefas/pages/tarefas_dashboardPage.tsx
+@@ -16,7 +16,7 @@ import { useContingencyManagement } from "@/modules/tarefas/hooks/tarefas_useCon
+ import { useOperationalTransition } from "@/modules/tarefas/hooks/tarefas_useTransition";
+ import { useAprovadorActions } from "@/modules/tarefas/fluxo/hooks/tarefas_useAprovadorActions";
+ 
+-export default function OperationalGestaoPage() {
++export default function TarefasDashboardPage() {
+   const { profile } = useAuth();
+   const qc = useQueryClient();
+   const [periodoInicio, setPeriodoInicio] = useState(() => {
+diff --git a/src/modules/tarefas/pages/tarefas_execucaoPage.tsx b/src/modules/tarefas/pages/tarefas_execucaoPage.tsx
+index 2e705449..6ec89eef 100644
+--- a/src/modules/tarefas/pages/tarefas_execucaoPage.tsx
++++ b/src/modules/tarefas/pages/tarefas_execucaoPage.tsx
+@@ -31,7 +31,6 @@ import QuickTaskDialog from "@/modules/tarefas/components/tarefas_quickCreateDia
+ type TaskType = "simples" | "inspecao";
+ import { ListChecks, Trophy } from "lucide-react";
+ import { bucketize, sortAssignments, type SortKey } from "@/modules/tarefas/services/tarefas_bucketize";
+-import { PainelRetornoCard } from "@/modules/tarefas/components/tarefas_painelRetornoCard";
+ 
+ const normalizeTextKey = (value: unknown) =>
+   String(value ?? "")
+@@ -176,7 +175,7 @@ function AuditTimelinePanel({ logs, assignment }: { logs: any[]; assignment: any
+   );
+ }
+ 
+-export default function OperationalExecucaoPage() {
++export default function TarefasExecucaoPage() {
+   const { profile, isAdmin } = useAuth();
+   const navigate = useNavigate();
+   const qc = useQueryClient();
+@@ -474,7 +473,7 @@ export default function OperationalExecucaoPage() {
+     ) ||
+     isAdmin
+   );
+-  const isAvaliadorLegacy = !!selectedAssignment && (
++  const isAvaliadorHistorico = !!selectedAssignment && (
+     selectedAssignment.aprovador_id === profile?.id ||
+     selectedAssignment.avaliador_id === profile?.id ||
+     isAdmin
+@@ -489,13 +488,13 @@ export default function OperationalExecucaoPage() {
+     && selectedAssignment.status === "aguardando_validacao"
+     && selectedAssignment.created_by === profile?.id;
+ 
+-  const fluxoDrawerRole: "executor" | "aprovador" | "auditor" | "legacy" | "readonly" =
++  const fluxoDrawerRole: "executor" | "aprovador" | "auditor" | "readonly" =
+     selectedAssignment?.status === "aguardando_auditoria" && isAuditorView ? "auditor"
+     : selectedAssignment?.status === "aguardando_aprovacao" && isAprovadorView ? "aprovador"
+     : isExecutorView ? "executor"
+     : isAuditorView ? "auditor"
+     : isAprovadorView ? "aprovador"
+-    : isAvaliadorLegacy ? "legacy"
++    : isAvaliadorHistorico ? "readonly"
+     : "readonly";
+ 
+   const handleAprovarRecebimento = async () => {
+@@ -802,12 +801,6 @@ export default function OperationalExecucaoPage() {
+               <FluxoAuditorPanel assignmentId={selectedAssignment.id} />
+             )}
+ 
+-            {selectedAssignment && !showContingencyPanel && fluxoDrawerRole === "legacy" && (
+-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+-                Status legado de avaliador preservado fora do rebuild executor/aprovador/auditor.
+-              </div>
+-            )}
+-
+             {selectedAssignment && !showContingencyPanel && fluxoDrawerRole === "readonly" && (
+               <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+                 Sem acao disponivel para seu papel nesta tarefa.
+diff --git a/src/modules/tarefas/pages/tarefas_rotinasPage.tsx b/src/modules/tarefas/pages/tarefas_rotinasPage.tsx
+index 0c6567f0..2fa68c00 100644
+--- a/src/modules/tarefas/pages/tarefas_rotinasPage.tsx
++++ b/src/modules/tarefas/pages/tarefas_rotinasPage.tsx
+@@ -35,7 +35,7 @@ const GROUP_COLORS = [
+   "bg-orange-500/15 border-orange-500/30 text-orange-700 dark:text-orange-300",
+ ];
+ 
+-export default function OperationalCadastroPage() {
++export default function TarefasRotinasPage() {
+   const qc = useQueryClient();
+   const { isAdmin, profile } = useAuth();
+ 
+diff --git a/src/modules/tarefas/services/tarefas_bucketize.ts b/src/modules/tarefas/services/tarefas_bucketize.ts
+index 64b6b604..bd8145d1 100644
+--- a/src/modules/tarefas/services/tarefas_bucketize.ts
++++ b/src/modules/tarefas/services/tarefas_bucketize.ts
+@@ -2,7 +2,7 @@
+  * tarefas_bucketize.ts — NÚCLEO ÚNICO de derivações operacionais.
+  *
+  * Toda regra de filtro/status/SLA/ordenação da Central Operacional
+- * (/tarefas/minhas) deve passar por aqui. Componentes não duplicam lógica.
++ * (/tarefas/execucao) deve passar por aqui. Componentes não duplicam lógica.
+  *
+  * Fase 1B.1 — adições aditivas para o motor da tarefa avulsa:
+  *  - novos buckets: aguardandoAceite, renegociacaoPendente,
+@@ -259,7 +259,7 @@ export interface Buckets {
+   emAprovacaoSetor: any[];
+ 
+   // ============================================================
+-  // OPERACIONAL — 5 abas finais da tela /tarefas/minhas
++  // TAREFAS — 5 abas finais da tela /tarefas/execucao
+   // ============================================================
+   /** Tarefas para hoje: pendentes/devolvidas/aguardando aceite com data_prevista <= hoje (responsável). */
+   opHoje: any[];
+diff --git a/src/modules/tarefas/services/tarefas_rbac.ts b/src/modules/tarefas/services/tarefas_rbac.ts
+index c1322851..71ff2453 100644
+--- a/src/modules/tarefas/services/tarefas_rbac.ts
++++ b/src/modules/tarefas/services/tarefas_rbac.ts
+@@ -1,5 +1,5 @@
+ /**
+- * RBAC do módulo operacional.
++ * RBAC do módulo Tarefas.
+  *
+  * Perfis: EXECUTOR | AVALIADOR | APROVADOR | GESTOR | ADMIN | CRIADOR_DESIGNANTE
+  *
+@@ -14,7 +14,7 @@ import type { EffectivePermission } from "@/hooks/usePermissions";
+ export type OperationalRole = "EXECUTOR" | "AVALIADOR" | "APROVADOR" | "GESTOR" | "ADMIN" | "CRIADOR_DESIGNANTE";
+ 
+ export type OperationalAction =
+-  // legados — mantidos
++  // Permissões históricas preservadas por compatibilidade de dados.
+   | "executar_tarefa"
+   | "avaliar_tarefa"
+   | "aprovar_tarefa"
+diff --git a/src/modules/tarefas/services/tarefas_service.ts b/src/modules/tarefas/services/tarefas_service.ts
+index 15d12a82..e3ad0ce8 100644
+--- a/src/modules/tarefas/services/tarefas_service.ts
++++ b/src/modules/tarefas/services/tarefas_service.ts
+@@ -1,5 +1,5 @@
+ /**
+- * Camada de services do módulo operacional.
++ * Camada de services do módulo Tarefas.
+  * Centraliza leituras e mutations comuns de tabelas operational_*.
+  * Regra: UI e hooks devem preferir chamar estes métodos em vez de acessar supabase direto.
+  */
+diff --git a/src/modules/tarefas/services/tarefas_systemLogger.ts b/src/modules/tarefas/services/tarefas_systemLogger.ts
+index 212e9d0c..dea09534 100644
+--- a/src/modules/tarefas/services/tarefas_systemLogger.ts
++++ b/src/modules/tarefas/services/tarefas_systemLogger.ts
+@@ -1,5 +1,5 @@
+ /**
+- * Logger estruturado do módulo operacional.
++ * Logger estruturado do módulo Tarefas.
+  *
+  * Uso:
+  *   logSystem.info("template aplicado", { assignmentId })
+@@ -20,7 +20,7 @@ export interface LogPayload {
+   module?: string;
+ }
+ 
+-const DEFAULT_MODULE = "operacional";
++const DEFAULT_MODULE = "tarefas";
+ 
+ async function persist(payload: LogPayload) {
+   try {

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
-export type RespMode = "individual" | "setorial";
+export type RespMode = "individual" | "setor_todo";
 
 export interface RespValue {
   mode: RespMode;
@@ -20,16 +20,18 @@ export interface RespValue {
 export const emptyResp: RespValue = { mode: "individual", profileIds: [], setorId: "" };
 
 export interface RespBlocksValue {
+  respondente: RespValue;
   avaliado: RespValue;
   avaliador: RespValue;
-  aprovador: RespValue;
+  aprovadorFinal: RespValue;
   validadorFinal: RespValue;
 }
 
 export const emptyRespBlocks: RespBlocksValue = {
+  respondente: { ...emptyResp },
   avaliado: { ...emptyResp },
   avaliador: { ...emptyResp },
-  aprovador: { ...emptyResp },
+  aprovadorFinal: { ...emptyResp },
   validadorFinal: { ...emptyResp },
 };
 
@@ -47,9 +49,11 @@ interface BlockSpec {
 }
 
 const BLOCKS: BlockSpec[] = [
-  { key: "avaliado", num: 1, title: "Executor / Avaliado", hint: "Pessoa que executa a tarefa, responde perguntas e recebe a nota.", required: true, Icon: User },
-  { key: "aprovador", num: 2, title: "Aprovador", hint: "Aprova/reprova, cria plano de ação e define impacto operacional.", required: false, Icon: Award },
-  { key: "validadorFinal", num: 3, title: "Auditor", hint: "Auditoria posterior do processo. Não altera notas.", required: false, Icon: UserCheck },
+  { key: "respondente", num: 1, title: "Executor", hint: "Quem executa a tarefa e responde as perguntas.", required: true, Icon: User },
+  { key: "avaliado", num: 2, title: "Avaliado", hint: "Quem recebe a nota e fica vinculado ao resultado.", required: true, Icon: Users },
+  { key: "avaliador", num: 3, title: "Responsável pelo plano", hint: "Quem recebe pendências e planos de ação operacionais.", required: false, Icon: ShieldCheck },
+  { key: "aprovadorFinal", num: 4, title: "Aprovador", hint: "Aprova/reprova, cria plano de ação e define impacto operacional.", required: false, Icon: Award },
+  { key: "validadorFinal", num: 5, title: "Auditor", hint: "Auditoria posterior do processo. Não altera notas.", required: false, Icon: UserCheck },
 ];
 
 interface Props {
@@ -121,7 +125,7 @@ export function TarefasResponsaveisBlocks({
 
               {/* Toggle de modo segmentado */}
               <div className="inline-flex rounded-md border border-border bg-background p-0.5 shrink-0">
-                {(["individual", "setorial"] as RespMode[]).map((m) => (
+                {(["individual", "setor_todo"] as RespMode[]).map((m) => (
                   <button
                     key={m}
                     type="button"
@@ -252,7 +256,7 @@ function MultiProfileSelect({ options, selected, onChange, placeholder, disabled
 export const respLegacyProfileId = (v: RespValue): string =>
   v.mode === "individual" ? (v.profileIds[0] || "") : "";
 export const respLegacySetorId = (v: RespValue): string =>
-  v.mode === "setorial" ? (v.setorId || "") : "";
+  v.mode === "setor_todo" ? (v.setorId || "") : "";
 
 export const isRespFilled = (v: RespValue): boolean =>
   v.mode === "individual" ? v.profileIds.length > 0 : !!v.setorId;

@@ -2,7 +2,7 @@
  * tarefas_bucketize.ts — NÚCLEO ÚNICO de derivações operacionais.
  *
  * Toda regra de filtro/status/SLA/ordenação da Central Operacional
- * (/tarefas/minhas) deve passar por aqui. Componentes não duplicam lógica.
+ * (/tarefas/execucao) deve passar por aqui. Componentes não duplicam lógica.
  *
  * Fase 1B.1 — adições aditivas para o motor da tarefa avulsa:
  *  - novos buckets: aguardandoAceite, renegociacaoPendente,
@@ -259,7 +259,7 @@ export interface Buckets {
   emAprovacaoSetor: any[];
 
   // ============================================================
-  // OPERACIONAL — 5 abas finais da tela /tarefas/minhas
+  // TAREFAS — 5 abas finais da tela /tarefas/execucao
   // ============================================================
   /** Tarefas para hoje: pendentes/devolvidas/aguardando aceite com data_prevista <= hoje (responsável). */
   opHoje: any[];

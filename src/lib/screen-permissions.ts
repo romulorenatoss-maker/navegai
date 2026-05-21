@@ -30,16 +30,18 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/leads/importador", label: "Importador de Leads", group: "Leads" },
   { path: "/leads/gerenciamento", label: "Gerenciamento de Leads", group: "Leads" },
   { path: "/leads/campanhas", label: "Campanhas", group: "Leads" },
-  // Tarefas (menu principal)
-  { path: "/tarefas/gestao", label: "Dash de Tarefas", group: "Tarefas" },
-  { path: "/tarefas/minhas", label: "Minhas Tarefas", group: "Tarefas" },
-  { path: "/tarefas/rotinas", label: "Rotinas Operacionais", group: "Tarefas" },
-  { path: "/tarefas/relatorios", label: "Relatórios de Tarefas", group: "Tarefas" },
+  // Tarefas
+  { path: "/tarefas", label: "Tarefas", group: "Tarefas" },
+  { path: "/tarefas/dashboard", label: "Dashboard", group: "Tarefas" },
+  { path: "/tarefas/lista", label: "Lista", group: "Tarefas" },
+  { path: "/tarefas/detalhes/:id", label: "Detalhes", group: "Tarefas" },
+  { path: "/tarefas/rotinas", label: "Rotinas", group: "Tarefas" },
+  { path: "/tarefas/agendamentos", label: "Agenda", group: "Tarefas" },
+  { path: "/tarefas/execucao", label: "Execução", group: "Tarefas" },
+  { path: "/tarefas/historico", label: "Histórico", group: "Tarefas" },
+  { path: "/tarefas/configuracoes", label: "Configurações", group: "Tarefas" },
   { path: "/tarefas/desempenho", label: "Desempenho", group: "Tarefas" },
-  // Tarefas — rotas internas (acessadas via /tarefas/minhas, mantidas para permissionamento e links diretos)
-  { path: "/tarefas/avaliacao", label: "Avaliação de Tarefas (interna)", group: "Tarefas" },
-  { path: "/tarefas/aprovacao", label: "Aprovação de Tarefas (interna)", group: "Tarefas" },
-  { path: "/tarefas/contingencias", label: "Contingências (interna)", group: "Tarefas" },
+  { path: "/tarefas/relatorios", label: "Relatórios", group: "Tarefas" },
   // Cadastros
   { path: "/cadastros/setores", label: "Setores", group: "Cadastros" },
   { path: "/cadastros/servicos", label: "Tipos de Serviço", group: "Cadastros" },
@@ -52,7 +54,6 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/leads/rotina", label: "Rotina de Tentativas", group: "Configurações" },
   // Relatórios
   { path: "/relatorios", label: "Relatórios de OS", group: "Relatórios" },
-  { path: "/relatorios/tarefas", label: "Relatório de Tarefas", group: "Relatórios" },
   { path: "/leads/relatorios", label: "Relatórios de Leads", group: "Relatórios" },
 ];
 

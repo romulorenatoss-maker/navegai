@@ -45,9 +45,8 @@ export function AppLayout() {
     if (pendingEvaluations > 0) counts["/avaliacoes/pesquisa"] = pendingEvaluations;
     if (pendingLeadDecisions > 0) counts["/leads/fila"] = pendingLeadDecisions;
     if (pendingMyLeads > 0) counts["/leads"] = pendingMyLeads;
-    if (pendingDesignadas > 0) counts["/tarefas/minhas"] = pendingDesignadas;
-    if (pendingContingencias > 0) counts["/tarefas/contingencias"] = pendingContingencias;
-    if (pendingAprovacoes > 0) counts["/tarefas/aprovacao"] = pendingAprovacoes;
+    const pendingTarefas = pendingDesignadas + pendingContingencias + pendingAprovacoes;
+    if (pendingTarefas > 0) counts["/tarefas/execucao"] = pendingTarefas;
     return counts;
   }, [pendingEvaluations, pendingLeadDecisions, pendingMyLeads, pendingDesignadas, pendingContingencias, pendingAprovacoes]);
 

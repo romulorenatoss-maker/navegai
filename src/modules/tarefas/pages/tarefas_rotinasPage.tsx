@@ -35,7 +35,7 @@ const GROUP_COLORS = [
   "bg-orange-500/15 border-orange-500/30 text-orange-700 dark:text-orange-300",
 ];
 
-export default function OperationalCadastroPage() {
+export default function TarefasRotinasPage() {
   const qc = useQueryClient();
   const { isAdmin, profile } = useAuth();
 

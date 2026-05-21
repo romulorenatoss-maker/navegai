@@ -8,13 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Users } from "lucide-react";
 import { TemplateForm, SectionForm, StepForm } from "../types/tarefas_types";
 import {
-  TarefasResponsaveisV2,
-  emptyRespBlocksV2,
-  type RespBlocksValueV2,
-  type RespValueV2,
-  respV2LegacyProfileId,
-  respV2LegacySetorId,
-} from "@/modules/tarefas/components/responsaveis/TarefasResponsaveisV2";
+  TarefasResponsaveisBlocks,
+  emptyRespBlocks,
+  type RespBlocksValue,
+  type RespValue,
+  respLegacyProfileId,
+  respLegacySetorId,
+} from "@/modules/tarefas/components/responsaveis/TarefasResponsaveisBlocks";
 
 interface Props {
   form: TemplateForm;
@@ -31,7 +31,7 @@ const EXEC_OPTIONS: Array<{ value: string; label: string }> = [
 ];
 
 /**
- * Reconstrói RespBlocksValueV2 a partir de:
+ * Reconstrói RespBlocksValue a partir de:
  *  1) form.template_snapshot.responsaveis_multi (fonte oficial nova)
  *  2) Fallback legacy (executor_*, avaliado_*, ...) — registros antigos.
  *
@@ -42,14 +42,14 @@ const EXEC_OPTIONS: Array<{ value: string; label: string }> = [
  *   aprovador_*      → aprovadorFinal
  *   ada_quem_avalia_* → validadorFinal
  */
-function buildBlocksFromForm(form: TemplateForm): RespBlocksValueV2 {
+function buildBlocksFromForm(form: TemplateForm): RespBlocksValue {
   const snap: any = (form as any).template_snapshot || {};
-  const multi: Partial<RespBlocksValueV2> | undefined = snap?.responsaveis_multi;
+  const multi: Partial<RespBlocksValue> | undefined = snap?.responsaveis_multi;
 
-  const fromLegacy = (profileId: string, setorId: string): RespValueV2 => {
+  const fromLegacy = (profileId: string, setorId: string): RespValue => {
     if (profileId) return { mode: "individual", profileIds: [profileId], setorId: "" };
     if (setorId) return { mode: "setor_todo", profileIds: [], setorId };
-    return { ...emptyRespBlocksV2.respondente };
+    return { ...emptyRespBlocks.respondente };
   };
 
   const respondente = multi?.respondente || fromLegacy(form.executor_profile_id, form.executor_setor_id);
@@ -59,7 +59,7 @@ function buildBlocksFromForm(form: TemplateForm): RespBlocksValueV2 {
       ? fromLegacy(form.avaliado_profile_id, form.avaliado_setor_id)
       : fromLegacy(form.executor_profile_id, form.executor_setor_id)
   );
-  const avaliador = multi?.avaliador || { ...emptyRespBlocksV2.avaliador };
+  const avaliador = multi?.avaliador || { ...emptyRespBlocks.avaliador };
   const aprovadorFinal = multi?.aprovadorFinal || fromLegacy(form.aprovador_profile_id, form.aprovador_setor_id);
   const validadorFinal = multi?.validadorFinal || fromLegacy(form.auditor_profile_id, form.auditor_setor_id);
 
@@ -77,27 +77,27 @@ export function TabGeral({ form, set, setores, colaboradores, sections, steps }:
   });
 
   const initialBlocks = useMemo(() => buildBlocksFromForm(form), []); // só na montagem
-  const [blocks, setBlocks] = useState<RespBlocksValueV2>(initialBlocks);
+  const [blocks, setBlocks] = useState<RespBlocksValue>(initialBlocks);
 
-  const handleBlocksChange = (next: RespBlocksValueV2) => {
+  const handleBlocksChange = (next: RespBlocksValue) => {
     setBlocks(next);
 
     // 1) Atualiza colunas legacy (1º profile_id ou setor_id de cada bloco)
-    set("executor_profile_id" as any, respV2LegacyProfileId(next.respondente) as any);
-    set("executor_setor_id" as any, respV2LegacySetorId(next.respondente) as any);
+    set("executor_profile_id" as any, respLegacyProfileId(next.respondente) as any);
+    set("executor_setor_id" as any, respLegacySetorId(next.respondente) as any);
 
-    set("avaliado_profile_id" as any, respV2LegacyProfileId(next.avaliado) as any);
-    set("avaliado_setor_id" as any, respV2LegacySetorId(next.avaliado) as any);
+    set("avaliado_profile_id" as any, respLegacyProfileId(next.avaliado) as any);
+    set("avaliado_setor_id" as any, respLegacySetorId(next.avaliado) as any);
 
     // Auditor (era avaliador legado): grava nas colunas auditor_*
-    const audPid = respV2LegacyProfileId(next.validadorFinal);
-    const audSid = respV2LegacySetorId(next.validadorFinal);
+    const audPid = respLegacyProfileId(next.validadorFinal);
+    const audSid = respLegacySetorId(next.validadorFinal);
     set("auditor_profile_id" as any, audPid as any);
     set("auditor_setor_id" as any, audSid as any);
 
-    set("aprovador_profile_id" as any, respV2LegacyProfileId(next.aprovadorFinal) as any);
-    set("aprovador_setor_id" as any, respV2LegacySetorId(next.aprovadorFinal) as any);
-    const aprFilled = !!respV2LegacyProfileId(next.aprovadorFinal) || !!respV2LegacySetorId(next.aprovadorFinal);
+    set("aprovador_profile_id" as any, respLegacyProfileId(next.aprovadorFinal) as any);
+    set("aprovador_setor_id" as any, respLegacySetorId(next.aprovadorFinal) as any);
+    const aprFilled = !!respLegacyProfileId(next.aprovadorFinal) || !!respLegacySetorId(next.aprovadorFinal);
     set("requer_aprovacao_gestor" as any, aprFilled as any);
 
     // 2) Persistência de responsaveis_multi (snapshot completo) — Fase 2.
@@ -148,13 +148,13 @@ export function TabGeral({ form, set, setores, colaboradores, sections, steps }:
         </Select>
       </div>
 
-      {/* Responsáveis — novo padrão V2 (5 papéis) */}
+      {/* Responsáveis — padrão oficial (5 papéis) */}
       <div className="border border-border rounded-lg p-4 space-y-3 bg-card">
         <div className="flex items-center gap-2">
           <Users className="w-4 h-4 text-primary" />
           <Label className="text-sm font-semibold">Responsáveis</Label>
         </div>
-        <TarefasResponsaveisV2
+        <TarefasResponsaveisBlocks
           value={blocks}
           onChange={handleBlocksChange}
           setores={setores}

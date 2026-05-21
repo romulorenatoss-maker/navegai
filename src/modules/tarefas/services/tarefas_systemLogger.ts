@@ -1,5 +1,5 @@
 /**
- * Logger estruturado do módulo operacional.
+ * Logger estruturado do módulo Tarefas.
  *
  * Uso:
  *   logSystem.info("template aplicado", { assignmentId })
@@ -20,7 +20,7 @@ export interface LogPayload {
   module?: string;
 }
 
-const DEFAULT_MODULE = "operacional";
+const DEFAULT_MODULE = "tarefas";
 
 async function persist(payload: LogPayload) {
   try {

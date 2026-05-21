@@ -24,13 +24,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DEFAULT_SOLICITACAO_CONFIG, type SolicitacaoConfig } from "@/modules/tarefas/services/tarefas_solicitacaoConfig";
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 import {
-  TarefasResponsaveisV2,
-  emptyRespBlocksV2,
-  isRespV2Filled,
-  respV2LegacyProfileId,
-  respV2LegacySetorId,
-  type RespBlocksValueV2,
-} from "@/modules/tarefas/components/responsaveis/TarefasResponsaveisV2";
+  TarefasResponsaveisBlocks,
+  emptyRespBlocks,
+  isRespFilled,
+  respLegacyProfileId,
+  respLegacySetorId,
+  type RespBlocksValue,
+} from "@/modules/tarefas/components/responsaveis/TarefasResponsaveisBlocks";
 
 // localStorage keys for default penalty values (per-user defaults set via gear icon)
 const LS_DEFAULTS_KEY = "quicktask_workflow_defaults_v1";
@@ -66,7 +66,7 @@ interface Props {
   /**
    * Contexto de origem da criação:
    * - "rotina": permite ativar recorrência (vira rotina em /tarefas/rotinas).
-   * - "avulsa": oculta bloco de recorrência e força origem='ad_hoc'. Usado pelo botão "+" de /tarefas/minhas.
+   * - "avulsa": oculta bloco de recorrência e força origem='ad_hoc'. Usado pelo botão "+" de /tarefas/execucao.
    * Default "rotina" para compat com chamadas existentes.
    */
   origemContexto?: "rotina" | "avulsa";
@@ -112,9 +112,9 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const [aprovadorId, setAprovadorId] = useState("");
   const [aprovadorSetorId, setAprovadorSetorId] = useState("");
 
-  // Novo padrão visual de Responsáveis (5 blocos V2). Substitui as toggles antigas.
+  // Padrão oficial de Responsáveis (5 blocos). Substitui as toggles antigas.
   // Persiste array em template_snapshot.responsaveis_multi (avulso). Coluna legacy = primeiro do array.
-  const [respBlocks, setRespBlocks] = useState<RespBlocksValueV2>(emptyRespBlocksV2);
+  const [respBlocks, setRespBlocks] = useState<RespBlocksValue>(emptyRespBlocks);
 
   // Step 2 state
   const [sections, setSections] = useState<SectionForm[]>([]);
@@ -153,7 +153,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     setRequerValidacao(false); setValidadorMode("individual"); setValidadorId(""); setValidadorSetorId("");
     setPlanoAcaoSetorId(""); setPlanoAcaoQualquer(true); setPlanoAcaoUsuarioId("");
     setRequerAprovacao(false); setAprovadorMode("individual"); setAprovadorId(""); setAprovadorSetorId("");
-    setRespBlocks(emptyRespBlocksV2);
+    setRespBlocks(emptyRespBlocks);
     setSections([]); setFields([]);
     const d = loadDefaults();
     setSlaHoras(24);
@@ -273,21 +273,21 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     setAvaliadoId(av.mode === "individual" ? (av.profileIds[0] || "") : "");
 
     const a2 = respBlocks.avaliador;
-    const a2Filled = isRespV2Filled(a2);
+    const a2Filled = isRespFilled(a2);
     setRequerValidacao(a2Filled);
     setValidadorMode(a2.mode === "individual" ? "individual" : "setor");
-    setValidadorId(respV2LegacyProfileId(a2));
-    setValidadorSetorId(respV2LegacySetorId(a2));
+    setValidadorId(respLegacyProfileId(a2));
+    setValidadorSetorId(respLegacySetorId(a2));
     // Plano de Ação (mesmo bloco 2)
     setPlanoAcaoSetorId(a2.mode === "setor_todo" ? a2.setorId : "");
     setPlanoAcaoUsuarioId(a2.mode === "individual" ? (a2.profileIds[0] || "") : "");
     setPlanoAcaoQualquer(a2.mode === "setor_todo");
 
     const a3 = respBlocks.aprovadorFinal;
-    setRequerAprovacao(isRespV2Filled(a3));
+    setRequerAprovacao(isRespFilled(a3));
     setAprovadorMode(a3.mode === "individual" ? "individual" : "setor");
-    setAprovadorId(respV2LegacyProfileId(a3));
-    setAprovadorSetorId(respV2LegacySetorId(a3));
+    setAprovadorId(respLegacyProfileId(a3));
+    setAprovadorSetorId(respLegacySetorId(a3));
   }, [respBlocks]);
 
   // Validador: nunca pode ser o avaliado (não pode validar a si mesmo)
@@ -383,7 +383,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const canAdvanceStep1 = fields.length > 0 && !horarioValidationError;
   // Avaliado é o único bloco obrigatório. Aceita Individual (profileIds) OU Setorial (setorId).
   // Aprovador e Validador Final são opcionais. Avaliador (PA) é opcional.
-  const avaliadoPreenchido = isRespV2Filled(respBlocks.avaliado);
+  const avaliadoPreenchido = isRespFilled(respBlocks.avaliado);
   const canAdvanceStep2 = avaliadoPreenchido && !!dataPrevista;
 
 
@@ -434,15 +434,15 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         habilitar_perguntas_automaticas: pontuacaoValida ? habilitarPerguntasAutomaticas : false,
         ativo: true,
         // Bloco 4 (Validador Final) → ada_*. Opcional; se vazio, AdA fica desligado.
-        ada_enabled: isRespV2Filled(respBlocks.validadorFinal),
-        ada_quem_avalia_tipo: isRespV2Filled(respBlocks.validadorFinal)
+        ada_enabled: isRespFilled(respBlocks.validadorFinal),
+        ada_quem_avalia_tipo: isRespFilled(respBlocks.validadorFinal)
           ? (respBlocks.validadorFinal.mode === "individual" ? "pessoa" : "setor")
           : null,
         ada_quem_avalia_profile_id: respBlocks.validadorFinal.mode === "individual"
           ? (respBlocks.validadorFinal.profileIds[0] || null) : null,
         ada_quem_avalia_setor_id: respBlocks.validadorFinal.mode === "setor_todo"
           ? (respBlocks.validadorFinal.setorId || null) : null,
-        ada_gerar_em: isRespV2Filled(respBlocks.validadorFinal) ? "pos_avaliacao" : null,
+        ada_gerar_em: isRespFilled(respBlocks.validadorFinal) ? "pos_avaliacao" : null,
         // Recorrente vai pra "Rotinas Operacionais" (origem rotina); pontual permanece ad_hoc
         // Tarefa avulsa (botão "+" da Minhas Tarefas) NUNCA vira rotina.
         origem: isAvulsa ? "ad_hoc" : (recorrenciaAtiva ? "rotina" : "ad_hoc"),
@@ -573,7 +573,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         }),
         // Fase 1B.3 — Fluxo Operacional para tarefa avulsa (sem migration; lido em runtime).
         ...(isAvulsa ? { solicitacao_config: solicitacaoConfig } : {}),
-        // Multi-select dos 5 blocos (V2). Coluna legacy recebe primeiro do array.
+        // Multi-select dos 5 blocos. Coluna de compatibilidade recebe primeiro do array.
         // Estrutura completa preservada para o novo runtime quando ativo.
         responsaveis_multi: {
           respondente: respBlocks.respondente,
@@ -673,7 +673,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                   <Label className="text-sm font-semibold">Responsáveis</Label>
                 </div>
 
-                <TarefasResponsaveisV2
+                <TarefasResponsaveisBlocks
                   value={respBlocks}
                   onChange={setRespBlocks}
                   setores={setores as any[]}

@@ -1,25 +1,9 @@
 /**
- * @deprecated REBUILD 2026-05-21 PARCIAL — Card mantido porque
- * `fluxo/components/tarefas_fluxoExecutorPanel.tsx` ainda o reusa para
- * upload de evidências. Futuro: absorver o form de upload dentro do
- * FluxoPlanoAprovadorCard (já lê de tarefas_planos_acao_aprovador).
- * Doc: src/modules/tarefas/docs/tarefas_arquivos_deprecated.md
+ * Card dedicado a resposta do executor ao plano de acao aberto pelo aprovador.
+ * Le de tarefas_planos_acao_aprovador via prop e escreve pela RPC
+ * tarefas_rpc_executor_responder_plano_aprovador.
  *
- * tarefas_executorPlanoAprovadorCard.tsx
- *
- * Card DEDICADO à resposta do EXECUTOR ao plano de ação aberto pelo aprovador.
- * Lê de `tarefas_planos_acao_aprovador` (via prop) e escreve pela RPC
- * `tarefas_rpc_executor_responder_plano_aprovador`.
- *
- * Responsabilidade ÚNICA: render + estado local + chamada à mutation.
- * Não duplica lógica do DynamicFieldRenderer — ele continua renderizando
- * apenas o campo original. Este card aparece em PARALELO quando há plano
- * pendente na nova tabela.
- *
- * Regra 0.7 — verdade única: este card é a ÚNICA forma de responder
- * planos do novo modelo. Dados legacy em operational_field_reviews
- * continuam visíveis via DynamicFieldRenderer (read-only), sem permitir
- * resposta nova nesse caminho.
+ * Responsabilidade unica: render, estado local e chamada a mutation.
  *
  * Doc:
  *   src/modules/tarefas/docs/tarefas_rpc_executor_responder_plano_aprovador.md

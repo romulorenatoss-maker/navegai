@@ -31,7 +31,6 @@ import QuickTaskDialog from "@/modules/tarefas/components/tarefas_quickCreateDia
 type TaskType = "simples" | "inspecao";
 import { ListChecks, Trophy } from "lucide-react";
 import { bucketize, sortAssignments, type SortKey } from "@/modules/tarefas/services/tarefas_bucketize";
-import { PainelRetornoCard } from "@/modules/tarefas/components/tarefas_painelRetornoCard";
 
 const normalizeTextKey = (value: unknown) =>
   String(value ?? "")
@@ -176,7 +175,7 @@ function AuditTimelinePanel({ logs, assignment }: { logs: any[]; assignment: any
   );
 }
 
-export default function OperationalExecucaoPage() {
+export default function TarefasExecucaoPage() {
   const { profile, isAdmin } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -474,7 +473,7 @@ export default function OperationalExecucaoPage() {
     ) ||
     isAdmin
   );
-  const isAvaliadorLegacy = !!selectedAssignment && (
+  const isAvaliadorHistorico = !!selectedAssignment && (
     selectedAssignment.aprovador_id === profile?.id ||
     selectedAssignment.avaliador_id === profile?.id ||
     isAdmin
@@ -489,13 +488,13 @@ export default function OperationalExecucaoPage() {
     && selectedAssignment.status === "aguardando_validacao"
     && selectedAssignment.created_by === profile?.id;
 
-  const fluxoDrawerRole: "executor" | "aprovador" | "auditor" | "legacy" | "readonly" =
+  const fluxoDrawerRole: "executor" | "aprovador" | "auditor" | "readonly" =
     selectedAssignment?.status === "aguardando_auditoria" && isAuditorView ? "auditor"
     : selectedAssignment?.status === "aguardando_aprovacao" && isAprovadorView ? "aprovador"
     : isExecutorView ? "executor"
     : isAuditorView ? "auditor"
     : isAprovadorView ? "aprovador"
-    : isAvaliadorLegacy ? "legacy"
+    : isAvaliadorHistorico ? "readonly"
     : "readonly";
 
   const handleAprovarRecebimento = async () => {
@@ -800,12 +799,6 @@ export default function OperationalExecucaoPage() {
 
             {selectedAssignment && !showContingencyPanel && fluxoDrawerRole === "auditor" && (
               <FluxoAuditorPanel assignmentId={selectedAssignment.id} />
-            )}
-
-            {selectedAssignment && !showContingencyPanel && fluxoDrawerRole === "legacy" && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
-                Status legado de avaliador preservado fora do rebuild executor/aprovador/auditor.
-              </div>
             )}
 
             {selectedAssignment && !showContingencyPanel && fluxoDrawerRole === "readonly" && (

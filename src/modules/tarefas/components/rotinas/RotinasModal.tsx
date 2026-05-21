@@ -221,7 +221,7 @@ async function saveChecklistToDb(
   extraPayload?: Record<string, any>
 ) {
   // "auditor" é salvo como "validador" no snapshot para manter compatibilidade
-  // com tarefas_minhasTarefasPage que lê checklists.validador
+  // com tarefas_execucaoPage que lê checklists.validador
   const chaveSnapshot = chave === "auditor" ? "validador" : "aprovador";
 
   // Lê snapshot atual para não sobrescrever a outra chave
