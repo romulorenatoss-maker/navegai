@@ -1,4 +1,10 @@
 /**
+ * @deprecated REBUILD 2026-05-21 PARCIAL — Card mantido porque
+ * `fluxo/components/tarefas_fluxoExecutorPanel.tsx` ainda o reusa para
+ * upload de evidências. Futuro: absorver o form de upload dentro do
+ * FluxoPlanoAprovadorCard (já lê de tarefas_planos_acao_aprovador).
+ * Doc: src/modules/tarefas/docs/tarefas_arquivos_deprecated.md
+ *
  * tarefas_executorPlanoAprovadorCard.tsx
  *
  * Card DEDICADO à resposta do EXECUTOR ao plano de ação aberto pelo aprovador.

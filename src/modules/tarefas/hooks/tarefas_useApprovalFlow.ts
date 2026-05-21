@@ -1,3 +1,9 @@
+/**
+ * @deprecated REBUILD 2026-05-21 — Substituído por `fluxo/hooks/tarefas_useFluxoTarefa.ts` +
+ * `fluxo/hooks/tarefas_useAprovadorActions.ts`. Mantido só porque `gestaoPage.tsx` ainda
+ * consome `finalDecision` para aprovação rápida (futuro: migrar).
+ * Doc: src/modules/tarefas/docs/tarefas_arquivos_deprecated.md
+ */
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";

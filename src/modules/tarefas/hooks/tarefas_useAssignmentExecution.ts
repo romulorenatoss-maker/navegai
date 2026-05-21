@@ -1,3 +1,11 @@
+/**
+ * @deprecated REBUILD 2026-05-21 PARCIAL — Para envio R0 do executor use
+ * `fluxo/hooks/tarefas_useExecutorActions.enviarRespostas` (chama a RPC
+ * `tarefas_rpc_executor_enviar_respostas`). Este hook ainda é usado por
+ * `minhasTarefasPage` para gerenciar respostas locais em rascunho antes
+ * do envio — futuro: absorver no FluxoExecutorPanel.
+ * Doc: src/modules/tarefas/docs/tarefas_arquivos_deprecated.md
+ */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";

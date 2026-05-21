@@ -1,3 +1,8 @@
+/**
+ * @deprecated REBUILD 2026-05-21 — Card legado usado apenas por
+ * `EmbeddedReviewPanel` (avaliador legado, fora do escopo do rebuild).
+ * Doc: src/modules/tarefas/docs/tarefas_arquivos_deprecated.md
+ */
 import { useState } from "react";
 import { SnapshotField } from "./tarefas_dynamicFieldRenderer";
 import { FieldReviewDraft } from "@/modules/tarefas/hooks/tarefas_useAssignmentReview";

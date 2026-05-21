@@ -1,5 +1,11 @@
 /**
- * tarefas_useFlowPermissions.ts
+ * @deprecated REBUILD 2026-05-21 — Substituído por
+ *   `fluxo/hooks/tarefas_useFluxoPermissoes.ts` + `fluxo/services/tarefas_fluxoStatusMachine.ts`.
+ * Não usar em código novo. Mantido pra não quebrar consumidores legados.
+ * Doc: src/modules/tarefas/docs/tarefas_arquivos_deprecated.md
+ * ============================================================================
+ *
+ * tarefas_useFlowPermissions.ts (LEGACY)
  *
  * ============================================================================
  * FONTE ÚNICA DE VERDADE — PERMISSÕES DO FLUXO PÓS-CRIAÇÃO

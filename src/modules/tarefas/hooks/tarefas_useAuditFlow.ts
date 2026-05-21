@@ -1,4 +1,8 @@
 /**
+ * @deprecated REBUILD 2026-05-21 — Substituído por `fluxo/hooks/tarefas_useFluxoTarefa.ts` +
+ * `fluxo/hooks/tarefas_useAuditorActions.ts`. Sem consumidor ativo após FASE 5.
+ * Doc: src/modules/tarefas/docs/tarefas_arquivos_deprecated.md
+ *
  * Audit flow — espelha useApprovalFlow mas para o papel auditor.
  * Lê campos auditor_verificar, persiste em operational_audit_answers,
  * conclui a tarefa via transition (auditor_aprovar / auditor_devolver).

@@ -1,4 +1,11 @@
 /**
+ * @deprecated REBUILD 2026-05-21 — `EmbeddedApprovalPanel` e `EmbeddedAuditPanel`
+ * foram substituídos por `fluxo/components/tarefas_fluxoAprovadorPanel.tsx` e
+ * `tarefas_fluxoAuditorPanel.tsx`. Este arquivo permanece SOMENTE porque
+ * `EmbeddedReviewPanel` (avaliador legado, fora do escopo do rebuild) ainda
+ * é importado por `minhasTarefasPage.tsx`.
+ * Doc: src/modules/tarefas/docs/tarefas_arquivos_deprecated.md
+ *
  * Painéis embutidos de Avaliação e Aprovação para o drawer único de /tarefas/minhas.
  *
  * Reaproveitam, sem alterar:

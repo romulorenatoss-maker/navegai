@@ -1,5 +1,10 @@
 /**
- * tarefas_usePlanosAcao.ts
+ * @deprecated REBUILD 2026-05-21 — Substituído por `fluxo/hooks/tarefas_useFluxoTarefa.ts`
+ * (leitura) + `fluxo/hooks/useExecutorActions|useAprovadorActions|useAuditorActions` (writes).
+ * Não usar em código novo.
+ * Doc: src/modules/tarefas/docs/tarefas_arquivos_deprecated.md
+ *
+ * tarefas_usePlanosAcao.ts (LEGACY)
  *
  * Hook UTILITÁRIO que abstrai as novas tabelas e RPCs de planos de ação
  * separados por setor (tarefas_planos_acao_aprovador / tarefas_planos_acao_auditor).

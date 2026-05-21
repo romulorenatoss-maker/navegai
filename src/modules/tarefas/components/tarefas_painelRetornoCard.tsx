@@ -1,3 +1,9 @@
+/**
+ * @deprecated REBUILD 2026-05-21 — Componente legado de retorno simples.
+ * Não substituído diretamente — informações de status agora ficam nos
+ * painéis novos do fluxo. Mantido porque `minhasTarefasPage.tsx` ainda importa.
+ * Doc: src/modules/tarefas/docs/tarefas_arquivos_deprecated.md
+ */
 import { Clock, AlertTriangle, RotateCcw, User as UserIcon, Activity, Hourglass, MessageSquare, Ban, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { computeSla, isSemMovimento, isLate, isLimiteRenegociacaoExcedido, type AssignmentSla } from "@/modules/tarefas/services/tarefas_bucketize";
