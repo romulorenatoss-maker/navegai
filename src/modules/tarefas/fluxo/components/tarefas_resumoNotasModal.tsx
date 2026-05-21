@@ -55,10 +55,6 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
 
         <ScrollArea className="max-h-[calc(90vh-132px)]">
           <div className="p-4 space-y-4">
-            <div className="rounded-md border bg-muted/30 p-3 text-sm">
-              Esta nota será lançada para: <strong>{resumo.destino.label}</strong>
-            </div>
-
             {resumo.backendPendente && (
               <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 flex gap-2">
                 <AlertCircle className="h-4 w-4 shrink-0" />
@@ -103,62 +99,33 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
                 ))
               )}
             </section>
-
-            <div className="rounded-md border p-3 text-xs text-muted-foreground">
-              Nota parcial/final: {modo === "aprovador"
-                ? resumo.scoreExistente.aprovacao ?? "pendente de backend"
-                : resumo.scoreExistente.aprovador ?? resumo.scoreExistente.auditor ?? "pendente de backend"}
-            </div>
           </div>
         </ScrollArea>
 
-        <div className="px-4 py-3 border-t bg-muted/20 space-y-1.5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Resumo da nota
-          </p>
+        <div className="px-4 py-3 border-t bg-muted/20 space-y-1">
           {(() => {
-            const todas = [...resumo.perguntasAutomaticas, ...resumo.perguntasManuais];
-            const algumPendente = todas.some(
-              (p) => p.descontoAplicado === null || p.descontoAplicado === undefined,
-            );
-            const mantidos = todas.reduce(
-              (acc, p) =>
-                p.descontoAplicado !== null && p.descontoAplicado !== undefined && (p.descontoAplicado as number) <= 0
-                  ? acc + p.peso
-                  : acc,
-              0,
-            );
-            const descontos = todas.reduce(
-              (acc, p) =>
-                p.descontoAplicado !== null && p.descontoAplicado !== undefined && (p.descontoAplicado as number) > 0
-                  ? acc + (p.descontoAplicado as number)
-                  : acc,
-              0,
-            );
-            const devolvidosNa = resumo.perguntasManuais.reduce((acc, p) => {
-              const r = respostas[p.id];
-              return r?.na ? acc + p.pontoDevolvidoNa : acc;
-            }, 0);
             const notaFinal =
               modo === "aprovador"
                 ? resumo.scoreExistente.aprovacao
                 : resumo.scoreExistente.aprovador ?? resumo.scoreExistente.auditor;
-
+            const destinoPendente = resumo.destino.tipo === "nao_mapeado" || resumo.destino.label === "pendente de backend";
+            const destinoPrefixo =
+              resumo.destino.tipo === "setor" ? "setor " : resumo.destino.tipo === "pessoa" ? "" : "";
             return (
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-                <span className="text-emerald-700">
-                  Pontos mantidos: {algumPendente ? "pendente de backend" : `+${mantidos}`}
-                </span>
-                <span className="text-red-700">
-                  Descontos: {algumPendente ? "pendente de backend" : `-${descontos}`}
-                </span>
-                <span className="text-blue-700">
-                  Pontos devolvidos por N/A: {devolvidosNa}
-                </span>
-                <span className="font-semibold text-foreground">
-                  Nota final: {notaFinal ?? "pendente de backend"}
-                </span>
-              </div>
+              <>
+                <p className="text-sm font-semibold">
+                  Nota final:{" "}
+                  <span className={notaFinal === null || notaFinal === undefined ? "text-amber-700" : "text-foreground"}>
+                    {notaFinal ?? "pendente de backend"}
+                  </span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Esta nota será lançada para:{" "}
+                  <strong className={destinoPendente ? "text-amber-700" : "text-foreground"}>
+                    {destinoPendente ? "pendente de backend" : `${destinoPrefixo}${resumo.destino.label}`}
+                  </strong>
+                </p>
+              </>
             );
           })()}
         </div>

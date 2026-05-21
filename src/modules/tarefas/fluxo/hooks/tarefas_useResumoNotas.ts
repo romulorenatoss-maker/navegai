@@ -41,22 +41,56 @@ const getSnapshotFields = (data: TarefaFluxoData | null) => {
   return (Array.isArray(frozen) ? frozen : Array.isArray(live) ? live : []) as any[];
 };
 
+const firstString = (...vals: any[]): string | null => {
+  for (const v of vals) {
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return null;
+};
+
 const getDestino = (data: TarefaFluxoData | null): ResumoNotasDestino => {
-  const assignment: any = data?.assignment;
-  const snap = assignment?.template_snapshot ?? {};
-  const live = assignment?.operational_templates?.ada_config_snapshot ?? {};
+  const assignment: any = data?.assignment ?? {};
+  const snap: any = assignment?.template_snapshot ?? {};
+  const live: any = assignment?.operational_templates?.ada_config_snapshot ?? {};
+  const tpl: any = assignment?.operational_templates ?? {};
   const destinoScore = snap.destino_score ?? live.destino_score ?? assignment?.destino_score;
 
-  if (assignment?.avaliado_id || snap.avaliado_profile_id || live.avaliado_profile_id) {
-    return { tipo: "pessoa", label: "pessoa configurada na rotina" };
-  }
-  if (assignment?.setor_avaliado_id || snap.avaliado_setor_id || live.avaliado_setor_id) {
-    return { tipo: "setor", label: "setor configurado na rotina" };
-  }
+  const pessoaNome = firstString(
+    assignment?.avaliado?.nome,
+    assignment?.profiles_aval?.nome,
+    assignment?.profile_avaliado?.nome,
+    snap?.avaliado_nome,
+    snap?.avaliado?.nome,
+    live?.avaliado_nome,
+    live?.avaliado?.nome,
+    tpl?.avaliado_nome,
+  );
+  const pessoaId =
+    assignment?.avaliado_id ?? snap?.avaliado_profile_id ?? live?.avaliado_profile_id ?? null;
+
+  const setorNome = firstString(
+    assignment?.setor_avaliado?.nome,
+    assignment?.setor_avaliado_nome,
+    snap?.setor_avaliado_nome,
+    snap?.setor_avaliado?.nome,
+    live?.setor_avaliado_nome,
+    live?.setor_avaliado?.nome,
+    tpl?.setor_avaliado_nome,
+  );
+  const setorId =
+    assignment?.setor_avaliado_id ?? snap?.avaliado_setor_id ?? live?.avaliado_setor_id ?? null;
+
+  if (pessoaNome) return { tipo: "pessoa", label: pessoaNome };
+  if (setorNome) return { tipo: "setor", label: setorNome };
+  if (pessoaId) return { tipo: "pessoa", label: "pendente de backend" };
+  if (setorId) return { tipo: "setor", label: "pendente de backend" };
   if (destinoScore) {
-    return { tipo: destinoScore === "setor" ? "setor" : "pessoa", label: String(destinoScore) };
+    return {
+      tipo: destinoScore === "setor" ? "setor" : "pessoa",
+      label: "pendente de backend",
+    };
   }
-  return { tipo: "nao_mapeado", label: "pendente de mapeamento no frontend" };
+  return { tipo: "nao_mapeado", label: "pendente de backend" };
 };
 
 export function useResumoNotas(data: TarefaFluxoData | null, modo: ResumoNotasModo) {
