@@ -128,6 +128,7 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
 
       {data.perguntas.map((p) => {
         const planosAuditorPendentes = p.planosAuditor.filter((x) => !x.respondido);
+        const existePlanoExecutorPendente = p.planosAprovador.some((plano) => !plano.respondido && !plano.deleted_at);
 
         return (
         <FluxoPerguntaHistoricoCard
@@ -198,6 +199,8 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
                       }
                       onEnviar={() => handleResponderPlanoAuditor(ap.id)}
                       isSubmitting={actions.isSubmitting}
+                      disabled={existePlanoExecutorPendente}
+                      disabledReason="Aguardando resposta do executor antes de responder ao auditor."
                     />
                   ))}
                 </div>
@@ -327,6 +330,8 @@ function PlanoAuditorRespostaForm({
   onChangeResposta,
   onEnviar,
   isSubmitting,
+  disabled,
+  disabledReason,
 }: {
   planoId: string;
   assignmentId: string;
@@ -338,6 +343,8 @@ function PlanoAuditorRespostaForm({
   onChangeResposta: (idx: number, patch: any) => void;
   onEnviar: () => void;
   isSubmitting?: boolean;
+  disabled?: boolean;
+  disabledReason?: string;
 }) {
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
   const [progress, setProgress] = useState<Record<string, number>>({});
@@ -409,6 +416,11 @@ function PlanoAuditorRespostaForm({
       <p className="text-[11px] font-semibold text-purple-800">
         Responder ao auditor:
       </p>
+      {disabled && disabledReason && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+          {disabledReason}
+        </div>
+      )}
       {itens.map((item, idx) => {
         const r: any = resposta[String(idx)] ?? {};
         if (item.tipo === "texto") {
@@ -421,6 +433,7 @@ function PlanoAuditorRespostaForm({
               <Textarea
                 value={r.valor_texto ?? ""}
                 onChange={(e) => onChangeResposta(idx, { tipo: item.tipo, valor_texto: e.target.value })}
+                disabled={disabled || isSubmitting}
                 className="text-xs min-h-[44px]"
                 placeholder={`Resposta: ${item.titulo || "..."}`}
               />
@@ -460,7 +473,7 @@ function PlanoAuditorRespostaForm({
                 </p>
               </div>
             ) : (
-              <label className={`flex items-center justify-center gap-2 border border-dashed rounded p-3 cursor-pointer hover:border-purple-500 transition-colors min-h-[48px] ${isUploadingThis ? "opacity-60 pointer-events-none" : ""}`}>
+              <label className={`flex items-center justify-center gap-2 border border-dashed rounded p-3 cursor-pointer hover:border-purple-500 transition-colors min-h-[48px] ${(isUploadingThis || disabled || isSubmitting) ? "opacity-60 pointer-events-none" : ""}`}>
                 {isUploadingThis ? (
                   <div className="flex flex-col items-center gap-1 w-full">
                     <Loader2 className="h-4 w-4 animate-spin text-purple-700" />
@@ -480,7 +493,7 @@ function PlanoAuditorRespostaForm({
                   className="hidden"
                   accept={cfg.accept}
                   capture={cfg.capture}
-                  disabled={isSubmitting}
+                  disabled={disabled || isSubmitting}
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) handleUpload(idx, item, file);
@@ -496,7 +509,7 @@ function PlanoAuditorRespostaForm({
         type="button"
         size="sm"
         onClick={onEnviar}
-        disabled={isSubmitting}
+        disabled={disabled || isSubmitting}
         className="w-full bg-purple-600 hover:bg-purple-700 text-white"
       >
         {isSubmitting ? "Enviando..." : "Enviar resposta ao auditor"}
