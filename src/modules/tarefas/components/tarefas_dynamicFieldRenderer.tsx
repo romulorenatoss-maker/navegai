@@ -475,7 +475,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
             ];
         const isNaSelected = val.valor_texto === "na" && val.valor_booleano == null;
         return (
-          <div className={`grid grid-cols-1 ${opts.length >= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-2 w-full`}>
+          <div className={`grid ${opts.length >= 3 ? "grid-cols-3" : "grid-cols-2"} gap-2 w-full`}>
             {opts.map(opt => {
               const selected = opt.valorTexto === "na"
                 ? isNaSelected
@@ -511,7 +511,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
             ];
         const isNaSelectedSN = val.valor_texto === "na" && val.valor_booleano == null;
         return (
-          <div className={`grid grid-cols-1 ${optsSimNao.length >= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-2 w-full`}>
+          <div className={`grid ${optsSimNao.length >= 3 ? "grid-cols-3" : "grid-cols-2"} gap-2 w-full`}>
             {optsSimNao.map(opt => {
               const selected = opt.valorTexto === "na"
                 ? isNaSelectedSN
