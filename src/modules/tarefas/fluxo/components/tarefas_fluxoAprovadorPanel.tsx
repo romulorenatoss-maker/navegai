@@ -129,6 +129,13 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
       {data.perguntas.map((p) => {
         const planosAuditorPendentes = p.planosAuditor.filter((x) => !x.respondido);
         const existePlanoExecutorPendente = p.planosAprovador.some((plano) => !plano.respondido && !plano.deleted_at);
+        const decisaoPergunta = avaliacao[p.fieldId] ?? null;
+        const bloquearRespostaAuditor = existePlanoExecutorPendente || decisaoPergunta !== "conforme";
+        const motivoBloqueioRespostaAuditor = existePlanoExecutorPendente
+          ? "Aguardando resposta do executor antes de responder ao auditor."
+          : decisaoPergunta === "nao_conforme"
+            ? "Envie o plano de ação ao executor; a resposta ao auditor fica bloqueada até o retorno."
+            : "Marque Conforme para liberar o envio ao auditor ou Não Conforme para criar plano ao executor.";
 
         return (
         <FluxoPerguntaHistoricoCard
@@ -152,7 +159,7 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
                       [p.fieldId]: prev[p.fieldId] ?? defaultPlano(),
                     }));
                   }}
-                  disabled={actions.isSubmitting}
+                  disabled={actions.isSubmitting || existePlanoExecutorPendente}
                   labelNaoConforme={`Não Conforme · criar plano R${(p.planosAprovador.length || 0) + 1}`}
                 />
 
@@ -199,8 +206,8 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
                       }
                       onEnviar={() => handleResponderPlanoAuditor(ap.id)}
                       isSubmitting={actions.isSubmitting}
-                      disabled={existePlanoExecutorPendente}
-                      disabledReason="Aguardando resposta do executor antes de responder ao auditor."
+                      disabled={bloquearRespostaAuditor}
+                      disabledReason={motivoBloqueioRespostaAuditor}
                     />
                   ))}
                 </div>
