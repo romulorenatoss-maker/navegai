@@ -1207,7 +1207,8 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   <span className="text-sm font-medium text-foreground">{f.label}</span>
                   <div className="flex items-center gap-2">
                     {(() => {
-                      const nPlanos = (flow.fieldReviews as any[]).filter((r: any) => r.field_id === f.id && r.devolvido === true && r.criado_por_papel !== "auditor").length;
+                      // 🆕 Conta planos da NOVA tabela (tarefas_planos_acao_aprovador)
+                      const nPlanos = planos.planosAprovadorPorField(f.id).length;
                       if (nPlanos === 0) return null;
                       return <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-400">{nPlanos} plano{nPlanos > 1 ? "s" : ""}</span>;
                     })()}
@@ -1296,19 +1297,18 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   )}
                 </div>
 
-                {/* Histórico de planos de ação R1, R2... */}
+                {/* 🆕 Histórico de planos de ação R1, R2... — agora lê da NOVA tabela
+                    tarefas_planos_acao_aprovador via planos.planosAprovadorPorField. */}
                 {(() => {
-                  const planosDoField = (flow.fieldReviews as any[])
-                    .filter((r: any) => r.field_id === f.id && r.devolvido === true && r.criado_por_papel !== "auditor")
-                    .sort((a: any, b: any) => (a.rodada || 0) - (b.rodada || 0));
+                  const planosDoField = planos.planosAprovadorPorField(f.id)
+                    .slice()
+                    .sort((a, b) => (a.rodada || 0) - (b.rodada || 0));
 
-                  const calcStatus = (r: any) => {
-                    const c = (flow.contingencies as any[]).find((c: any) => c.origin_field_id === f.id && c.rodada === r.rodada);
-                    if (!c) return null;
-                    const prazoMs = c.prazo_resolucao ? new Date(c.prazo_resolucao).getTime() : null;
-                    const resolvidoMs = c.resolvida_em ? new Date(c.resolvida_em).getTime() : null;
+                  const calcStatusFromPlano = (p: typeof planosDoField[number]) => {
+                    if (!p.prazo_resolucao) return null;
+                    const prazoMs = new Date(p.prazo_resolucao).getTime();
+                    const resolvidoMs = p.respondido_em ? new Date(p.respondido_em).getTime() : null;
                     const agora = Date.now();
-                    if (!prazoMs) return null;
                     const ref = resolvidoMs || agora;
                     const diffMin = Math.round((ref - prazoMs) / 60000);
                     const ok = ref <= prazoMs;
@@ -1320,15 +1320,14 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                       : { ok: true, label: `⏳ ${Math.round((prazoMs - agora) / 60000)}min restantes`, corBorda: "#ba7517", corHeader: "#faeeda", corTexto: "#854f0b", bgBadge: "#ef9f27" };
                   };
 
-                  return planosDoField.map((r: any, idx: number) => {
+                  return planosDoField.map((r, idx) => {
                     const isReincidencia = idx > 0;
-                    const st = calcStatus(r);
+                    const st = calcStatusFromPlano(r);
                     const corBorda = st?.corBorda || (isReincidencia ? "#ba7517" : "#e24b4a");
                     const corHeader = st?.corHeader || (isReincidencia ? "#faeeda" : "#fcebeb");
                     const corTexto = st?.corTexto || (isReincidencia ? "#854f0b" : "#a32d2d");
                     const bgBadge = st?.bgBadge || "#f09595";
                     const itens: any[] = Array.isArray(r.itens_plano) ? r.itens_plano : [];
-                    const c = (flow.contingencies as any[]).find((c: any) => c.origin_field_id === f.id && c.rodada === r.rodada);
 
                     return (
                       <div key={r.id || idx} className="flex gap-0">
@@ -1342,18 +1341,18 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                             </div>
                             <div className="flex items-center gap-2">
                               {st && <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: bgBadge, color: corTexto }}>{st.label}</span>}
-                              <span className="text-[10px] text-muted-foreground">{r.avaliado_em ? new Date(r.avaliado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}</span>
+                              <span className="text-[10px] text-muted-foreground">{r.criado_em ? new Date(r.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}</span>
                             </div>
                           </div>
                           {/* Instrução + itens */}
                           <div className="px-3 py-2 border-b border-border space-y-1.5">
-                            {(r.instrucao_aprovador || r.motivo_devolucao) && (
-                              <p className="text-xs text-foreground">{r.instrucao_aprovador || r.motivo_devolucao}</p>
+                            {r.instrucao && (
+                              <p className="text-xs text-foreground">{r.instrucao}</p>
                             )}
                             <div className="flex flex-wrap gap-1.5">
-                              {c?.prazo_resolucao && (
+                              {r.prazo_resolucao && (
                                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400">
-                                  Prazo: {new Date(c.prazo_resolucao).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                                  Prazo: {new Date(r.prazo_resolucao).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                                 </span>
                               )}
                               {itens.map((item: any, i: number) => (
@@ -1363,10 +1362,9 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                               ))}
                             </div>
                           </div>
-                          {/* Resposta do executor ao plano */}
+                          {/* 🆕 Resposta do executor ao plano — vem direto de r.resposta_valor_json (nova tabela) */}
                           {(() => {
-                            const resp = findExecutorPlanResponse(f, r, c, flow);
-                            if (!resp && !(c?.resolvida_em)) {
+                            if (!r.respondido) {
                               return (
                                 <div className="px-3 py-2 bg-muted/10 flex items-center gap-2">
                                   <Clock className="w-3 h-3 text-muted-foreground" />
@@ -1374,69 +1372,37 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                                 </div>
                               );
                             }
-                            if (!resp) {
-                              return (
-                                <div className="px-3 py-2 bg-muted/10 flex items-center gap-2">
-                                  <Clock className="w-3 h-3 text-muted-foreground" />
-                                  <span className="text-xs text-muted-foreground italic">Resposta enviada pelo executor</span>
-                                </div>
-                              );
-                            }
-
-                            // Novo formato: itens do plano por tipo no _itensPlano
-                            if (resp._itensPlano) {
-                              const reviewRound2 = Number(r?.rodada ?? 1);
-                              const chavePrefix = `__plano_acao__r${reviewRound2}__`;
-                              return (
-                                <div className="px-3 py-2 bg-muted/10 border-b border-border space-y-2">
-                                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Resposta do executor — R{r.rodada}</p>
-                                  {itens.map((item: any, iIdx: number) => {
-                                    const chave = `${chavePrefix}${item.tipo}`;
-                                    const itemData = resp._itensPlano[chave];
-                                    if (!itemData) return null;
-                                    return (
-                                      <div key={iIdx} className="space-y-1">
-                                        {item.titulo && <p className="text-[10px] text-amber-800 font-medium">{item.titulo}</p>}
-                                        {(item.tipo === "texto" || item.tipo === "descricao") && itemData.valor_texto && (
-                                          <div className="bg-card border border-border rounded p-2">
-                                            <p className="text-xs">{itemData.valor_texto}</p>
-                                          </div>
-                                        )}
-                                        {(item.tipo === "foto" || item.tipo === "video" || item.tipo === "audio") && itemData.evidencia_url && (
-                                          <EvidenciaPreview
-                                            anexoId={itemData.evidencia_anexo_id ?? null}
-                                            url={itemData.evidencia_url}
-                                            mimeType={itemData.evidencia_mime_type ?? null}
-                                            disabled
-                                          />
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              );
-                            }
-
-                            // Formato legado
-                            const respObs = getObservation(resp);
-                            const respEvid = getEvidence(resp);
-                            const evidUrl = respEvid ? String(respEvid) : "";
+                            const resp = r.resposta_valor_json ?? {};
                             return (
-                              <div className="px-3 py-2 bg-muted/10 border-b border-border space-y-1.5">
+                              <div className="px-3 py-2 bg-muted/10 border-b border-border space-y-2">
                                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Resposta do executor — R{r.rodada}</p>
-                                {respObs && <p className="text-xs">{respObs}</p>}
-                                {evidUrl && (
-                                  <EvidenciaPreview
-                                    anexoId={null}
-                                    url={evidUrl}
-                                    mimeType={null}
-                                    disabled
-                                  />
-                                )}
-                                {resp.respondido_por_nome && (
+                                {itens.map((item: any, iIdx: number) => {
+                                  // Estrutura nova: { [idx]: {tipo, ...} } ou fallback legado { [tipo]: ... }
+                                  const dado: any = resp[String(iIdx)] ?? resp[item.tipo];
+                                  if (!dado) return <p key={iIdx} className="text-[11px] italic text-muted-foreground">Sem resposta para #{iIdx + 1} {item.titulo || item.tipo}</p>;
+                                  return (
+                                    <div key={iIdx} className="space-y-1">
+                                      {item.titulo && <p className="text-[10px] text-amber-800 font-medium">#{iIdx + 1} {item.titulo}</p>}
+                                      {(item.tipo === "texto" || item.tipo === "descricao") && dado.valor_texto && (
+                                        <div className="bg-card border border-border rounded p-2">
+                                          <p className="text-xs">{dado.valor_texto}</p>
+                                        </div>
+                                      )}
+                                      {(item.tipo === "foto" || item.tipo === "video" || item.tipo === "audio") && dado.evidencia_url && (
+                                        <EvidenciaPreview
+                                          anexoId={dado.evidencia_anexo_id ?? null}
+                                          url={dado.evidencia_url}
+                                          mimeType={dado.evidencia_mime_type ?? null}
+                                          disabled
+                                        />
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                                {r.respondido_em && (
                                   <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
-                                    {resp.respondido_por_nome} · {resp.respondido_em ? new Date(resp.respondido_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}
+                                    Respondido em {new Date(r.respondido_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                                     {st?.ok === false && <span className="ml-1 text-red-600 font-semibold">· Atrasado</span>}
                                   </p>
                                 )}
@@ -1550,7 +1516,8 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                 })()}
 
                 {/* Sem planos ainda — botões normais do aprovador + plano de ação inline */}
-                {(flow.fieldReviews as any[]).filter((r: any) => r.field_id === f.id && r.devolvido === true && r.criado_por_papel !== "auditor").length === 0 && (perms.canApproverDecideField(f.id)) && (
+                {/* 🆕 Botões iniciais (1ª avaliação) só aparecem se NÃO há plano novo criado */}
+                {planos.planosAprovadorPorField(f.id).length === 0 && (perms.canApproverDecideField(f.id)) && (
                   <div className="px-3 py-2.5 space-y-2 border-t border-border">
                     <div className="flex gap-2">
                       {getReviewOptions(f, "aprovador").map((opt) => (
