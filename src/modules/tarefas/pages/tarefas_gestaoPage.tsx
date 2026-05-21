@@ -12,9 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { STATUS_CONFIG, CONTINGENCY_STATUS, AUDIT_EVENT_LABELS } from "@/modules/tarefas/hooks/tarefas_useScoring";
 import { BarChart3, AlertTriangle, CheckCircle2, Clock, Users, Shield, RotateCcw, History, ThumbsUp, ThumbsDown, Pencil } from "lucide-react";
-import { useApprovalFlow } from "@/modules/tarefas/hooks/tarefas_useApprovalFlow";
 import { useContingencyManagement } from "@/modules/tarefas/hooks/tarefas_useContingencyManagement";
 import { useOperationalTransition } from "@/modules/tarefas/hooks/tarefas_useTransition";
+import { useAprovadorActions } from "@/modules/tarefas/fluxo/hooks/tarefas_useAprovadorActions";
 
 export default function OperationalGestaoPage() {
   const { profile } = useAuth();
@@ -94,9 +94,8 @@ export default function OperationalGestaoPage() {
     },
   });
 
-  // Use official approval flow for selected assignment
   const [approvalAssignmentId, setApprovalAssignmentId] = useState<string | null>(null);
-  const approvalFlow = useApprovalFlow(approvalAssignmentId);
+  const approvalActions = useAprovadorActions(approvalDialog.assignment?.id ?? approvalAssignmentId);
 
   // Use official contingency management
   const contingencyMgmt = useContingencyManagement();
@@ -529,26 +528,42 @@ export default function OperationalGestaoPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setApprovalDialog({ open: false, assignment: null, action: "aprovar" })}>Cancelar</Button>
             <Button
-              disabled={approvalFlow.finalDecision.isPending || (approvalDialog.action === "reprovar" && !motivo.trim())}
+              disabled={approvalActions.isSubmitting || centralTransition.isPending || (approvalDialog.action === "reprovar" && !motivo.trim())}
               onClick={() => {
-                setApprovalAssignmentId(approvalDialog.assignment?.id);
-                approvalFlow.finalDecision.mutate({
-                  assignment: approvalDialog.assignment,
-                  action: approvalDialog.action === "aprovar" ? "aprovar" : "reprovar_devolver",
-                  motivo: motivo || undefined,
-                }, {
-                  onSuccess: () => {
-                    qc.invalidateQueries({ queryKey: ["operational_gestao_assignments"] });
-                    toast.success(approvalDialog.action === "aprovar" ? "Rotina aprovada!" : "Rotina reprovada!");
-                    setApprovalDialog({ open: false, assignment: null, action: "aprovar" });
-                    setMotivo("");
-                    setApprovalAssignmentId(null);
+                const assignmentId = approvalDialog.assignment?.id;
+                if (!assignmentId) return;
+                setApprovalAssignmentId(assignmentId);
+                const onSuccess = () => {
+                  qc.invalidateQueries({ queryKey: ["operational_gestao_assignments"] });
+                  toast.success(approvalDialog.action === "aprovar" ? "Rotina aprovada!" : "Rotina reprovada!");
+                  setApprovalDialog({ open: false, assignment: null, action: "aprovar" });
+                  setMotivo("");
+                  setApprovalAssignmentId(null);
+                };
+                if (approvalDialog.action === "aprovar") {
+                  approvalActions.aprovarParaAuditoria.mutate(
+                    { assignmentId, notas: { origem: "gestao" } },
+                    { onSuccess },
+                  );
+                  return;
+                }
+                centralTransition.mutate(
+                  {
+                    assignmentId,
+                    action: "reprovar_devolver_final",
+                    motivo: motivo || undefined,
+                    origem: "gestao_aprovacao_final",
+                    extraData: {
+                      aprovadorId: profile?.id,
+                      rodadaAtual: approvalDialog.assignment?.rodada_atual,
+                    },
                   },
-                });
+                  { onSuccess },
+                );
               }}
               className={approvalDialog.action === "aprovar" ? "" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}
             >
-              {approvalFlow.finalDecision.isPending ? "Processando..." : approvalDialog.action === "aprovar" ? "Confirmar Aprovação" : "Confirmar Reprovação"}
+              {approvalActions.isSubmitting || centralTransition.isPending ? "Processando..." : approvalDialog.action === "aprovar" ? "Confirmar Aprovacao" : "Confirmar Reprovacao"}
             </Button>
           </DialogFooter>
         </DialogContent>

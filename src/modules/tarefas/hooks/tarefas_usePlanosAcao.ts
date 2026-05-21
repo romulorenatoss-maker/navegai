@@ -16,7 +16,7 @@
  *
  * Coexistência com legacy:
  *   operational_field_reviews continua sendo lida por hooks antigos
- *   (useApprovalFlow / useAuditFlow). Este hook só toca nas tabelas novas.
+ *   fluxos antigos de aprovacao/auditoria. Este hook só toca nas tabelas novas.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";

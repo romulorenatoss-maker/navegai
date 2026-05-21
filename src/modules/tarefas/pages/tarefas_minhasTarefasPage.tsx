@@ -1,4 +1,4 @@
-// build: 2026-05-20 — isAprovadorView/isAuditorView + useFlowPermissions
+// build: 2026-05-21 — drawer oficial via src/modules/tarefas/fluxo
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,8 +9,7 @@ import { toast } from "sonner";
 import { Play, Send, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter, History, Plus, Users, Activity, ArrowDownUp, Eye } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { EmbeddedContingencyPanel } from "@/modules/tarefas/components/tarefas_embeddedContingencyPanel";
-// 🆕 Painéis novos do fluxo (FASE 5 do rebuild — substituem
-// EmbeddedApprovalPanel e EmbeddedAuditPanel legados):
+// Painéis oficiais do fluxo executor/aprovador/auditor:
 import { FluxoExecutorPanel } from "@/modules/tarefas/fluxo/components/tarefas_fluxoExecutorPanel";
 import { FluxoAprovadorPanel } from "@/modules/tarefas/fluxo/components/tarefas_fluxoAprovadorPanel";
 import { FluxoAuditorPanel } from "@/modules/tarefas/fluxo/components/tarefas_fluxoAuditorPanel";

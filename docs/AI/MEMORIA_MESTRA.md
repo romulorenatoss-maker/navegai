@@ -56,6 +56,8 @@ Definidas em `src/App.tsx`:
 - `/tarefas/minhas` deve renderizar o fluxo principal apenas via `src/modules/tarefas/fluxo`.
 - Drawer oficial: executor usa `FluxoExecutorPanel`, aprovador usa `FluxoAprovadorPanel`, auditor usa `FluxoAuditorPanel`.
 - `tarefas_minhasTarefasPage.tsx` nao deve voltar a usar diretamente `useAssignmentExecution`, `usePlanosAcao`, `DrawerActionRouter`, `DynamicFieldRenderer`, `ExecutorPlanoAprovadorCard` ou `EmbeddedReviewPanel` para executor/aprovador/auditor.
+- Hooks/painel legados removidos do source em 2026-05-21: `tarefas_useFlowPermissions`, `tarefas_useApprovalFlow`, `tarefas_useAuditFlow`, `tarefas_useAssignmentReview`, `tarefas_embeddedActionPanels`, `tarefas_reviewFieldCard`.
+- `tarefas_gestaoPage.tsx` nao usa mais `useApprovalFlow`; aprovacao rapida usa `useAprovadorActions.aprovarParaAuditoria`.
 - R0 do executor vive em `operational_field_answers` e nao pode sofrer overwrite depois do envio inicial.
 - Devolucoes usam RPCs de plano, nao reenvio de R0.
 

@@ -7,7 +7,7 @@
  * tipo são suportados — cada um carrega sua própria descrição/título.
  *
  * Substitui os 6 blocos JSX duplicados que existiam em
- * tarefas_embeddedActionPanels.tsx (linhas 1487, 1615, 2060, 2190, 2329, 2562).
+ * Usado pelos paineis oficiais para montar itens de plano de acao.
  *
  * Doc:
  *   src/modules/tarefas/docs/tarefas_arquitetura_planos_acao.md
