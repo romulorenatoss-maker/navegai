@@ -2,6 +2,17 @@ import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { TAREFAS_LEGACY_PERMISSION_PATH_MAP } from "@/modules/tarefas/permissions/tarefas_permissions";
+
+const PUBLIC_FALLBACK = "/avaliacoes/minhas";
+
+function resolveFallback(allowedScreens: string[], currentPath: string) {
+  const normalized = allowedScreens
+    .map((path) => TAREFAS_LEGACY_PERMISSION_PATH_MAP[path] ?? path)
+    .filter((path) => path && path !== currentPath && !path.includes("/:"));
+
+  return normalized[0] ?? PUBLIC_FALLBACK;
+}
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading, isAdmin, canViewPath, allowedScreens } = useAuth();
@@ -61,7 +72,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isEvalMode && !isOpenForAll && !canViewPath(currentPath)) {
     // Redirect to the user's first allowed screen, falling back to /avaliacoes/minhas.
     // Avoids an infinite redirect loop when the user has no permission for the fallback.
-    const fallback = allowedScreens.find((p) => p && p !== currentPath) ?? "/avaliacoes/minhas";
+    const fallback = resolveFallback(allowedScreens, currentPath);
     if (fallback === currentPath) {
       return (
         <div className="min-h-screen bg-background flex items-center justify-center px-4">

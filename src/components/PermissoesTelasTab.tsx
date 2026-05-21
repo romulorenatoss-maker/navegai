@@ -150,7 +150,9 @@ export default function PermissoesTelasTab({ profileId, isAdminProfile }: Props)
                       onCheckedChange={() => toggle(screen.path)}
                     />
                     <span className="text-body text-foreground">{screen.label}</span>
-                    <span className="text-caption text-muted-foreground ml-auto font-mono">{screen.path}</span>
+                    <span className="text-caption text-muted-foreground ml-auto font-mono text-right">
+                      {screen.permissionKey ? `${screen.permissionKey} · ${screen.path}` : screen.path}
+                    </span>
                   </label>
                 ))}
               </div>

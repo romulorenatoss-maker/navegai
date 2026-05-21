@@ -1,3 +1,5 @@
+import { TAREFAS_SCREEN_PERMISSIONS } from "@/modules/tarefas/permissions/tarefas_permissions";
+
 // Central registry of all screens in the system
 // Used by: sidebar filtering, permissions management in Colaboradores
 
@@ -5,6 +7,7 @@ export interface ScreenDef {
   path: string;
   label: string;
   group: string;
+  permissionKey?: string;
 }
 
 export const ALL_SCREENS: ScreenDef[] = [
@@ -31,17 +34,12 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/leads/gerenciamento", label: "Gerenciamento de Leads", group: "Leads" },
   { path: "/leads/campanhas", label: "Campanhas", group: "Leads" },
   // Tarefas
-  { path: "/tarefas", label: "Tarefas", group: "Tarefas" },
-  { path: "/tarefas/dashboard", label: "Dashboard", group: "Tarefas" },
-  { path: "/tarefas/lista", label: "Lista", group: "Tarefas" },
-  { path: "/tarefas/detalhes/:id", label: "Detalhes", group: "Tarefas" },
-  { path: "/tarefas/rotinas", label: "Rotinas", group: "Tarefas" },
-  { path: "/tarefas/agendamentos", label: "Agenda", group: "Tarefas" },
-  { path: "/tarefas/execucao", label: "Execução", group: "Tarefas" },
-  { path: "/tarefas/historico", label: "Histórico", group: "Tarefas" },
-  { path: "/tarefas/configuracoes", label: "Configurações", group: "Tarefas" },
-  { path: "/tarefas/desempenho", label: "Desempenho", group: "Tarefas" },
-  { path: "/tarefas/relatorios", label: "Relatórios", group: "Tarefas" },
+  ...TAREFAS_SCREEN_PERMISSIONS.map((screen) => ({
+    path: screen.path,
+    label: screen.label,
+    group: "Tarefas",
+    permissionKey: screen.permissionKey,
+  })),
   // Cadastros
   { path: "/cadastros/setores", label: "Setores", group: "Cadastros" },
   { path: "/cadastros/servicos", label: "Tipos de Serviço", group: "Cadastros" },

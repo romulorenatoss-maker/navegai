@@ -2,6 +2,11 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback 
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, Enums } from "@/integrations/supabase/types";
+import { ALL_SCREENS } from "@/lib/screen-permissions";
+import {
+  TAREFAS_LEGACY_PERMISSION_PATH_MAP,
+  TAREFAS_ROUTE_PERMISSION_FALLBACKS,
+} from "@/modules/tarefas/permissions/tarefas_permissions";
 
 type Profile = Tables<"profiles">;
 type AppRole = Enums<"app_role">;
@@ -23,8 +28,18 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function routePatternMatches(pattern: string, path: string) {
+  if (pattern === path) return true;
+  const patternParts = pattern.split("/").filter(Boolean);
+  const pathParts = path.split("/").filter(Boolean);
+  if (patternParts.length !== pathParts.length) return false;
+  return patternParts.every((part, index) => part.startsWith(":") || part === pathParts[index]);
+}
+
 function normalizeAllowedScreens(paths: string[]) {
-  return Array.from(new Set(paths));
+  const normalized = Array.from(new Set(paths.map((path) => TAREFAS_LEGACY_PERMISSION_PATH_MAP[path] ?? path)));
+  const order = new Map(ALL_SCREENS.map((screen, index) => [screen.path, index]));
+  return normalized.sort((a, b) => (order.get(a) ?? 9999) - (order.get(b) ?? 9999));
 }
 
 function AuthProviderInner({ children }: { children: ReactNode }) {
@@ -46,7 +61,12 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
 
   const canViewPath = useCallback((path: string): boolean => {
     if (isAdmin) return true;
-    return allowedScreens.includes(path);
+    return allowedScreens.some((allowedPath) => {
+      if (routePatternMatches(allowedPath, path)) return true;
+      return Object.entries(TAREFAS_ROUTE_PERMISSION_FALLBACKS).some(([routePattern, fallbackPaths]) =>
+        routePatternMatches(routePattern, path) && fallbackPaths.includes(allowedPath)
+      );
+    });
   }, [isAdmin, allowedScreens]);
 
   const fetchProfileAndRoles = useCallback(async (userId: string) => {
