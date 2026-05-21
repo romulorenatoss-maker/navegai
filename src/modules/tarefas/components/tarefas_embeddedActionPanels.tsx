@@ -28,6 +28,7 @@ import { EvidenciaPreview } from "@/modules/tarefas/components/tarefas_dynamicFi
 import { SnapshotField, evaluateVisibility } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import { calculateOperationalScore } from "@/modules/tarefas/hooks/tarefas_useScoring";
 import { usePlanosAcao } from "@/modules/tarefas/hooks/tarefas_usePlanosAcao";
+import { ItensPlanoBuilder, type ItemPlano } from "@/modules/tarefas/components/tarefas_itensPlanoBuilder";
 
 /* =========================================================================
  * Helpers defensivos de leitura (somente UI) — não alteram dados.
@@ -323,7 +324,7 @@ type ReviewRule = {
   permite_devolucao?: boolean;
 };
 
-type ItemPlano = { tipo: "foto" | "video" | "audio" | "texto"; titulo: string; obrigatorio: boolean };
+// ItemPlano agora vem de tarefas_itensPlanoBuilder (1 verdade — Regra 0.7)
 
 type PlanoDraft = {
   descricao_acao: string;
@@ -1466,12 +1467,6 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                           {idx === planosDoField.length - 1 && (perms.canApproverDecideField(f.id)) && expandirNovoPlano[f.id] && (() => {
                             const p = planos[f.id] || { descricao_acao: "", prazo: computeDefaultPrazo(), prazo_padrao: computeDefaultPrazo(), justificativa_alteracao_prazo: "", criticidade: "media" as const, tipo_evidencia_exigida: "descricao" as const, itens_plano: [] as ItemPlano[], anexo_orientacao_url: null as string | null, anexo_orientacao_anexo_id: null as string | null, anexo_orientacao_mime_type: null as string | null };
                             const updateP = (patch: any) => setPlanos(prev => { const cur = prev[f.id] ?? p; return { ...prev, [f.id]: { ...cur, ...patch } }; });
-                            const ITENS_R2 = [
-                              { tipo: "foto", label: "Foto", ph: "O que fotografar?" },
-                              { tipo: "video", label: "Video", ph: "O que filmar?" },
-                              { tipo: "audio", label: "Audio", ph: "O que gravar?" },
-                              { tipo: "texto", label: "Texto", ph: "O que descrever?" },
-                            ];
                             return (
                               <div className="border border-amber-300 dark:border-amber-800 rounded-lg overflow-hidden mx-3 my-2">
                                 <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200">
@@ -1483,35 +1478,12 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                                     <Label className="text-[11px]">Instrucao geral (opcional)</Label>
                                     <Textarea value={p.descricao_acao} onChange={e => updateP({ descricao_acao: e.target.value })} className="text-xs min-h-[44px]" placeholder="Descreva o que precisa ser corrigido..." />
                                   </div>
-                                  <div className="space-y-1">
-                                    <Label className="text-[11px]">O que quero de volta (marque ao menos 1)</Label>
-                                    <div className="flex flex-col gap-1.5">
-                                      {ITENS_R2.map(cfg => {
-                                        const ativo = p.itens_plano.find((i: any) => i.tipo === cfg.tipo);
-                                        return (
-                                          <div key={cfg.tipo} className={`border rounded-lg overflow-hidden ${ativo ? "border-primary" : "border-border"}`}>
-                                            <button type="button" onClick={() => {
-                                              const existe = p.itens_plano.find((i: any) => i.tipo === cfg.tipo);
-                                              updateP({ itens_plano: existe ? p.itens_plano.filter((i: any) => i.tipo !== cfg.tipo) : [...p.itens_plano, { tipo: cfg.tipo, titulo: "", obrigatorio: true }] });
-                                            }} className={`w-full flex items-center gap-2 px-3 py-2 ${ativo ? "bg-primary/10" : "hover:bg-muted/50"}`}>
-                                              <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${ativo ? "bg-primary border-primary" : "border-border"}`}>
-                                                {ativo && <span className="text-primary-foreground text-[10px] font-bold">v</span>}
-                                              </div>
-                                              <span className="text-xs font-medium">{cfg.label}</span>
-                                            </button>
-                                            {ativo && (
-                                              <div className="px-3 pb-2 pt-1 border-t border-border bg-muted/10">
-                                                <Input value={ativo.titulo} onChange={e => {
-                                                  const novoTitulo = e.target.value;
-                                                  setPlanos(prev => { const cur = prev[f.id] ?? p; return { ...prev, [f.id]: { ...cur, itens_plano: cur.itens_plano.map((i: any) => i.tipo === cfg.tipo ? { ...i, titulo: novoTitulo } : i) } }; });
-                                                }} placeholder={cfg.ph} className="h-7 text-xs" />
-                                              </div>
-                                            )}
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
+                                  <ItensPlanoBuilder
+                                    itens={p.itens_plano}
+                                    onChange={(novos) => updateP({ itens_plano: novos })}
+                                    compact
+                                    accentColor="amber"
+                                  />
                                   <div className="space-y-1">
                                     <Label className="text-[11px]">Prazo ({prazoPadraoHoras}h padrao)</Label>
                                     <Input type="datetime-local" className="h-8 text-xs" value={p.prazo} onChange={e => updateP({ prazo: e.target.value })} />
@@ -1557,8 +1529,9 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                         {ap.instrucao && <p className="text-[11px] text-muted-foreground">{ap.instrucao}</p>}
                         {itens.length === 0 && <p className="text-[11px] italic text-muted-foreground">—</p>}
                         {itens.map((item, iIdx) => {
-                          const dado: any = resp[item.tipo];
-                          if (!dado) return <p key={iIdx} className="text-[11px] italic text-muted-foreground">Sem resposta para {item.titulo || item.tipo}</p>;
+                          // 🆕 Lê por índice (suporta múltiplos do mesmo tipo)
+                          const dado: any = resp[String(iIdx)] ?? resp[item.tipo];
+                          if (!dado) return <p key={iIdx} className="text-[11px] italic text-muted-foreground">Sem resposta para #{iIdx + 1} {item.titulo || item.tipo}</p>;
                           return (
                             <div key={iIdx} className="space-y-1">
                               {item.titulo && <p className="text-[10px] text-amber-800 font-medium">{item.titulo}</p>}
@@ -1594,12 +1567,6 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                         const cur = prev[f.id] ?? p;
                         return { ...prev, [f.id]: { ...cur, ...patch } };
                       });
-                      const ITENS = [
-                        { tipo: "foto", icon: "📷", label: "Foto", ph: "O que fotografar?" },
-                        { tipo: "video", icon: "🎥", label: "Vídeo", ph: "O que filmar?" },
-                        { tipo: "audio", icon: "🎵", label: "Áudio", ph: "O que gravar?" },
-                        { tipo: "texto", icon: "✏️", label: "Texto", ph: "O que descrever?" },
-                      ];
                       return (
                         <div className="border border-amber-300 dark:border-amber-800 rounded-lg overflow-hidden">
                           <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200">
@@ -1611,39 +1578,12 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                               <Label className="text-[11px]">Instrução geral (opcional)</Label>
                               <Textarea value={p.descricao_acao} onChange={e => updateP({ descricao_acao: e.target.value })} className="text-xs min-h-[44px]" placeholder="Descreva o que precisa ser corrigido..." />
                             </div>
-                            <div className="space-y-1">
-                              <Label className="text-[11px]">O que quero de volta <span className="text-muted-foreground">(marque ao menos 1)</span></Label>
-                              <div className="flex flex-col gap-1.5">
-                                {ITENS.map(cfg => {
-                                  const ativo = p.itens_plano.find((i: any) => i.tipo === cfg.tipo);
-                                  return (
-                                    <div key={cfg.tipo} className={`border rounded-lg overflow-hidden ${ativo ? "border-primary" : "border-border"}`}>
-                                      <button type="button" onClick={() => {
-                                        const existe = p.itens_plano.find((i: any) => i.tipo === cfg.tipo);
-                                        updateP({ itens_plano: existe ? p.itens_plano.filter((i: any) => i.tipo !== cfg.tipo) : [...p.itens_plano, { tipo: cfg.tipo, titulo: "", obrigatorio: true }] });
-                                      }} className={`w-full flex items-center gap-2 px-3 py-2 ${ativo ? "bg-primary/10" : "hover:bg-muted/50"}`}>
-                                        <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${ativo ? "bg-primary border-primary" : "border-border"}`}>
-                                          {ativo && <span className="text-primary-foreground text-[10px] font-bold">✓</span>}
-                                        </div>
-                                        <span className="text-sm">{cfg.icon}</span>
-                                        <span className="text-xs font-medium">{cfg.label}</span>
-                                      </button>
-                                      {ativo && (
-                                        <div className="px-3 pb-2 pt-1 border-t border-border bg-muted/10">
-                                          <Input value={ativo.titulo} onChange={e => {
-                                            const novoTitulo = e.target.value;
-                                            setPlanos(prev => {
-                                              const cur = prev[f.id] ?? p;
-                                              return { ...prev, [f.id]: { ...cur, itens_plano: cur.itens_plano.map((i: any) => i.tipo === cfg.tipo ? { ...i, titulo: novoTitulo } : i) } };
-                                            });
-                                          }} placeholder={cfg.ph} className="h-7 text-xs" />
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
+                            <ItensPlanoBuilder
+                              itens={p.itens_plano}
+                              onChange={(novos) => updateP({ itens_plano: novos })}
+                              compact
+                              accentColor="amber"
+                            />
                             <div className="space-y-1">
                               <Label className="text-[11px]">Prazo ({prazoPadraoHoras}h padrão)</Label>
                               <Input type="datetime-local" className="h-8 text-xs" value={p.prazo} onChange={e => updateP({ prazo: e.target.value })} />
@@ -1991,7 +1931,7 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
   };
 
   const computePrazoAud = () => { const d = new Date(Date.now()+24*3600*1000); const p=(n:number)=>n.toString().padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
-  const ITENS_AUDIT = [{tipo:"foto",label:"Foto"},{tipo:"video",label:"Video"},{tipo:"audio",label:"Audio"},{tipo:"texto",label:"Texto"}];
+  // 🆕 ITENS_AUDIT removido — agora ItensPlanoBuilder centraliza a lista de tipos (Regra 0.7)
   const camposDisponiveis = fields.filter((f:any) => (flow.fieldAnswers as any[]).find((a:any) => a.field_id === f.id));
   const step2 = Object.keys(planosAuditorModal).length > 0;
 
@@ -2056,28 +1996,12 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
                       <Label className="text-[11px]">Instrucao geral (opcional)</Label>
                       <Textarea value={pl.instrucao} onChange={e=>updatePl({instrucao:e.target.value})} rows={2} className="text-xs mt-1 min-h-[44px]" placeholder="O que o aprovador deve corrigir..." />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[11px]">O que quero de volta (marque ao menos 1)</Label>
-                      {ITENS_AUDIT.map(cfg => {
-                        const ativo = pl.itens.find((i:any)=>i.tipo===cfg.tipo);
-                        return (
-                          <div key={cfg.tipo} className={`border rounded-lg overflow-hidden ${ativo?"border-purple-400":"border-border"}`}>
-                            <button type="button" onClick={()=>{const existe=pl.itens.find((i:any)=>i.tipo===cfg.tipo);updatePl({itens:existe?pl.itens.filter((i:any)=>i.tipo!==cfg.tipo):[...pl.itens,{tipo:cfg.tipo,titulo:"",obrigatorio:true}]});}}
-                              className={`w-full flex items-center gap-2 px-3 py-2.5 text-left ${ativo?"bg-purple-50 dark:bg-purple-950/20":"hover:bg-muted/50"}`}>
-                              <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${ativo?"bg-purple-600 border-purple-600":"border-border"}`}>
-                                {ativo && <span className="text-white text-[10px] font-bold">v</span>}
-                              </div>
-                              <span className="text-xs font-medium">{cfg.label}</span>
-                            </button>
-                            {ativo && (
-                              <div className="px-3 pb-2 pt-1 border-t border-border bg-muted/10">
-                                <Input value={ativo.titulo} onChange={e=>{const t=e.target.value;updatePl({itens:pl.itens.map((i:any)=>i.tipo===cfg.tipo?{...i,titulo:t}:i)});}} placeholder={`Instrucao para ${cfg.label}...`} className="h-8 text-xs" />
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <ItensPlanoBuilder
+                      itens={pl.itens as ItemPlano[]}
+                      onChange={(novos) => updatePl({ itens: novos })}
+                      compact
+                      accentColor="purple"
+                    />
                     <div>
                       <Label className="text-[11px]">Prazo</Label>
                       <Input type="datetime-local" value={pl.prazo} onChange={e=>updatePl({prazo:e.target.value})} className="h-9 text-xs mt-1" />
@@ -2159,12 +2083,6 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
                 {auto.tiraPonto && !r.na && (() => {
                   const planoAberto = expandirPlanoAuditor[key];
                   const pl = planosAuditor[key] ?? { instrucao: "", itens: [], prazo: computePrazoAuditor() };
-                  const ITENS_AUDIT = [
-                    { tipo: "foto", label: "Foto" },
-                    { tipo: "video", label: "Video" },
-                    { tipo: "audio", label: "Audio" },
-                    { tipo: "texto", label: "Texto" },
-                  ];
                   return (
                     <div className="mt-1">
                       {!planoAberto ? (
@@ -2186,38 +2104,12 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
                                 onChange={e => setPlanosAuditor(prev => ({ ...prev, [key]: { ...(prev[key] ?? pl), instrucao: e.target.value } }))}
                                 className="text-xs min-h-[44px]" placeholder="O que o aprovador deve corrigir..." />
                             </div>
-                            <div>
-                              <Label className="text-[11px]">O que quero de volta (marque ao menos 1)</Label>
-                              <div className="flex flex-col gap-1.5 mt-1">
-                                {ITENS_AUDIT.map(cfg => {
-                                  const ativo = pl.itens.find(i => i.tipo === cfg.tipo);
-                                  return (
-                                    <div key={cfg.tipo} className={`border rounded-lg overflow-hidden ${ativo ? "border-primary" : "border-border"}`}>
-                                      <button type="button" onClick={() => {
-                                        const existe = pl.itens.find(i => i.tipo === cfg.tipo);
-                                        const novosItens = existe ? pl.itens.filter(i => i.tipo !== cfg.tipo) : [...pl.itens, { tipo: cfg.tipo, titulo: "", obrigatorio: true }];
-                                        setPlanosAuditor(prev => ({ ...prev, [key]: { ...(prev[key] ?? pl), itens: novosItens } }));
-                                      }} className={`w-full flex items-center gap-2 px-3 py-2 ${ativo ? "bg-primary/10" : "hover:bg-muted/50"}`}>
-                                        <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${ativo ? "bg-primary border-primary" : "border-border"}`}>
-                                          {ativo && <span className="text-primary-foreground text-[10px] font-bold">v</span>}
-                                        </div>
-                                        <span className="text-xs font-medium">{cfg.label}</span>
-                                      </button>
-                                      {ativo && (
-                                        <div className="px-3 pb-2 pt-1 border-t border-border bg-muted/10">
-                                          <Input value={ativo.titulo}
-                                            onChange={e => {
-                                              const t = e.target.value;
-                                              setPlanosAuditor(prev => { const cur = prev[key] ?? pl; return { ...prev, [key]: { ...cur, itens: cur.itens.map(i => i.tipo === cfg.tipo ? { ...i, titulo: t } : i) } }; });
-                                            }}
-                                            placeholder={`Instrucao para ${cfg.tipo}...`} className="h-7 text-xs" />
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
+                            <ItensPlanoBuilder
+                              itens={pl.itens as ItemPlano[]}
+                              onChange={(novos) => setPlanosAuditor(prev => ({ ...prev, [key]: { ...(prev[key] ?? pl), itens: novos } }))}
+                              compact
+                              accentColor="amber"
+                            />
                             <div>
                               <Label className="text-[11px]">Prazo</Label>
                               <Input type="datetime-local" value={pl.prazo}
@@ -2288,8 +2180,9 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
                       <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Resposta do aprovador</p>
                       {itens.length === 0 && <p className="text-[11px] text-muted-foreground italic">Sem itens no plano</p>}
                       {itens.map((item: any, iIdx: number) => {
-                        const dado: any = resp[item.tipo];
-                        if (!dado) return <p key={iIdx} className="text-[11px] text-muted-foreground italic">Sem resposta para {item.titulo || item.tipo}</p>;
+                        // 🆕 Lê por índice (suporta múltiplos do mesmo tipo)
+                        const dado: any = resp[String(iIdx)] ?? resp[item.tipo];
+                        if (!dado) return <p key={iIdx} className="text-[11px] text-muted-foreground italic">Sem resposta para #{iIdx + 1} {item.titulo || item.tipo}</p>;
                         return (
                           <div key={iIdx} className="space-y-1">
                             {item.titulo && <p className="text-[10px] text-purple-800 font-medium">{item.titulo}</p>}
@@ -2325,28 +2218,12 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
                               <Label className="text-[11px]">Instrução geral (opcional)</Label>
                               <Textarea value={plR2.instrucao} onChange={e => updateR2({ instrucao: e.target.value })} rows={2} className="text-xs mt-1 min-h-[44px]" placeholder="O que o aprovador deve corrigir..." />
                             </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-[11px]">O que quero de volta (marque ao menos 1)</Label>
-                              {ITENS_AUDIT.map((cfg: any) => {
-                                const ativo = plR2.itens.find((i: any) => i.tipo === cfg.tipo);
-                                return (
-                                  <div key={cfg.tipo} className={`border rounded-lg overflow-hidden ${ativo ? "border-purple-400" : "border-border"}`}>
-                                    <button type="button" onClick={() => { const existe = plR2.itens.find((i: any) => i.tipo === cfg.tipo); updateR2({ itens: existe ? plR2.itens.filter((i: any) => i.tipo !== cfg.tipo) : [...plR2.itens, { tipo: cfg.tipo, titulo: "", obrigatorio: true }] }); }}
-                                      className={`w-full flex items-center gap-2 px-3 py-2.5 text-left ${ativo ? "bg-purple-50 dark:bg-purple-950/20" : "hover:bg-muted/50"}`}>
-                                      <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${ativo ? "bg-purple-600 border-purple-600" : "border-border"}`}>
-                                        {ativo && <span className="text-white text-[10px] font-bold">v</span>}
-                                      </div>
-                                      <span className="text-xs font-medium">{cfg.label}</span>
-                                    </button>
-                                    {ativo && (
-                                      <div className="px-3 pb-2 pt-1 border-t border-border bg-muted/10">
-                                        <Input value={(ativo as any).titulo} onChange={e => { const t = e.target.value; updateR2({ itens: plR2.itens.map((i: any) => i.tipo === cfg.tipo ? { ...i, titulo: t } : i) }); }} placeholder={`Instrução para ${cfg.tipo}...`} className="h-7 text-xs" />
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
+                            <ItensPlanoBuilder
+                              itens={plR2.itens as ItemPlano[]}
+                              onChange={(novos) => updateR2({ itens: novos })}
+                              compact
+                              accentColor="purple"
+                            />
                             <div>
                               <Label className="text-[11px]">Prazo</Label>
                               <Input type="datetime-local" value={plR2.prazo} onChange={e => updateR2({ prazo: e.target.value })} className="h-8 text-xs mt-1" />
@@ -2519,8 +2396,9 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
                   <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Resposta do aprovador</p>
                   {itens.length === 0 && <p className="text-[11px] text-muted-foreground italic">Sem itens no plano</p>}
                   {itens.map((item: any, iIdx: number) => {
-                    const dado: any = resp[item.tipo];
-                    if (!dado) return <p key={iIdx} className="text-[11px] text-muted-foreground italic">Sem resposta para {item.titulo || item.tipo}</p>;
+                    // 🆕 Lê por índice (suporta múltiplos do mesmo tipo)
+                    const dado: any = resp[String(iIdx)] ?? resp[item.tipo];
+                    if (!dado) return <p key={iIdx} className="text-[11px] text-muted-foreground italic">Sem resposta para #{iIdx + 1} {item.titulo || item.tipo}</p>;
                     return (
                       <div key={iIdx} className="space-y-1">
                         {item.titulo && <p className="text-[10px] text-purple-800 font-medium">{item.titulo}</p>}
@@ -2558,31 +2436,12 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
                           <Label className="text-[11px]">Instrução geral (opcional)</Label>
                           <Textarea value={plR2.instrucao} onChange={e => updateR2({ instrucao: e.target.value })} rows={2} className="text-xs mt-1 min-h-[44px]" placeholder="O que o aprovador deve corrigir..." />
                         </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-[11px]">O que quero de volta (marque ao menos 1)</Label>
-                          {ITENS_AUDIT.map((cfg: any) => {
-                            const ativo = plR2.itens.find((i: any) => i.tipo === cfg.tipo);
-                            return (
-                              <div key={cfg.tipo} className={`border rounded-lg overflow-hidden ${ativo ? "border-purple-400" : "border-border"}`}>
-                                <button type="button"
-                                  onClick={() => { const existe = plR2.itens.find((i: any) => i.tipo === cfg.tipo); updateR2({ itens: existe ? plR2.itens.filter((i: any) => i.tipo !== cfg.tipo) : [...plR2.itens, { tipo: cfg.tipo, titulo: "", obrigatorio: true }] }); }}
-                                  className={`w-full flex items-center gap-2 px-3 py-2.5 text-left ${ativo ? "bg-purple-50 dark:bg-purple-950/20" : "hover:bg-muted/50"}`}>
-                                  <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${ativo ? "bg-purple-600 border-purple-600" : "border-border"}`}>
-                                    {ativo && <span className="text-white text-[10px] font-bold">v</span>}
-                                  </div>
-                                  <span className="text-xs font-medium">{cfg.label}</span>
-                                </button>
-                                {ativo && (
-                                  <div className="px-3 pb-2 pt-1 border-t border-border bg-muted/10">
-                                    <Input value={(ativo as any).titulo}
-                                      onChange={e => { const t = e.target.value; updateR2({ itens: plR2.itens.map((i: any) => i.tipo === cfg.tipo ? { ...i, titulo: t } : i) }); }}
-                                      placeholder={`Instrução para ${cfg.tipo}...`} className="h-7 text-xs" />
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
+                        <ItensPlanoBuilder
+                          itens={plR2.itens as ItemPlano[]}
+                          onChange={(novos) => updateR2({ itens: novos })}
+                          compact
+                          accentColor="purple"
+                        />
                         <div>
                           <Label className="text-[11px]">Prazo</Label>
                           <Input type="datetime-local" value={plR2.prazo} onChange={e => updateR2({ prazo: e.target.value })} className="h-8 text-xs mt-1" />

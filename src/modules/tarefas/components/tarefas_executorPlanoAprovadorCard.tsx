@@ -47,17 +47,19 @@ export function ExecutorPlanoAprovadorCard({ plano, fieldLabel, assignmentId, on
   const [progress, setProgress] = useState<Record<string, number>>({});
 
   const itens = (plano.itens_plano ?? []) as PlanoAcaoItem[];
-  const itensObrigatorios = itens.filter((i) => i.obrigatorio);
-  const completo = itensObrigatorios.every((item) => {
-    const r = respostas[item.tipo];
-    if (item.tipo === "texto" || item.tipo === "descricao") return !!r?.valor_texto?.trim();
+  // 🆕 Validação por ÍNDICE do item (suporta N do mesmo tipo).
+  const completo = itens.every((item, idx) => {
+    if (!item.obrigatorio) return true;
+    const r = respostas[String(idx)];
+    if (item.tipo === "texto" || (item.tipo as string) === "descricao") return !!r?.valor_texto?.trim();
     return !!r?.evidencia_url;
   });
 
-  const handleUpload = async (item: PlanoAcaoItem, file: File) => {
+  const handleUpload = async (item: PlanoAcaoItem, idx: number, file: File) => {
+    const slot = String(idx);
     try {
-      setUploadingTipo(item.tipo);
-      setProgress((p) => ({ ...p, [item.tipo]: 0 }));
+      setUploadingTipo(slot);
+      setProgress((p) => ({ ...p, [slot]: 0 }));
       const { data: sess } = await supabase.auth.getSession();
       const token = sess.session?.access_token;
       if (!token) throw new Error("Sessão expirada");
@@ -73,7 +75,7 @@ export function ExecutorPlanoAprovadorCard({ plano, fieldLabel, assignmentId, on
       xhr.setRequestHeader("Authorization", `Bearer ${token}`);
       xhr.upload.onprogress = (ev) => {
         if (ev.lengthComputable) {
-          setProgress((p) => ({ ...p, [item.tipo]: Math.round((ev.loaded / ev.total) * 100) }));
+          setProgress((p) => ({ ...p, [slot]: Math.round((ev.loaded / ev.total) * 100) }));
         }
       };
       const result = await new Promise<any>((resolve, reject) => {
@@ -91,7 +93,8 @@ export function ExecutorPlanoAprovadorCard({ plano, fieldLabel, assignmentId, on
       });
       setRespostas((prev) => ({
         ...prev,
-        [item.tipo]: {
+        [slot]: {
+          tipo: item.tipo,
           evidencia_url: result.anexo.path_relativo,
           evidencia_anexo_id: result.anexo.id,
           evidencia_mime_type: result.anexo.mime_type ?? file.type,
@@ -160,23 +163,25 @@ export function ExecutorPlanoAprovadorCard({ plano, fieldLabel, assignmentId, on
         )}
 
         {itens.map((item, idx) => {
-          const r = respostas[item.tipo];
+          const slot = String(idx);
+          const r = respostas[slot];
           const temMedia = !!(r?.evidencia_url || r?.valor_texto);
-          const isUploadingThis = uploadingTipo === item.tipo;
-          const prog = progress[item.tipo] ?? 0;
+          const isUploadingThis = uploadingTipo === slot;
+          const prog = progress[slot] ?? 0;
           return (
-            <div key={`${item.tipo}-${idx}`} className="space-y-1.5 border rounded-md p-2 bg-card">
+            <div key={`item-${idx}`} className="space-y-1.5 border rounded-md p-2 bg-card">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-medium">
+                  <span className="text-muted-foreground mr-1">#{idx + 1}</span>
                   {item.titulo || item.tipo}
                   {item.obrigatorio && <span className="text-red-600 ml-1">*</span>}
                 </Label>
                 {temMedia && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />}
               </div>
-              {(item.tipo === "texto" || item.tipo === "descricao") ? (
+              {(item.tipo === "texto" || (item.tipo as string) === "descricao") ? (
                 <Textarea
                   value={r?.valor_texto ?? ""}
-                  onChange={(e) => setRespostas((prev) => ({ ...prev, [item.tipo]: { ...prev[item.tipo], valor_texto: e.target.value } }))}
+                  onChange={(e) => setRespostas((prev) => ({ ...prev, [slot]: { ...(prev[slot] ?? {}), tipo: item.tipo, valor_texto: e.target.value } }))}
                   placeholder={`Descreva: ${item.titulo || "..."}`}
                   className="text-xs min-h-[60px]"
                   disabled={isResponding}
@@ -187,7 +192,7 @@ export function ExecutorPlanoAprovadorCard({ plano, fieldLabel, assignmentId, on
                     anexoId={r.evidencia_anexo_id ?? null}
                     url={r.evidencia_url}
                     mimeType={r.evidencia_mime_type ?? null}
-                    onRemove={() => setRespostas((prev) => { const n = { ...prev }; delete n[item.tipo]; return n; })}
+                    onRemove={() => setRespostas((prev) => { const n = { ...prev }; delete n[slot]; return n; })}
                   />
                 </div>
               ) : (
@@ -215,7 +220,7 @@ export function ExecutorPlanoAprovadorCard({ plano, fieldLabel, assignmentId, on
                     capture="environment"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) handleUpload(item, file);
+                      if (file) handleUpload(item, idx, file);
                     }}
                   />
                 </label>

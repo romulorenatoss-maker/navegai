@@ -27,8 +27,15 @@ export interface PlanoAcaoItem {
 }
 
 export interface PlanoAcaoRespostaPayload {
-  // Estrutura flexível: { foto: {evidencia_url,...}, texto: {valor_texto,...} }
-  [tipo: string]: {
+  // Estrutura indexada por POSIÇÃO do item no itens_plano (suporta múltiplos
+  // itens do mesmo tipo). Chave = string do índice ("0", "1", "2"...).
+  // Cada valor carrega o `tipo` redundante para facilitar a leitura.
+  // Exemplo:
+  //   { "0": {tipo:"foto", evidencia_url:"..."},
+  //     "1": {tipo:"foto", evidencia_url:"..."},
+  //     "2": {tipo:"texto", valor_texto:"..."} }
+  [indice: string]: {
+    tipo?: "foto" | "video" | "audio" | "texto";
     evidencia_url?: string;
     evidencia_anexo_id?: string;
     evidencia_mime_type?: string;
