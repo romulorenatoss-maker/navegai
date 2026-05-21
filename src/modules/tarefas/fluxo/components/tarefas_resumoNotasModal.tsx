@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { AlertCircle, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { ResumoNotasPerguntaCard, type ResumoNotasRespostaManual } from "./tarefas_resumoNotasPerguntaCard";
 import { useResumoNotas, type ResumoNotasModo } from "../hooks/tarefas_useResumoNotas";
@@ -79,14 +78,14 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-24px)] max-w-3xl max-h-[90vh] p-0 overflow-hidden flex flex-col">
+      <DialogContent className="w-[calc(100vw-24px)] max-w-3xl h-[90vh] max-h-[90vh] p-0 overflow-hidden flex flex-col">
         <DialogHeader className="px-4 py-3 border-b">
           <DialogTitle className="text-base">
             Resumo de Notas · {modo === "aprovador" ? "Aprovação" : "Auditoria"}
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="p-4 space-y-4">
             {resumo.backendPendente && (
               <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 flex gap-2">
@@ -133,7 +132,7 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
               )}
             </section>
           </div>
-        </ScrollArea>
+        </div>
 
         <div className="px-4 py-3 border-t bg-muted/20 space-y-3 shrink-0">
           {(() => {
