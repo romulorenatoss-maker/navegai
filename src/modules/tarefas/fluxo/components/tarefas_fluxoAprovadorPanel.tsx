@@ -126,7 +126,10 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
 
       <FluxoBannerPendenciaAuditor planosAuditorPendentes={data.planosAuditorPendentes} />
 
-      {data.perguntas.map((p) => (
+      {data.perguntas.map((p) => {
+        const planosAuditorPendentes = p.planosAuditor.filter((x) => !x.respondido);
+
+        return (
         <FluxoPerguntaHistoricoCard
           key={p.fieldId}
           pergunta={p}
@@ -136,9 +139,10 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
           rodape={
             <>
               {/* Botões Conforme/NC por pergunta */}
-              {perms.podeAprovadorCriarPlanoExecutorParaField(p.fieldId) && (
+              {(perms.podeAprovadorCriarPlanoExecutorParaField(p.fieldId) || planosAuditorPendentes.length > 0) && (
                 <div className="space-y-2 mt-2 border-t pt-2">
-                  <FluxoBotaoConformeNaoConforme
+                  {perms.podeAprovadorCriarPlanoExecutorParaField(p.fieldId) && (
+                    <FluxoBotaoConformeNaoConforme
                     valor={avaliacao[p.fieldId] ?? null}
                     onConforme={() =>
                       setAvaliacao((prev) => ({ ...prev, [p.fieldId]: "conforme" }))
@@ -152,7 +156,8 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
                     }}
                     disabled={actions.isSubmitting}
                     labelNaoConforme={`Não Conforme · criar plano R${(p.planosAprovador.length || 0) + 1}`}
-                  />
+                    />
+                  )}
 
                   {/* Form do plano quando NC */}
                   {avaliacao[p.fieldId] === "nao_conforme" && planosDraft[p.fieldId] && (
@@ -172,34 +177,35 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
                       isSubmitting={actions.isSubmitting}
                     />
                   )}
+
+                  {/* Form de responder plano do auditor (na pergunta dele) */}
+                  {planosAuditorPendentes.map((ap) => (
+                    <PlanoAuditorRespostaForm
+                      key={ap.id}
+                      planoId={ap.id}
+                      assignmentId={a.id}
+                      tipoTarefa={(a.origem ?? "rotina") as string}
+                      codigoTarefa={`#${String(a.numero_tarefa ?? "").padStart(4, "0")}`}
+                      nomeTarefa={a.nome ?? "tarefa"}
+                      itens={ap.itens_plano}
+                      resposta={respostasAuditor[ap.id] ?? {}}
+                      onChangeResposta={(idx, patch) =>
+                        setRespostasAuditor((prev) => ({
+                          ...prev,
+                          [ap.id]: { ...(prev[ap.id] ?? {}), [String(idx)]: { ...((prev[ap.id] ?? {})[String(idx)] ?? {}), ...patch } },
+                        }))
+                      }
+                      onEnviar={() => handleResponderPlanoAuditor(ap.id)}
+                      isSubmitting={actions.isSubmitting}
+                    />
+                  ))}
                 </div>
               )}
-
-              {/* Form de responder plano do auditor (na pergunta dele) */}
-              {p.planosAuditor.filter(x => !x.respondido).map((ap) => (
-                <PlanoAuditorRespostaForm
-                  key={ap.id}
-                  planoId={ap.id}
-                  assignmentId={a.id}
-                  tipoTarefa={(a.origem ?? "rotina") as string}
-                  codigoTarefa={`#${String(a.numero_tarefa ?? "").padStart(4, "0")}`}
-                  nomeTarefa={a.nome ?? "tarefa"}
-                  itens={ap.itens_plano}
-                  resposta={respostasAuditor[ap.id] ?? {}}
-                  onChangeResposta={(idx, patch) =>
-                    setRespostasAuditor((prev) => ({
-                      ...prev,
-                      [ap.id]: { ...(prev[ap.id] ?? {}), [String(idx)]: { ...((prev[ap.id] ?? {})[String(idx)] ?? {}), ...patch } },
-                    }))
-                  }
-                  onEnviar={() => handleResponderPlanoAuditor(ap.id)}
-                  isSubmitting={actions.isSubmitting}
-                />
-              ))}
             </>
           }
         />
-      ))}
+        );
+      })}
 
       {/* Rodapé global: Aprovar e enviar para auditoria */}
       {perms.podeAprovarParaAuditoria && (
