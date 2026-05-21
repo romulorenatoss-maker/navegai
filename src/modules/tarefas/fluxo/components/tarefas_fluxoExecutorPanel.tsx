@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Send, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 import { useFluxoTarefa } from "../hooks/tarefas_useFluxoTarefa";
 import { useExecutorActions } from "../hooks/tarefas_useExecutorActions";
@@ -24,12 +25,14 @@ import type { ExecutorRespostaInput } from "../services/tarefas_fluxoRpcService"
 
 interface Props {
   assignmentId: string;
+  meusSetorIds?: string[];
 }
 
-export function FluxoExecutorPanel({ assignmentId }: Props) {
+export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
+  const { profile, isAdmin } = useAuth();
   const { data, isLoading, invalidate } = useFluxoTarefa(assignmentId);
   const actions = useExecutorActions(assignmentId);
-  const perms = useFluxoPermissoes(data);
+  const perms = useFluxoPermissoes(data, meusSetorIds);
 
   // Rascunho local da resposta R0 (antes do envio)
   const [rascunho, setRascunho] = useState<Record<string, ExecutorRespostaInput>>({});
@@ -110,6 +113,11 @@ export function FluxoExecutorPanel({ assignmentId }: Props) {
               numeroTarefa={a.numero_tarefa ?? 0}
               nomeTarefa={a.nome ?? "tarefa"}
               origemTarefa={(a.origem ?? "rotina") as any}
+              profileId={profile?.id}
+              responsavelId={a.responsavel_id ?? undefined}
+              setorExecutorId={a.setor_executor_id ?? undefined}
+              meusSetorIds={meusSetorIds}
+              isAdmin={isAdmin}
               lockOriginal={false}
             />
           ) : (

@@ -790,7 +790,7 @@ export default function TarefasExecucaoPage() {
             )}
 
             {selectedAssignment && !showContingencyPanel && fluxoDrawerRole === "executor" && (
-              <FluxoExecutorPanel assignmentId={selectedAssignment.id} />
+              <FluxoExecutorPanel assignmentId={selectedAssignment.id} meusSetorIds={meusSetorIds} />
             )}
 
             {selectedAssignment && !showContingencyPanel && fluxoDrawerRole === "aprovador" && (

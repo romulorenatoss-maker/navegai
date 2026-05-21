@@ -72,6 +72,7 @@ const PERMS_VAZIA: FluxoPermissoes = {
 
 export function useFluxoPermissoes(
   fluxoData: TarefaFluxoData | null,
+  meusSetorIds: string[] = [],
 ): FluxoPermissoes {
   const { profile, isAdmin } = useAuth();
 
@@ -82,7 +83,13 @@ export function useFluxoPermissoes(
     const profileId = profile?.id ?? null;
     if (!profileId) return PERMS_VAZIA;
 
-    const isExecutor = a.responsavel_id === profileId;
+    const isExecutor =
+      a.responsavel_id === profileId ||
+      (
+        !a.responsavel_id &&
+        !!a.setor_executor_id &&
+        meusSetorIds.includes(a.setor_executor_id)
+      );
     const isAprovador =
       a.aprovador_id === profileId || a.avaliador_id === profileId;
     const isAuditor = a.auditor_id === profileId;
@@ -134,5 +141,5 @@ export function useFluxoPermissoes(
       temPlanoAuditorPendente: planosAuditPendentes.length > 0,
       temPlanoAprovadorPendente: planosAprovPendentes.length > 0,
     };
-  }, [fluxoData, profile?.id, isAdmin]);
+  }, [fluxoData, profile?.id, isAdmin, meusSetorIds]);
 }
