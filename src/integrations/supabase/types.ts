@@ -2218,6 +2218,7 @@ export type Database = {
           field_id: string
           historico_alteracoes: Json | null
           id: string
+          observacao: string | null
           respondido_em: string
           respondido_por: string
           valor_booleano: boolean | null
@@ -2236,6 +2237,7 @@ export type Database = {
           field_id: string
           historico_alteracoes?: Json | null
           id?: string
+          observacao?: string | null
           respondido_em?: string
           respondido_por: string
           valor_booleano?: boolean | null
@@ -2254,6 +2256,7 @@ export type Database = {
           field_id?: string
           historico_alteracoes?: Json | null
           id?: string
+          observacao?: string | null
           respondido_em?: string
           respondido_por?: string
           valor_booleano?: boolean | null
