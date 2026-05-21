@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { AlertCircle, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { ResumoNotasPerguntaCard, type ResumoNotasRespostaManual } from "./tarefas_resumoNotasPerguntaCard";
@@ -53,6 +53,16 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
     return { total, pontos, completo: respondidas.length === resumo.perguntasManuais.length };
   }, [respostas, resumo.perguntasManuais]);
 
+  const confirmarDisabled = isSubmitting || naSemJustificativa || manualSemResultado || resumo.isLoading;
+  const textoAcaoFinal = modo === "aprovador" ? "Enviar respostas e notas ao auditor" : "Concluir auditoria com notas";
+  const motivoBloqueio = resumo.isLoading
+    ? "Carregando resumo de notas..."
+    : naSemJustificativa
+      ? "Justifique todos os itens marcados como N/A antes de enviar."
+      : manualSemResultado
+        ? "Marque OK, Nao OK ou N/A em todas as perguntas manuais antes de enviar."
+        : null;
+
   const payload = {
     origem: "resumo_notas_frontend",
     modo,
@@ -69,14 +79,14 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-24px)] max-w-3xl max-h-[90vh] p-0 overflow-hidden">
+      <DialogContent className="w-[calc(100vw-24px)] max-w-3xl max-h-[90vh] p-0 overflow-hidden flex flex-col">
         <DialogHeader className="px-4 py-3 border-b">
           <DialogTitle className="text-base">
             Resumo de Notas · {modo === "aprovador" ? "Aprovação" : "Auditoria"}
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-132px)]">
+        <ScrollArea className="flex-1 min-h-0">
           <div className="p-4 space-y-4">
             {resumo.backendPendente && (
               <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 flex gap-2">
@@ -125,7 +135,7 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
           </div>
         </ScrollArea>
 
-        <div className="px-4 py-3 border-t bg-muted/20 space-y-1">
+        <div className="px-4 py-3 border-t bg-muted/20 space-y-3 shrink-0">
           {(() => {
             const notaFinal =
               modo === "aprovador"
@@ -157,21 +167,26 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
               </>
             );
           })()}
+          {motivoBloqueio && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              {motivoBloqueio}
+            </div>
+          )}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => onConfirmar(payload)}
+              disabled={confirmarDisabled}
+              className="w-full sm:flex-1"
+            >
+              <Send className="h-3.5 w-3.5 mr-1.5" />
+              {isSubmitting ? "Enviando..." : textoAcaoFinal}
+            </Button>
+          </div>
         </div>
-
-        <DialogFooter className="px-4 py-3 border-t">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            onClick={() => onConfirmar(payload)}
-            disabled={isSubmitting || naSemJustificativa || manualSemResultado || resumo.isLoading}
-          >
-            <Send className="h-3.5 w-3.5 mr-1.5" />
-            {modo === "aprovador" ? "Enviar para auditoria" : "Concluir auditoria"}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
