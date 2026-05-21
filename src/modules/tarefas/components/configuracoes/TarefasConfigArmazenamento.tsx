@@ -232,12 +232,31 @@ export function TarefasConfigArmazenamento() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <code className="block rounded bg-muted px-3 py-2 text-xs overflow-x-auto">
-            tarefas/{"{MM-YYYY}"}/{"{DD}"}/{"{rotina|ad_hoc}"}/#{"{ XXXX}"}-{"{slug-nome}"}.{"{ext}"}
+            tarefas/{"{MM-YYYY}"}/{"{DD}"}/{"{rotina|ad_hoc}"}/#{"{XXXX}"}-{"{slug-nome}"}/{"{contexto}"}/{"{nome-arquivo.ext}"}
           </code>
-          <p className="text-xs text-muted-foreground">
-            Todos os anexos (evidências, aprovações, planos de ação, contingências) vão para esta pasta no Google Drive.
-            Trocar provider futuramente não altera o path lógico nem o banco.
-          </p>
+          <div className="text-xs text-muted-foreground space-y-1.5">
+            <p>
+              Pasta única por tarefa (#{`{XXXX}-{slug-nome}/`}) com subpastas
+              por contexto. Todos os anexos da tarefa vivem juntos até a conclusão.
+            </p>
+            <p>
+              <strong>Contextos válidos:</strong> <code className="text-[10px]">plano_acao</code>,{" "}
+              <code className="text-[10px]">evidencia</code>,{" "}
+              <code className="text-[10px]">resposta_executor</code>,{" "}
+              <code className="text-[10px]">aprovacao</code>,{" "}
+              <code className="text-[10px]">devolucao</code>,{" "}
+              <code className="text-[10px]">instrucao_etapa</code>,{" "}
+              <code className="text-[10px]">instrucao_pergunta</code>.
+            </p>
+            <p>
+              <strong>Exemplo real:</strong>{" "}
+              <code className="text-[10px]">tarefas/05-2026/20/rotina/#0025-checklist-diario-de-limpeza/plano_acao/video.mp4</code>
+            </p>
+            <p>
+              Trocar provider futuramente (S3, R2, OneDrive) não altera o path
+              lógico nem o banco — os IDs de anexo continuam estáveis.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
