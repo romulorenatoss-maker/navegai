@@ -9,7 +9,11 @@ import { toast } from "sonner";
 import { Play, Send, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter, History, Plus, Users, Activity, ArrowDownUp, Eye } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { EmbeddedContingencyPanel } from "@/modules/tarefas/components/tarefas_embeddedContingencyPanel";
-import { EmbeddedReviewPanel, EmbeddedApprovalPanel, EmbeddedAuditPanel } from "@/modules/tarefas/components/tarefas_embeddedActionPanels";
+import { EmbeddedReviewPanel } from "@/modules/tarefas/components/tarefas_embeddedActionPanels";
+// 🆕 Painéis novos do fluxo (FASE 5 do rebuild — substituem
+// EmbeddedApprovalPanel e EmbeddedAuditPanel legados):
+import { FluxoAprovadorPanel } from "@/modules/tarefas/fluxo/components/tarefas_fluxoAprovadorPanel";
+import { FluxoAuditorPanel } from "@/modules/tarefas/fluxo/components/tarefas_fluxoAuditorPanel";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Progress } from "@/components/ui/progress";
@@ -1504,20 +1508,15 @@ export default function OperationalExecucaoPage() {
               />
             )}
 
+            {/* 🆕 FASE 5 — painéis novos do fluxo (verdade única).
+                Recebem só assignmentId; toda a leitura/permissões vem do
+                hook useFluxoTarefa internamente. */}
             {selectedAssignment && (isAprovadorView || isAuditorView) && viewMode === "aprovacao" && (
-              <EmbeddedApprovalPanel
-                assignment={selectedAssignment}
-                fields={effectiveFields}
-                onClose={closeExecution}
-              />
+              <FluxoAprovadorPanel assignmentId={selectedAssignment.id} />
             )}
 
             {selectedAssignment && isAuditorView && viewMode === "auditor" && (
-              <EmbeddedAuditPanel
-                assignment={selectedAssignment}
-                fields={effectiveFields}
-                onClose={closeExecution}
-              />
+              <FluxoAuditorPanel assignmentId={selectedAssignment.id} />
             )}
 
             {!isEditable && selectedAssignment && (
