@@ -1,0 +1,1 @@
+ALTER TABLE public.operational_field_answers ADD COLUMN IF NOT EXISTS observacao TEXT;
