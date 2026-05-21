@@ -35,7 +35,7 @@ export interface PlanoAcaoRespostaPayload {
   //     "1": {tipo:"foto", evidencia_url:"..."},
   //     "2": {tipo:"texto", valor_texto:"..."} }
   [indice: string]: {
-    tipo?: "foto" | "video" | "audio" | "texto";
+    tipo?: "foto" | "video" | "audio" | "texto" | "descricao";
     evidencia_url?: string;
     evidencia_anexo_id?: string;
     evidencia_mime_type?: string;
