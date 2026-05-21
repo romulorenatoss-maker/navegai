@@ -2,6 +2,13 @@
 
 Atualizado em: 2026-05-21
 
+## Ultima nota operacional
+
+- `/tarefas/minhas` deve renderizar o fluxo principal apenas via `src/modules/tarefas/fluxo`.
+- Drawer oficial: executor usa `FluxoExecutorPanel`, aprovador usa `FluxoAprovadorPanel`, auditor usa `FluxoAuditorPanel`.
+- A pagina `tarefas_minhasTarefasPage.tsx` nao deve voltar a usar diretamente `useAssignmentExecution`, `usePlanosAcao`, `DrawerActionRouter`, `DynamicFieldRenderer`, `ExecutorPlanoAprovadorCard` ou `EmbeddedReviewPanel` para o fluxo executor/aprovador/auditor.
+- R0 do executor vive em `operational_field_answers` e nao pode sofrer overwrite depois do envio inicial. Devolucoes devem usar as RPCs de plano.
+
 ## Objetivo
 
 Mapa operacional do projeto Navegai para reduzir releituras amplas e orientar alteracoes cirurgicas.

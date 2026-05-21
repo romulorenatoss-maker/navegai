@@ -912,3 +912,36 @@ export default function FinanceiroLancamentosPage() {
 - [x] Offline: não definido (módulo não crítico offline)
 - [x] Feature flag: não aplicável (módulo padrão)
 - [x] Commit descritivo por etapa
+
+Quando precisar reescrever um fluxo, NÃO crie novo arquivo paralelo.
+Faça uma destas opções obrigatórias:
+
+1. Se o arquivo atual ainda é o ponto renderizado:
+   - sobrescreva o arquivo atual inteiro;
+   - mantenha o mesmo caminho;
+   - remova imports antigos sem uso.
+
+2. Se o nome atual está errado/confuso:
+   - crie o novo arquivo com nome correto;
+   - migre todos os imports/rotas para o novo arquivo;
+   - delete o arquivo antigo no mesmo diff;
+   - prove no final que nenhum import antigo ficou.
+
+Proibido criar:
+- V2
+- Novo
+- Refatorado
+- Corrigido
+- Backup
+- Temp
+- Legacy
+- Old
+- Copy
+
+No final, entregar:
+- arquivos criados
+- arquivos sobrescritos
+- arquivos deletados
+- imports atualizados
+- grep provando que o arquivo antigo não é mais usado
+- diff completo

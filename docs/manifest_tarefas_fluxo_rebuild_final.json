@@ -1,0 +1,58 @@
+{
+  "data": "2026-05-21",
+  "modulo": "tarefas",
+  "rota": "/tarefas/minhas",
+  "objetivo": "Usar paineis oficiais do fluxo executor/aprovador/auditor no drawer e bloquear overwrite da R0.",
+  "arquivos_criados": [
+    "docs/backups/tarefas_fluxo_rebuild_pre_backup.md",
+    "docs/backups/tarefas_fluxo_rebuild_pre_tree.txt",
+    "docs/diff_tarefas_fluxo_rebuild_final.md",
+    "docs/manifest_tarefas_fluxo_rebuild_final.json",
+    "docs/rollback_tarefas_fluxo_rebuild_final.sql",
+    "docs/tarefas_fluxo_validacao_final.md",
+    "supabase/migrations/20260521003000_tarefas_bloquear_reenvio_r0_fluxo.sql"
+  ],
+  "arquivos_alterados": [
+    "src/modules/tarefas/pages/tarefas_minhasTarefasPage.tsx",
+    "src/modules/tarefas/fluxo/services/tarefas_fluxoStatusMachine.ts",
+    "src/modules/tarefas/fluxo/hooks/tarefas_useFluxoTarefa.ts"
+  ],
+  "arquivos_deletados": [],
+  "componentes_afetados": [
+    "FluxoExecutorPanel",
+    "FluxoAprovadorPanel",
+    "FluxoAuditorPanel",
+    "EmbeddedContingencyPanel"
+  ],
+  "hooks_afetados": [
+    "useFluxoTarefa"
+  ],
+  "services_afetados": [
+    "tarefas_fluxoStatusMachine"
+  ],
+  "rpcs_afetadas": [
+    {
+      "nome": "tarefas_rpc_executor_enviar_respostas",
+      "acao": "CREATE OR REPLACE",
+      "impacto": "Bloqueia reenvio R0 e overwrite em operational_field_answers."
+    }
+  ],
+  "triggers_afetadas": [],
+  "tabelas_afetadas": [
+    "operational_assignments",
+    "operational_field_answers",
+    "operational_execution_logs",
+    "colaborador_setores"
+  ],
+  "menus_afetados": [
+    "Tarefas"
+  ],
+  "validacoes": [
+    "npm.cmd run build",
+    "rg operational_field_reviews src/modules/tarefas/fluxo src/modules/tarefas/pages/tarefas_minhasTarefasPage.tsx",
+    "rg useAssignmentExecution|usePlanosAcao|DrawerActionRouter|EmbeddedReviewPanel|DynamicFieldRenderer|ExecutorPlanoAprovadorCard src/modules/tarefas/pages/tarefas_minhasTarefasPage.tsx",
+    "rg tarefas_rpc_aprovador_criar_plano_acao|tarefas_rpc_auditor_criar_plano_acao src/modules/tarefas/fluxo src/modules/tarefas/pages/tarefas_minhasTarefasPage.tsx",
+    "git diff --check"
+  ],
+  "rollback": "docs/rollback_tarefas_fluxo_rebuild_final.sql"
+}

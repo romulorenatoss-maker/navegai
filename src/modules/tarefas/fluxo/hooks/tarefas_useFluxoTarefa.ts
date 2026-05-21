@@ -12,7 +12,7 @@
  *
  * Retorna estrutura única TarefaFluxoData via construirTarefaFluxoData.
  *
- * NÃO toca em operational_field_reviews (legado).
+ * Nao consulta a tabela legada de revisoes por campo.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";

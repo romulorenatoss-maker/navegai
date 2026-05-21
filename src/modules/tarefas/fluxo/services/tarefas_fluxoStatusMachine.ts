@@ -48,8 +48,7 @@ export function canExecutorEditOriginal(status: string): boolean {
 export function canExecutorEnviarRespostas(status: string): boolean {
   return (
     status === TAREFAS_FLUXO_STATUS.PENDENTE ||
-    status === TAREFAS_FLUXO_STATUS.EM_ANDAMENTO ||
-    status === TAREFAS_FLUXO_STATUS.DEVOLVIDA
+    status === TAREFAS_FLUXO_STATUS.EM_ANDAMENTO
   );
 }
 

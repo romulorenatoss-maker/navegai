@@ -9,9 +9,9 @@ import { toast } from "sonner";
 import { Play, Send, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter, History, Plus, Users, Activity, ArrowDownUp, Eye } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { EmbeddedContingencyPanel } from "@/modules/tarefas/components/tarefas_embeddedContingencyPanel";
-import { EmbeddedReviewPanel } from "@/modules/tarefas/components/tarefas_embeddedActionPanels";
 // 🆕 Painéis novos do fluxo (FASE 5 do rebuild — substituem
 // EmbeddedApprovalPanel e EmbeddedAuditPanel legados):
+import { FluxoExecutorPanel } from "@/modules/tarefas/fluxo/components/tarefas_fluxoExecutorPanel";
 import { FluxoAprovadorPanel } from "@/modules/tarefas/fluxo/components/tarefas_fluxoAprovadorPanel";
 import { FluxoAuditorPanel } from "@/modules/tarefas/fluxo/components/tarefas_fluxoAuditorPanel";
 import { Button } from "@/components/ui/button";
@@ -22,11 +22,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { STATUS_CONFIG } from "@/modules/tarefas/hooks/tarefas_useScoring";
 import { AssignmentCard } from "@/modules/tarefas/components/tarefas_tarefaCard";
-import { DynamicFieldRenderer, SnapshotField, evaluateVisibility } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
-import { parseAnexoFromDescricao } from "@/modules/tarefas/components/tarefas_tabFormBuilder";
-import { useAssignmentExecution } from "@/modules/tarefas/hooks/tarefas_useAssignmentExecution";
-import { usePlanosAcao } from "@/modules/tarefas/hooks/tarefas_usePlanosAcao";
-import { ExecutorPlanoAprovadorCard } from "@/modules/tarefas/components/tarefas_executorPlanoAprovadorCard";
+import type { SnapshotField } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import { useOperationalTransition } from "@/modules/tarefas/hooks/tarefas_useTransition";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,7 +33,6 @@ type TaskType = "simples" | "inspecao";
 import { ListChecks, Trophy } from "lucide-react";
 import { bucketize, sortAssignments, type SortKey } from "@/modules/tarefas/services/tarefas_bucketize";
 import { PainelRetornoCard } from "@/modules/tarefas/components/tarefas_painelRetornoCard";
-import { DrawerActionRouter } from "@/modules/tarefas/components/painels/tarefas_drawerActionRouter";
 
 const normalizeTextKey = (value: unknown) =>
   String(value ?? "")
@@ -417,198 +412,19 @@ export default function OperationalExecucaoPage() {
     criticas: sortAssignments(buckets.opCriticas, "sla"),
   }), [buckets, sorted]);
 
-  const exec = useAssignmentExecution(selectedAssignment?.id || null);
-  // 🆕 Nova arquitetura: planos de ação separados por setor.
-  // Doc: src/modules/tarefas/docs/tarefas_arquitetura_planos_acao.md
-  const planos = usePlanosAcao(selectedAssignment?.id || null);
-
-  // Em tarefas EM ANDAMENTO, sobrepõe ada_config_snapshot vivo do template
-  // (inclui checklists.aprovador com replicadas/manual/pacote padrão atualizados).
-  // Em tarefas FINAIS, mantém snapshot congelado para histórico imutável.
-  // FKs de respostas (operational_field_answers) seguem alinhadas porque a
-  // estrutura de fields/sections continua vindo de template_snapshot — o overlay
-  // afeta apenas regras (opcoes/regras) e o checklist do Aprovador.
-  const snapshot = useMemo(() => {
-    const base = selectedAssignment?.template_snapshot;
-    const liveAda = selectedAssignment?.operational_templates?.ada_config_snapshot;
-    if (!base) return base;
-    const status = selectedAssignment?.status;
-    const isLive = !!status && !["concluida", "aprovada", "auditada", "cancelada", "arquivada"].includes(status);
-    if (isLive && liveAda) {
-      return { ...base, ada_config_snapshot: liveAda };
-    }
-    if (!base.ada_config_snapshot && liveAda) {
-      return { ...base, ada_config_snapshot: liveAda };
-    }
-    return base;
-  }, [selectedAssignment?.template_snapshot, selectedAssignment?.operational_templates?.ada_config_snapshot, selectedAssignment?.status]);
-
-  // Deduplicate sections and fields by id
-  const snapshotSections: any[] = useMemo(() => {
-    const raw = snapshot?.sections || [];
-    const seen = new Set<string>();
-    return raw.filter((s: any) => { if (seen.has(s.id)) return false; seen.add(s.id); return true; })
-      .sort((a: any, b: any) => a.ordem - b.ordem);
-  }, [snapshot]);
-
-  // Buscar regras vivas do template para sobrepor às regras congeladas no snapshot.
-  // Garante que edições posteriores no template (opcoes_regras, gera_contingencia,
-  // exige_evidencia, criticidade, obrigatorio, etc.) reflitam imediatamente em
-  // tarefas em andamento. Estrutura (label/ordem/section) permanece do snapshot.
-  const isAssignmentLive = useMemo(() => {
-    const st = selectedAssignment?.status;
-    return !!st && !["concluida", "aprovada", "auditada", "cancelada", "arquivada"].includes(st);
-  }, [selectedAssignment?.status]);
-
-  const { data: liveTemplateFields } = useQuery({
-    queryKey: ["live_template_fields_overlay", selectedAssignment?.template_id],
-    enabled: !!selectedAssignment?.template_id && isAssignmentLive,
-    staleTime: 30_000,
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("operational_template_fields")
-        .select("id, label, ordem, section_id, opcoes, opcoes_regras, obrigatorio, exige_evidencia, tipo_evidencia, gera_contingencia, criticidade, validacao, condicao_visibilidade, aprovador_verificar, aprovador_pergunta, aprovador_tipo_resposta, aprovador_peso, aprovador_obriga_observacao_nao, aprovador_exige_evidencia_nao, aprovador_tipos_evidencia, auditor_verificar")
-        .eq("template_id", selectedAssignment.template_id);
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  const liveFieldOverlayMap = useMemo(() => {
-    const map: Record<string, any> = {};
-    if (!liveTemplateFields) return map;
-    // Index por id; por section_id|label; e por label puro.
-    // Sempre prefere a versão que tenha opcoes_regras preenchidas (templates podem
-    // ter entradas duplicadas/legadas com regras vazias, ou o snapshot pode ter sido
-    // gerado de uma versão anterior do template com IDs/sections diferentes).
-    const better = (a: any, b: any) => {
-      const aHas = a && Array.isArray(a.opcoes_regras) && a.opcoes_regras.length > 0;
-      const bHas = b && Array.isArray(b.opcoes_regras) && b.opcoes_regras.length > 0;
-      if (aHas && !bHas) return a;
-      if (bHas && !aHas) return b;
-      return a || b;
-    };
-    for (const lf of liveTemplateFields as any[]) {
-      map[lf.id] = better(map[lf.id], lf);
-      const sectionKey = `${lf.section_id || ""}|${(lf.label || "").trim().toLowerCase()}`;
-      map[sectionKey] = better(map[sectionKey], lf);
-      const labelKey = `__label__|${(lf.label || "").trim().toLowerCase()}`;
-      map[labelKey] = better(map[labelKey], lf);
-    }
-    return map;
-  }, [liveTemplateFields]);
-
-  const snapshotFields: SnapshotField[] = useMemo(() => {
-    const raw = snapshot?.fields || [];
-    const seen = new Set<string>();
-    // Helpers: ?? mantém [] vazio do live; queremos cair para snapshot quando live estiver vazio.
-    const pickArr = (live: any, snap: any) => (Array.isArray(live) && live.length > 0 ? live : (snap ?? live));
-    const pick = (live: any, snap: any) => (live === null || live === undefined ? snap : live);
-    const result = raw.filter((f: any) => { if (seen.has(f.id)) return false; seen.add(f.id); return true; })
-      .sort((a: any, b: any) => a.ordem - b.ordem)
-      .map((f: any) => {
-        if (!isAssignmentLive) return f;
-        const sectionKey = `${f.section_id || ""}|${(f.label || "").trim().toLowerCase()}`;
-        const labelKey = `__label__|${(f.label || "").trim().toLowerCase()}`;
-        const byId = liveFieldOverlayMap[f.id];
-        const bySection = liveFieldOverlayMap[sectionKey];
-        const byLabel = liveFieldOverlayMap[labelKey];
-        // Prefere a entrada que trouxer regras preenchidas, em qualquer chave.
-        const has = (x: any) => x && Array.isArray(x.opcoes_regras) && x.opcoes_regras.length > 0;
-        const live = has(byId) ? byId : has(bySection) ? bySection : has(byLabel) ? byLabel : (byId || bySection || byLabel);
-        if (!live) return f;
-        return {
-          ...f,
-          // Quando o snapshot antigo só casa por label/section, o ID antigo pode
-          // não existir mais em operational_template_fields. Persistir pelo ID
-          // vivo evita FK 23503 no autosave sem trocar a organização do snapshot.
-          id: live.id || f.id,
-          section_id: f.section_id,
-          opcoes: pickArr(live.opcoes, f.opcoes),
-          opcoes_regras: pickArr(live.opcoes_regras, f.opcoes_regras),
-          obrigatorio: pick(live.obrigatorio, f.obrigatorio),
-          exige_evidencia: pick(live.exige_evidencia, f.exige_evidencia),
-          tipo_evidencia: pick(live.tipo_evidencia, f.tipo_evidencia),
-          gera_contingencia: pick(live.gera_contingencia, f.gera_contingencia),
-          criticidade: pick(live.criticidade, f.criticidade),
-          validacao: pick(live.validacao, f.validacao),
-          condicao_visibilidade: pick(live.condicao_visibilidade, f.condicao_visibilidade),
-          aprovador_verificar: pick(live.aprovador_verificar, f.aprovador_verificar),
-          aprovador_pergunta: pick(live.aprovador_pergunta, f.aprovador_pergunta),
-          aprovador_tipo_resposta: pick(live.aprovador_tipo_resposta, f.aprovador_tipo_resposta),
-          aprovador_peso: pick(live.aprovador_peso, f.aprovador_peso),
-          aprovador_obriga_observacao_nao: pick(live.aprovador_obriga_observacao_nao, f.aprovador_obriga_observacao_nao),
-          aprovador_exige_evidencia_nao: pick(live.aprovador_exige_evidencia_nao, f.aprovador_exige_evidencia_nao),
-          aprovador_tipos_evidencia: pickArr(live.aprovador_tipos_evidencia, f.aprovador_tipos_evidencia),
-          auditor_verificar: pick(live.auditor_verificar, f.auditor_verificar),
-        };
-      });
-    const withChecklistRules = applyChecklistConfigToFields(
-      applyChecklistConfigToFields(result, snapshot, "aprovador"),
-      snapshot,
-      "auditor",
-    );
-    if (withChecklistRules.length > 0) exec.setFieldLabels(withChecklistRules);
-    return withChecklistRules;
-  }, [snapshot, liveFieldOverlayMap, isAssignmentLive]);
-
-  const sectionIds = useMemo(() => new Set(snapshotSections.map(s => s.id)), [snapshotSections]);
-
-  const effectiveFields = useMemo(() => {
-    if (snapshotSections.length === 0) return snapshotFields;
-    return snapshotFields.filter(f => f.section_id && sectionIds.has(f.section_id));
-  }, [snapshotFields, snapshotSections, sectionIds]);
-
-  const fieldsBySection = useMemo(() => {
-    const map: Record<string, SnapshotField[]> = {};
-    for (const f of effectiveFields) {
-      const key = f.section_id || "__nosection";
-      (map[key] ??= []).push(f);
-    }
-    return map;
-  }, [effectiveFields]);
-
   const openExecution = useCallback((a: any) => {
-    // Anti-contaminação: o key={selectedAssignment?.id} no Sheet garante
-    // unmount/remount completo ao trocar de tarefa, zerando estados internos.
-    // Não remover cache aqui — apagaria dados antes do fetch completar.
     setSelectedAssignment(a);
     setExecDialogOpen(true);
-    setShowHistory(false);
-    const sections = a.template_snapshot?.sections?.sort((x: any, y: any) => x.ordem - y.ordem);
-    setActiveSection(sections?.[0]?.id || null);
-    // Abre a tarefa na aba do PAPEL do usuário (independente do status):
-    //   - Auditor: vê primeiro a aba Auditor
-    //   - Aprovador: vê primeiro a aba Aprovação
-    //   - Executor/spectator: vê primeiro o Registro
-    // Em status ativo, abre na aba da ação. Em status final, abre na aba do papel.
-    const userIsAuditor = !!profile?.id && (
-      a.auditor_id === profile.id ||
-      (a.auditor_id === null && a.setor_auditor_id && meusSetorIds.includes(a.setor_auditor_id))
-    );
-    const userIsAprovador = !!profile?.id && (
-      a.aprovador_id === profile.id ||
-      (a.aprovador_id === null && a.created_by === profile.id)
-    );
-    const statusEhAuditoria = a.status === "aguardando_auditoria";
-    const statusEhAprovacao = a.status === "aguardando_aprovacao";
-
-    let initialView: "registro" | "aprovacao" | "auditor" = "registro";
-    if (statusEhAuditoria) initialView = "auditor";
-    else if (statusEhAprovacao) initialView = "aprovacao";
-    else if (userIsAuditor) initialView = "auditor";
-    else if (userIsAprovador && !userIsAuditor) initialView = "aprovacao";
-    setViewMode(initialView);
 
     if (profile?.id) {
-      // Auditoria enriquecida: papel_usado derivado do contexto
       const papelUsado =
         a.responsavel_id === profile.id ? "executor"
-        : a.aprovador_id === profile.id ? "aprovador"
-        : a.aprovador_id === profile.id ? "aprovador"
+        : a.aprovador_id === profile.id || a.avaliador_id === profile.id ? "aprovador"
+        : a.auditor_id === profile.id ? "auditor"
         : a.created_by === profile.id ? "designador"
         : isAdmin ? "admin"
         : "visualizador";
+
       (supabase as any).from("operational_execution_logs").insert({
         assignment_id: a.id,
         acao: "visualizou",
@@ -620,73 +436,19 @@ export default function OperationalExecucaoPage() {
         },
       }).then(() => {});
     }
-  }, [profile?.id, isAdmin, navigate]);
+  }, [profile?.id, isAdmin]);
 
   const closeExecution = async () => {
-    if (exec.dirty) {
-      try {
-        await exec.saveDraft();
-      } catch (e: any) {
-        console.error("Erro ao salvar rascunho ao fechar execução:", e);
-        toast.error("Não foi possível salvar o rascunho agora. A tela será fechada.");
-      }
-    }
     setExecDialogOpen(false);
     setSelectedAssignment(null);
-    setSubmitAttempted(false);
-    setShowHistory(false);
-    // Invalida cache ao fechar para que a próxima abertura busque dados frescos
-    // Não usar removeQueries — apagaria antes do fetch e deixaria tela vazia
-    qc.invalidateQueries({ queryKey: ["operational_field_answers"] });
-    qc.invalidateQueries({ queryKey: ["operational_field_reviews"] });
+    qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
     qc.invalidateQueries({ queryKey: ["operational_execution_logs"] });
+    qc.invalidateQueries({ queryKey: ["tarefas_fluxo_assignment"] });
+    qc.invalidateQueries({ queryKey: ["tarefas_fluxo_respostas_originais"] });
+    qc.invalidateQueries({ queryKey: ["tarefas_fluxo_planos_aprovador"] });
+    qc.invalidateQueries({ queryKey: ["tarefas_fluxo_planos_auditor"] });
   };
 
-  const visibleFields = useMemo(() =>
-    effectiveFields.filter(f => evaluateVisibility(f.condicao_visibilidade, exec.answers)),
-    [effectiveFields, exec.answers]
-  );
-
-  const isFilled = useCallback((f: SnapshotField) => {
-    const a = exec.answers[f.id];
-    return !!a && (
-      (a.valor_texto != null && a.valor_texto !== "") ||
-      a.valor_numero != null ||
-      a.valor_booleano != null ||
-      a.valor_data != null ||
-      a.valor_json != null ||
-      (a.evidencia_url != null && a.evidencia_url !== "")
-    );
-  }, [exec.answers]);
-
-  const progress = useMemo(() => {
-    if (!visibleFields.length) return 0;
-    const filled = visibleFields.filter(isFilled).length;
-    return Math.round((filled / visibleFields.length) * 100);
-  }, [visibleFields, isFilled]);
-
-  const hasSections = snapshotSections.length > 1;
-  const currentSectionIndex = useMemo(() => {
-    if (!hasSections || !activeSection) return 0;
-    return snapshotSections.findIndex(s => s.id === activeSection);
-  }, [hasSections, activeSection, snapshotSections]);
-  const isLastSection = currentSectionIndex >= snapshotSections.length - 1;
-  const allFieldsFilled = progress === 100;
-
-  const goToNextSection = () => {
-    if (!isLastSection && snapshotSections[currentSectionIndex + 1]) {
-      setActiveSection(snapshotSections[currentSectionIndex + 1].id);
-    }
-  };
-
-  const goToPrevSection = () => {
-    if (currentSectionIndex > 0 && snapshotSections[currentSectionIndex - 1]) {
-      setActiveSection(snapshotSections[currentSectionIndex - 1].id);
-    }
-  };
-
-  // Owner: dono individual OU, quando setorizada (responsavel_id NULL),
-  // qualquer membro ativo do setor executor pode preencher/concluir.
   const isOwner = !!selectedAssignment && (
     selectedAssignment.responsavel_id === profile?.id ||
     (
@@ -696,183 +458,46 @@ export default function OperationalExecucaoPage() {
     )
   );
   const isAvaliado = selectedAssignment?.avaliado_id === profile?.id;
-  const isAdminEditing = isAdmin && selectedAssignment && !["nao_executada"].includes(selectedAssignment.status);
-
-  // Modos de papel ativo no drawer (mutuamente exclusivos com edição do executor):
-  //  - Avaliador: status aguardando_avaliacao | em_avaliacao
-  //  - Aprovador: status aguardando_aprovacao
-  // Admin entra nesses modos quando não há aprovador/avaliador atribuído ou para suprir ausência.
-  const isAvaliadorMode = !!selectedAssignment
-    && (selectedAssignment.aprovador_id === profile?.id || isAdmin)
-    && ["aguardando_avaliacao", "em_avaliacao"].includes(selectedAssignment.status);
-  const isAprovadorMode = !!selectedAssignment
-    && (
-      selectedAssignment.aprovador_id === profile?.id ||
-      isAdmin ||
-      // Sem aprovador definido: quem criou a tarefa assume o papel de aprovador
-      (selectedAssignment.aprovador_id === null && selectedAssignment.created_by === profile?.id)
-    )
-    && selectedAssignment.status === "aguardando_aprovacao";
-  // Exceção: aba Auditor só abre quando (1) há auditor configurado na tarefa E
-  // (2) status é aguardando_auditoria — nunca durante aguardando_aprovacao.
   const temAuditorConfigurado = !!(selectedAssignment?.auditor_id || selectedAssignment?.setor_auditor_id);
-  const isAuditorMode = !!selectedAssignment
-    && temAuditorConfigurado
-    && (
-      selectedAssignment.auditor_id === profile?.id ||
-      isAdmin ||
-      (selectedAssignment.auditor_id === null &&
-       selectedAssignment.setor_auditor_id &&
-       meusSetorIds.includes(selectedAssignment.setor_auditor_id))
-    )
-    && selectedAssignment.status === "aguardando_auditoria";
-
-  // ──────────────────────────────────────────────────────────────────────
-  // VISÕES (sem checagem de status) — controlam visibilidade das ABAS
-  // Quando a tarefa concluí, status final NÃO esconde a aba do papel:
-  // o usuário ainda vê o histórico read-only do que ele/outro fez.
-  // O edit é gateado por useFlowPermissions dentro dos painéis.
-  // ──────────────────────────────────────────────────────────────────────
-  const isAprovadorView = !!selectedAssignment
-    && (
-      selectedAssignment.aprovador_id === profile?.id ||
-      isAdmin ||
-      (selectedAssignment.aprovador_id === null && selectedAssignment.created_by === profile?.id)
-    );
-  const isAuditorView = !!selectedAssignment
-    && temAuditorConfigurado
-    && (
-      selectedAssignment.auditor_id === profile?.id ||
-      isAdmin ||
-      (selectedAssignment.auditor_id === null &&
-       selectedAssignment.setor_auditor_id &&
-       meusSetorIds.includes(selectedAssignment.setor_auditor_id))
-    );
-
-  const isEditable = selectedAssignment && !isAprovadorMode && !isAvaliadorMode && !isAuditorMode && (
-    (["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || isAdmin)) ||
-    isAdminEditing
+  const isExecutorView = !!selectedAssignment && (isOwner || isAdmin);
+  const isAprovadorView = !!selectedAssignment && (
+    selectedAssignment.aprovador_id === profile?.id ||
+    selectedAssignment.avaliador_id === profile?.id ||
+    (selectedAssignment.aprovador_id === null && selectedAssignment.created_by === profile?.id) ||
+    isAdmin
   );
-  const isDevolvida = selectedAssignment?.status === "devolvida";
-
-  // Planos de ação do aprovador (visíveis ao executor quando o campo foi devolvido com plano)
-  const { data: approverPlansList = [] } = useQuery({
-    queryKey: ["operational_approver_plans_executor_view", selectedAssignment?.id],
-    queryFn: async () => {
-      if (!selectedAssignment?.id) return [];
-      // Busca planos de ação do approval_answers
-      const { data: plans } = await (supabase as any)
-        .from("operational_approval_answers")
-        .select("field_id, plano_acao_descricao, plano_acao_prazo, plano_acao_anexo_url, flag_prazo_alterado, justificativa_alteracao_prazo")
-        .eq("assignment_id", selectedAssignment.id);
-      // Busca tipo_evidencia_exigida e instrucao do field_reviews
-      const { data: reviews } = await (supabase as any)
-        .from("operational_field_reviews")
-        .select("field_id, tipo_evidencia_exigida, instrucao_aprovador, rodada")
-        .eq("assignment_id", selectedAssignment.id)
-        .eq("devolvido", true)
-        .order("rodada", { ascending: false });
-      // Mescla: para cada field_id, pega o review mais recente (já ordenado desc)
-      const reviewMap: Record<string, any> = {};
-      for (const r of (reviews || [])) {
-        if (!reviewMap[r.field_id]) reviewMap[r.field_id] = r;
-      }
-      // Combina plans + reviews
-      const merged = (plans || []).map((p: any) => ({
-        ...p,
-        tipo_evidencia_exigida: reviewMap[p.field_id]?.tipo_evidencia_exigida || "nenhuma",
-        instrucao_aprovador: reviewMap[p.field_id]?.instrucao_aprovador || p.plano_acao_descricao || "",
-      }));
-      // Inclui fields devolvidos sem plano de ação (devolução simples)
-      for (const r of (reviews || [])) {
-        if (!merged.find((m: any) => m.field_id === r.field_id)) {
-          merged.push({
-            field_id: r.field_id,
-            plano_acao_descricao: r.instrucao_aprovador || "",
-            tipo_evidencia_exigida: r.tipo_evidencia_exigida || "nenhuma",
-            instrucao_aprovador: r.instrucao_aprovador || "",
-          });
-        }
-      }
-      return merged;
-    },
-    enabled: !!selectedAssignment?.id && (isDevolvida || selectedAssignment?.status === "em_plano_acao"),
-  });
-  const approverPlanByField = useMemo(() => {
-    const map: Record<string, any> = {};
-    for (const a of approverPlansList as any[]) {
-      if (a?.field_id) map[a.field_id] = a;
-    }
-    return map;
-  }, [approverPlansList]);
+  const isAuditorView = !!selectedAssignment && temAuditorConfigurado && (
+    selectedAssignment.auditor_id === profile?.id ||
+    (
+      selectedAssignment.auditor_id === null &&
+      !!selectedAssignment.setor_auditor_id &&
+      meusSetorIds.includes(selectedAssignment.setor_auditor_id)
+    ) ||
+    isAdmin
+  );
+  const isAvaliadorLegacy = !!selectedAssignment && (
+    selectedAssignment.aprovador_id === profile?.id ||
+    selectedAssignment.avaliador_id === profile?.id ||
+    isAdmin
+  ) && ["aguardando_avaliacao", "em_avaliacao"].includes(selectedAssignment.status);
   const isContingenciado = selectedAssignment && ["contingenciado", "contingencia"].includes(selectedAssignment.status);
-  const needsAdminReopen = isAdmin && selectedAssignment && ["aguardando_avaliacao", "aguardando_aprovacao", "concluida", "aprovada", "contingenciado", "contingencia"].includes(selectedAssignment.status);
-  // Show contingency panel for avaliado, validador, responsavel, or admin
   const showContingencyPanel = isContingenciado && selectedAssignment && (
     isAdmin || isOwner || isAvaliado ||
     selectedAssignment.validador_contingencia_id === profile?.id ||
     selectedAssignment.aprovador_id === profile?.id
   );
-  // Criador validando recebimento de tarefa designada
   const isCriadorValidando = !!selectedAssignment
     && selectedAssignment.status === "aguardando_validacao"
     && selectedAssignment.created_by === profile?.id;
 
-  const handleStart = () => {
-    if (selectedAssignment) exec.startTask.mutate({
-      assignmentId: selectedAssignment.id,
-      horarioInicioPrevisto: selectedAssignment.horario_inicio_previsto || null,
-      dataPrevista: selectedAssignment.data_prevista || null,
-    }, {
-      onSuccess: () => {
-        closeExecution();
-        toast.success("Tarefa iniciada com sucesso!");
-      },
-    });
-  };
-
-  const handleIniciarDevolvida = async () => {
-    if (!selectedAssignment) return;
-
-    // 🆕 Sync defensivo (Regra 9 — preservar comportamento):
-    // O banco pode estar mais adiantado que o cache (race condition, múltiplas
-    // abas, trigger backend). Antes de chamar a mutation "iniciar", refetch o
-    // status real. Se já está em em_andamento, evita a transição inválida
-    // (em_andamento → em_andamento), sincroniza UI e mostra toast informativo.
-    try {
-      const { data: cur, error: curErr } = await (supabase as any)
-        .from("operational_assignments")
-        .select("status")
-        .eq("id", selectedAssignment.id)
-        .single();
-      if (curErr) throw curErr;
-      if (cur?.status && cur.status !== "devolvida") {
-        setSelectedAssignment({ ...selectedAssignment, status: cur.status });
-        qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
-        if (cur.status === "em_andamento") {
-          toast.info("Tarefa já está em andamento. Pode responder ao plano de ação.");
-        } else {
-          toast.info(`Status atualizado para: ${cur.status}`);
-        }
-        return;
-      }
-    } catch (e: any) {
-      // Sync falhou — segue fluxo normal e deixa a mutation tratar o erro.
-      console.warn("[handleIniciarDevolvida] sync defensivo falhou:", e);
-    }
-
-    exec.startTask.mutate({
-      assignmentId: selectedAssignment.id,
-      horarioInicioPrevisto: selectedAssignment.horario_inicio_previsto || null,
-      dataPrevista: selectedAssignment.data_prevista || null,
-    }, {
-      onSuccess: () => {
-        setSelectedAssignment({ ...selectedAssignment, status: "em_andamento" });
-        qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
-        toast.success("Tarefa iniciada! Responda ao plano de ação.");
-      },
-    });
-  };
+  const fluxoDrawerRole: "executor" | "aprovador" | "auditor" | "legacy" | "readonly" =
+    selectedAssignment?.status === "aguardando_auditoria" && isAuditorView ? "auditor"
+    : selectedAssignment?.status === "aguardando_aprovacao" && isAprovadorView ? "aprovador"
+    : isExecutorView ? "executor"
+    : isAuditorView ? "auditor"
+    : isAprovadorView ? "aprovador"
+    : isAvaliadorLegacy ? "legacy"
+    : "readonly";
 
   const handleAprovarRecebimento = async () => {
     if (!selectedAssignment) return;
@@ -882,7 +507,7 @@ export default function OperationalExecucaoPage() {
         action: "validar_designada_aprovar",
         origem: "execucao_validacao",
       });
-      toast.success("Recebimento aprovado. Tarefa concluída.");
+      toast.success("Recebimento aprovado. Tarefa concluida.");
       closeExecution();
     } catch (e: any) {
       toast.error("Erro ao aprovar: " + e.message);
@@ -891,8 +516,8 @@ export default function OperationalExecucaoPage() {
 
   const handleDevolverDesignada = async () => {
     if (!selectedAssignment) return;
-    const motivo = window.prompt("Justifique a devolução desta tarefa:");
-    if (!motivo?.trim()) { toast.error("Justificativa obrigatória."); return; }
+    const motivo = window.prompt("Justifique a devolucao desta tarefa:");
+    if (!motivo?.trim()) { toast.error("Justificativa obrigatoria."); return; }
     try {
       await centralTransition.mutateAsync({
         assignmentId: selectedAssignment.id,
@@ -906,54 +531,6 @@ export default function OperationalExecucaoPage() {
     } catch (e: any) {
       toast.error("Erro ao devolver: " + e.message);
     }
-  };
-
-  const handleSubmit = () => {
-    setSubmitAttempted(true);
-    const fieldsToValidate = effectiveFields.filter(f =>
-      evaluateVisibility(f.condicao_visibilidade, exec.answers)
-    );
-    const errors = exec.validateAll(fieldsToValidate, selectedAssignment?.status);
-
-    // Validação extra: quando devolvida, verificar se o plano de ação foi preenchido
-    if (selectedAssignment?.status === "devolvida") {
-      for (const f of fieldsToValidate) {
-        const review = exec.getLatestReview(f.id);
-        if (!review?.devolvido) continue;
-        const tipoEv = review.tipo_evidencia_exigida || "nenhuma";
-        const ans = exec.answers[f.id];
-        if (tipoEv === "foto" || tipoEv === "video" || tipoEv === "audio") {
-          if (!ans?.evidencia_url) {
-            const tipoLabel = tipoEv === "foto" ? "foto" : tipoEv === "video" ? "vídeo" : "áudio";
-            errors.push(`"${f.label}": falta anexar ${tipoLabel} do plano de ação`);
-          }
-        } else if (tipoEv === "texto") {
-          if (!ans?.observacao?.trim()) {
-            errors.push(`"${f.label}": falta preencher descrição do plano de ação`);
-          }
-        }
-      }
-    }
-
-    if (errors.length > 0) {
-      toast.error(
-        errors.length === 1
-          ? errors[0]
-          : `${errors.length} item(ns) precisam ser preenchidos`,
-        { description: errors.length > 1 ? errors.slice(0, 3).join(" • ") : undefined }
-      );
-      return;
-    }
-    exec.submit.mutate(
-      { assignment: selectedAssignment, fields: fieldsToValidate },
-      {
-        onSuccess: () => {
-          setExecDialogOpen(false);
-          setSelectedAssignment(null);
-          setSubmitAttempted(false);
-        },
-      }
-    );
   };
 
   const renderEmptyState = (msg: string) => (
@@ -1172,8 +749,10 @@ export default function OperationalExecucaoPage() {
               : "h-full w-full sm:max-w-2xl"
           )}
         >
-          <VisuallyHidden><SheetTitle>{snapshot?.nome || "Rotina"}</SheetTitle></VisuallyHidden>
-          {/* Header */}
+          <VisuallyHidden>
+            <SheetTitle>{selectedAssignment?.template_snapshot?.nome || selectedAssignment?.operational_templates?.nome || "Tarefa"}</SheetTitle>
+          </VisuallyHidden>
+
           <div className="p-4 border-b border-border">
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={closeExecution}>
@@ -1186,352 +765,53 @@ export default function OperationalExecucaoPage() {
                       #{String(selectedAssignment.numero_tarefa).padStart(4, "0")}
                     </span>
                   )}
-                  {snapshot?.nome || "Rotina"}
+                  {selectedAssignment?.template_snapshot?.nome || selectedAssignment?.operational_templates?.nome || "Tarefa"}
                 </h2>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                  <span>{selectedAssignment?.data_prevista}</span>
+                  {selectedAssignment?.data_prevista && <span>{selectedAssignment.data_prevista}</span>}
                   {selectedAssignment?.horario_limite && (
                     <span className="flex items-center gap-1 font-medium text-foreground">
-                      <Clock className="w-3 h-3" /> até {selectedAssignment.horario_limite}
+                      <Clock className="w-3 h-3" /> ate {selectedAssignment.horario_limite}
                     </span>
                   )}
                   {selectedAssignment?.status && (
                     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${STATUS_CONFIG[selectedAssignment.status]?.class || ""}`}>
-                      {STATUS_CONFIG[selectedAssignment.status]?.label}
-                    </span>
-                  )}
-                  {isDevolvida && (
-                    <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
-                      <AlertTriangle className="w-3 h-3" /> Rodada {selectedAssignment?.rodada_atual}
-                    </span>
-                  )}
-                  {!isEditable && selectedAssignment && !isCriadorValidando && !isAvaliadorMode && !isAprovadorMode && (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border border-muted-foreground/30 bg-muted/50 text-muted-foreground">
-                      🔒 Somente leitura
+                      {STATUS_CONFIG[selectedAssignment.status]?.label || selectedAssignment.status}
                     </span>
                   )}
                 </div>
               </div>
-              {/* History icon replacing "Não salvo" / rascunho */}
-              <Button
-                variant={showHistory ? "default" : "ghost"}
-                size="sm"
-                className="h-8 w-8 p-0 shrink-0"
-                onClick={() => { setShowHistory(!showHistory); if (!showHistory) exec.refetchLogs(); }}
-                title="Histórico de ações"
-              >
-                <History className="w-4 h-4" />
-              </Button>
-              {exec.dirty && (
-                <span className="text-[10px] text-muted-foreground animate-pulse">Salvando...</span>
-              )}
             </div>
-
-            <div className="mt-3">
-              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                <span>Progresso</span>
-                <span className="font-medium">{progress}%</span>
-              </div>
-              <Progress value={progress} className="h-2" />
-            </div>
-
-            {(snapshotSections.length > 1 || isAprovadorView || isAuditorView) && (
-              <div className="flex gap-1.5 mt-3 overflow-x-auto pb-1">
-                {snapshotSections.map((s: any) => {
-                  const sFields = fieldsBySection[s.id] || [];
-                  const sFieldsVisible = sFields.filter(f => evaluateVisibility(f.condicao_visibilidade, exec.answers));
-                  const filled = sFieldsVisible.filter(f => {
-                    const a = exec.answers[f.id];
-                    return !!a && (
-                      (a.valor_texto != null && a.valor_texto !== "") ||
-                      a.valor_numero != null ||
-                      a.valor_booleano != null ||
-                      a.valor_data != null ||
-                      a.valor_json != null ||
-                      (a.evidencia_url != null && a.evidencia_url !== "")
-                    );
-                  }).length;
-                  const allFilled = filled === sFieldsVisible.length && sFieldsVisible.length > 0;
-                  const isLate = (() => {
-                    if (!s.horario_fim || !selectedAssignment?.data_prevista) return false;
-                    return new Date(`${selectedAssignment.data_prevista}T${s.horario_fim}`) < new Date();
-                  })();
-                  const isActiveTab = viewMode === "registro" && activeSection === s.id;
-                  return (
-                    <button key={s.id} type="button" onClick={() => { setViewMode("registro"); setActiveSection(s.id); }}
-                      className={`flex flex-col items-start gap-0.5 px-3 py-1.5 rounded-md text-xs font-medium border whitespace-nowrap transition-colors ${isActiveTab ? "bg-primary/10 border-primary text-primary" : isLate && !allFilled ? "bg-destructive/5 border-destructive/30 text-destructive" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.cor || "#3b82f6" }} />
-                        {s.nome || "Seção"}
-                        {allFilled && <CheckCircle2 className="w-3 h-3 text-green-600" />}
-                        {isLate && !allFilled && <AlertTriangle className="w-3 h-3 text-destructive" />}
-                        <span className="text-[10px] opacity-70">{filled}/{sFieldsVisible.length}</span>
-                      </div>
-                      {s.horario_fim && (
-                        <span className={`text-[10px] ${isLate && !allFilled ? "text-destructive" : "text-muted-foreground"}`}>
-                          {s.horario_inicio && `${s.horario_inicio} — `}{s.horario_fim}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-                {(isAprovadorView || isAuditorView) && (
-                  <button type="button" onClick={() => setViewMode("aprovacao")}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border whitespace-nowrap transition-colors ${viewMode === "aprovacao" ? "bg-emerald-500/10 border-emerald-500 text-emerald-700 dark:text-emerald-400" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
-                    <CheckCircle2 className="w-3 h-3" /> Aprovação
-                  </button>
-                )}
-                {isAuditorView && (
-                  <button type="button" onClick={() => setViewMode("auditor")}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border whitespace-nowrap transition-colors ${viewMode === "auditor" ? "bg-blue-500/10 border-blue-500 text-blue-700 dark:text-blue-400" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
-                    <CheckCircle2 className="w-3 h-3" /> Auditor
-                  </button>
-                )}
-              </div>
-            )}
           </div>
 
-          {/* Body */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
-            {/* History Panel */}
-            {showHistory && (
-              <div className="bg-muted/40 border border-border rounded-lg p-3 mb-2">
-                <AuditTimelinePanel logs={exec.executionLogs} assignment={selectedAssignment} />
-              </div>
-            )}
-
-            {selectedAssignment?.status === "pendente" && !isAdmin && (
-              <div className="text-center py-6">
-                <p className="text-sm text-muted-foreground mb-3">Inicie a tarefa para começar o preenchimento.</p>
-                <Button onClick={handleStart} disabled={exec.startTask.isPending}>
-                  <Play className="w-4 h-4 mr-2" /> Iniciar Tarefa
-                </Button>
-              </div>
-            )}
-
-            {selectedAssignment?.status === "pendente" && isAdmin && (
-              <div className="text-center py-6">
-                <p className="text-sm text-muted-foreground mb-3">Tarefa pendente. Como administrador, você pode iniciar ou editar.</p>
-                <Button onClick={handleStart} disabled={exec.startTask.isPending}>
-                  <Play className="w-4 h-4 mr-2" /> Iniciar Tarefa
-                </Button>
-              </div>
-            )}
-
-
-            {/* Embedded contingency panel for contingenciado tasks */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {showContingencyPanel && selectedAssignment && (
               <div className="bg-muted/30 border border-border rounded-lg p-3">
                 <EmbeddedContingencyPanel assignmentId={selectedAssignment.id} />
               </div>
             )}
 
-            {/* Fase 1B.3 — Router declarativo dos painéis embarcados (aceite/validação/plano).
-                Aditivo: legados continuam funcionando. Renderiza só quando o registry casar. */}
-            {selectedAssignment && (
-              <div className="bg-card border border-border rounded-lg p-3">
-                <DrawerActionRouter
-                  assignment={selectedAssignment}
-                  origem="drawer"
-                  onClose={closeExecution}
-                  onActionDone={() => {
-                    qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
-                  }}
-                />
-              </div>
+            {selectedAssignment && !showContingencyPanel && fluxoDrawerRole === "executor" && (
+              <FluxoExecutorPanel assignmentId={selectedAssignment.id} />
             )}
 
-            {/* 🆕 Helper inline: renderiza planos de ação PENDENTES de um field
-                logo ABAIXO da pergunta correspondente. Substitui o bloco antigo
-                que agrupava tudo no topo (Regra 0.7 — 1 lugar por responsabilidade).
-                Doc: src/modules/tarefas/docs/tarefas_arquitetura_planos_acao.md */}
-
-            {isEditable && selectedAssignment?.status !== "pendente" && viewMode === "registro" && (
-              <>
-                {snapshotSections.length === 0 ? (
-                  <div className="space-y-3">
-                    {effectiveFields.map(f => {
-                      const latestReview = exec.getLatestReview(f.id);
-                      const fieldDevolvido = latestReview?.devolvido === true;
-                      const planosDoField = planos.planosAprovadorPorField(f.id).filter(p => !p.respondido);
-                      // 🆕 Trava resposta original (R0) sempre que há plano pendente
-                      // OU já houve devolução do legacy. Regra: pergunta respondida
-                      // não destrava depois de enviada a outro setor.
-                      const lockOriginal = planosDoField.length > 0;
-                      return (
-                      <div key={f.id} className="space-y-2">
-                        <DynamicFieldRenderer field={f} answer={exec.answers[f.id]}
-                          review={latestReview} userRole="executor"
-                          disabled={fieldDevolvido ? false : (isDevolvida && !fieldDevolvido)}
-                          lockOriginal={lockOriginal}
-                          allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id}
-                          numeroTarefa={selectedAssignment.numero_tarefa ?? 0}
-                          nomeTarefa={selectedAssignment.template_snapshot?.nome ?? "tarefa"}
-                          origemTarefa={(selectedAssignment.origem ?? "rotina") as "rotina" | "ad_hoc"}
-                          showValidation={submitAttempted}
-                          approverPlan={approverPlanByField[f.id]}
-                          allReviews={exec.getAllReviews(f.id)}
-                          horarioLimite={selectedAssignment?.horario_limite}
-                          dataPrevista={selectedAssignment?.data_prevista}
-                          profileId={profile?.id}
-                          responsavelId={selectedAssignment?.responsavel_id}
-                          setorExecutorId={selectedAssignment?.setor_executor_id}
-                          meusSetorIds={meusSetorIds}
-                          isAdmin={isAdmin}
-                        />
-                        {planosDoField.map((p) => (
-                          <ExecutorPlanoAprovadorCard
-                            key={p.id}
-                            plano={p}
-                            fieldLabel={f.label}
-                            assignmentId={selectedAssignment.id}
-                            tipoTarefa={(selectedAssignment.origem ?? "rotina") as string}
-                            codigoTarefa={`#${String(selectedAssignment.numero_tarefa ?? "").padStart(4, "0")}`}
-                            nomeTarefa={selectedAssignment.template_snapshot?.nome ?? "tarefa"}
-                            isResponding={planos.responderPlanoAprovador.isPending}
-                            onResponder={async (input) => {
-                              await planos.responderPlanoAprovador.mutateAsync(input);
-                            }}
-                          />
-                        ))}
-                      </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  snapshotSections.filter(s => !activeSection || s.id === activeSection).map((section: any) => {
-                    const sFields = fieldsBySection[section.id] || [];
-                    const sectionLate = (() => {
-                      if (!section.horario_fim || !selectedAssignment?.data_prevista) return false;
-                      return new Date(`${selectedAssignment.data_prevista}T${section.horario_fim}`) < new Date();
-                    })();
-                    const sectionTimeRemaining = (() => {
-                      if (!section.horario_fim || !selectedAssignment?.data_prevista) return null;
-                      const diff = new Date(`${selectedAssignment.data_prevista}T${section.horario_fim}`).getTime() - Date.now();
-                      if (diff <= 0) return "Atrasado";
-                      const h = Math.floor(diff / 3600000);
-                      const m = Math.floor((diff % 3600000) / 60000);
-                      return h > 0 ? `${h}h ${m}min restantes` : `${m}min restantes`;
-                    })();
-                    return (
-                      <div key={section.id}>
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: section.cor || "#3b82f6" }} />
-                          <h3 className="text-sm font-semibold text-foreground">{section.nome}</h3>
-                          {(() => {
-                            const anexo = parseAnexoFromDescricao(section.descricao);
-                            if (!anexo) return null;
-                            return (
-                              <button
-                                type="button"
-                                title={`Ver instrução da etapa (${anexo.tipo})`}
-                                onClick={() => window.open(anexo.url, "_blank", "noopener,noreferrer")}
-                                className="inline-flex items-center justify-center w-6 h-6 rounded hover:bg-primary/10 text-primary transition-colors"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
-                            );
-                          })()}
-                          {section.descricao && !parseAnexoFromDescricao(section.descricao) && (
-                            <p className="text-xs text-muted-foreground">— {section.descricao}</p>
-                          )}
-                        </div>
-                        {(section.horario_inicio || section.horario_fim) && (
-                          <div className={`flex items-center gap-2 mb-3 ml-5 text-xs ${sectionLate ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
-                            <Clock className="w-3.5 h-3.5" />
-                            {section.horario_inicio && <span>Início: {section.horario_inicio}</span>}
-                            {section.horario_fim && <span>• Limite: {section.horario_fim}</span>}
-                            {sectionTimeRemaining && (
-                              <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${sectionLate ? "bg-destructive/10 text-destructive" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"}`}>
-                                {sectionLate ? "⚠ ATRASADO" : `⏱ ${sectionTimeRemaining}`}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        <div className="space-y-3">
-                          {sFields.map(f => {
-                            const planosDoField = planos.planosAprovadorPorField(f.id).filter(p => !p.respondido);
-                            // 🆕 Trava R0 quando há plano pendente (mesma regra do bloco sem seções)
-                            const lockOriginal = planosDoField.length > 0;
-                            return (
-                            <div key={f.id} className="space-y-2">
-                              <DynamicFieldRenderer field={f} answer={exec.answers[f.id]}
-                                review={exec.getLatestReview(f.id)} userRole="executor"
-                                disabled={isDevolvida && exec.getLatestReview(f.id)?.devolvido !== true}
-                                lockOriginal={lockOriginal}
-                                allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id}
-                                numeroTarefa={selectedAssignment.numero_tarefa ?? 0}
-                                nomeTarefa={selectedAssignment.template_snapshot?.nome ?? "tarefa"}
-                                origemTarefa={(selectedAssignment.origem ?? "rotina") as "rotina" | "ad_hoc"}
-                                showValidation={submitAttempted}
-                                approverPlan={approverPlanByField[f.id]}
-                                allReviews={exec.getAllReviews(f.id)}
-                                horarioLimite={selectedAssignment?.horario_limite}
-                                dataPrevista={selectedAssignment?.data_prevista}
-                                profileId={profile?.id}
-                                responsavelId={selectedAssignment?.responsavel_id}
-                                setorExecutorId={selectedAssignment?.setor_executor_id}
-                                meusSetorIds={meusSetorIds}
-                                isAdmin={isAdmin}
-                              />
-                              {planosDoField.map((p) => (
-                                <ExecutorPlanoAprovadorCard
-                                  key={p.id}
-                                  plano={p}
-                                  fieldLabel={f.label}
-                                  assignmentId={selectedAssignment.id}
-                                  tipoTarefa={(selectedAssignment.origem ?? "rotina") as string}
-                                  codigoTarefa={`#${String(selectedAssignment.numero_tarefa ?? "").padStart(4, "0")}`}
-                                  nomeTarefa={selectedAssignment.template_snapshot?.nome ?? "tarefa"}
-                                  isResponding={planos.responderPlanoAprovador.isPending}
-                                  onResponder={async (input) => {
-                                    await planos.responderPlanoAprovador.mutateAsync(input);
-                                  }}
-                                />
-                              ))}
-                            </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </>
-            )}
-
-            {!isEditable && selectedAssignment && isAvaliadorMode && (
-              <EmbeddedReviewPanel
-                assignment={selectedAssignment}
-                fields={effectiveFields}
-                onClose={closeExecution}
-              />
-            )}
-
-            {/* 🆕 FASE 5 — painéis novos do fluxo (verdade única).
-                Recebem só assignmentId; toda a leitura/permissões vem do
-                hook useFluxoTarefa internamente. */}
-            {selectedAssignment && (isAprovadorView || isAuditorView) && viewMode === "aprovacao" && (
+            {selectedAssignment && !showContingencyPanel && fluxoDrawerRole === "aprovador" && (
               <FluxoAprovadorPanel assignmentId={selectedAssignment.id} />
             )}
 
-            {selectedAssignment && isAuditorView && viewMode === "auditor" && (
+            {selectedAssignment && !showContingencyPanel && fluxoDrawerRole === "auditor" && (
               <FluxoAuditorPanel assignmentId={selectedAssignment.id} />
             )}
 
-            {!isEditable && selectedAssignment && (
-              (!isAvaliadorMode && !isAprovadorView && !isAuditorView) ||
-              ((isAprovadorView || isAuditorView) && viewMode === "registro")
-            ) && (
-              <div className="space-y-3">
-                {effectiveFields.map(f => (
-                  <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
-                    review={exec.getLatestReview(f.id)} userRole="executor"
-                    disabled={true} allAnswers={exec.answers} onChange={() => {}} assignmentId={selectedAssignment?.id || ""}
-                    numeroTarefa={selectedAssignment?.numero_tarefa ?? 0}
-                    nomeTarefa={selectedAssignment?.template_snapshot?.nome ?? "tarefa"}
-                    origemTarefa={(selectedAssignment?.origem ?? "rotina") as "rotina" | "ad_hoc"} />
-                ))}
+            {selectedAssignment && !showContingencyPanel && fluxoDrawerRole === "legacy" && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+                Status legado de avaliador preservado fora do rebuild executor/aprovador/auditor.
+              </div>
+            )}
+
+            {selectedAssignment && !showContingencyPanel && fluxoDrawerRole === "readonly" && (
+              <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+                Sem acao disponivel para seu papel nesta tarefa.
               </div>
             )}
           </div>
@@ -1539,7 +819,7 @@ export default function OperationalExecucaoPage() {
           {isCriadorValidando && (
             <div className="border-t border-border p-3 flex items-center gap-2 bg-card safe-area-bottom flex-wrap">
               <div className="flex-1 text-xs text-muted-foreground">
-                Esta tarefa foi designada por você e está aguardando sua validação de recebimento.
+                Esta tarefa foi designada por voce e esta aguardando sua validacao de recebimento.
               </div>
               <Button type="button" size="sm" variant="outline" onClick={handleDevolverDesignada} disabled={centralTransition.isPending}>
                 <RotateCcw className="w-3.5 h-3.5 mr-1" /> Devolver
@@ -1547,57 +827,6 @@ export default function OperationalExecucaoPage() {
               <Button type="button" size="sm" onClick={handleAprovarRecebimento} disabled={centralTransition.isPending}>
                 <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Aprovar Recebimento
               </Button>
-            </div>
-          )}
-
-          {isEditable && selectedAssignment?.status !== "pendente" && (
-            <div className="border-t border-border p-3 flex items-center gap-2 bg-card safe-area-bottom flex-wrap">
-              {hasSections && currentSectionIndex > 0 && (
-                <Button type="button" variant="outline" size="sm" onClick={goToPrevSection}>
-                  <ChevronLeft className="w-3.5 h-3.5 mr-1" /> Etapa Anterior
-                </Button>
-              )}
-              <div className="flex-1" />
-              {needsAdminReopen ? (
-                <Button type="button" size="sm" variant="outline" onClick={async () => {
-                  try {
-                    await centralTransition.mutateAsync({
-                      assignmentId: selectedAssignment.id,
-                      action: "admin_reabrir_edicao",
-                      motivo: "Edição administrativa",
-                      origem: "execucao",
-                    });
-                    await (supabase as any).from("operational_execution_logs").insert({
-                      assignment_id: selectedAssignment.id, acao: "admin_reabriu_para_edicao",
-                      executado_por: profile?.id, detalhes: { status_anterior: selectedAssignment.status },
-                    });
-                    toast.success("Tarefa reaberta para edição");
-                    setSelectedAssignment({ ...selectedAssignment, status: "em_andamento" });
-                    qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
-                    exec.refetchLogs();
-                  } catch (e: any) {
-                    toast.error("Erro ao reabrir: " + e.message);
-                  }
-                }}>
-                  <RotateCcw className="w-3.5 h-3.5 mr-1" /> Reabrir para Edição
-                </Button>
-              ) : hasSections && !isLastSection ? (
-                <Button type="button" size="sm" onClick={goToNextSection}>
-                  Próxima Etapa <ChevronDown className="w-3.5 h-3.5 ml-1 -rotate-90" />
-                </Button>
-              ) : selectedAssignment?.status === "devolvida" ? (
-                <Button type="button" size="sm" onClick={handleIniciarDevolvida} disabled={exec.startTask.isPending}>
-                  <Play className="w-3.5 h-3.5 mr-1" /> {exec.startTask.isPending ? "Iniciando..." : "Iniciar para Responder"}
-                </Button>
-              ) : planos.planosAprovadorPendentes.length > 0 ? (
-                // 🆕 Plano de ação pendente → card próprio do plano cuida do envio.
-                // Esconde "Enviar para Avaliação" para evitar 2 botões duplicados.
-                null
-              ) : (
-                <Button type="button" size="sm" onClick={handleSubmit} disabled={exec.isSubmitting || !allFieldsFilled}>
-                  <Send className="w-3.5 h-3.5 mr-1" /> {exec.isSubmitting ? "Enviando..." : "Enviar para Avaliação"}
-                </Button>
-              )}
             </div>
           )}
         </SheetContent>

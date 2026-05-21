@@ -4,52 +4,51 @@ Data: 2026-05-21
 
 ## Objetivo
 
-Preparar o repositorio para rodar no Lovable/GitHub com instalacao npm consistente e registrar a memoria inicial de governanca, incluindo o padrao global obrigatorio de arquitetura.
-
-Base sincronizada: `origin/main` apos rebuild de tarefas do Claude ate `f43586ef`.
+Executar o comando `comando_codex_rebuild_fluxo_tarefas_executor_aprovador_auditor.md` para corrigir bugs do fluxo de tarefas sem criar tela paralela, mantendo `/tarefas/minhas` como ponto oficial.
 
 ## Arquivos alterados
 
-- `.gitignore`
-- `package-lock.json`
+- `src/modules/tarefas/pages/tarefas_minhasTarefasPage.tsx`
+- `src/modules/tarefas/fluxo/services/tarefas_fluxoStatusMachine.ts`
+- `src/modules/tarefas/fluxo/hooks/tarefas_useFluxoTarefa.ts`
 
 ## Arquivos criados
 
-- `docs/PADRAO_ARQUITETURA_E_GOVERNANCA.md`
-- `docs/MEMORIA_PROJETO_CODEX.md`
-- `docs/ULTIMA_ALTERACAO_CODEX.md`
-
-## Arquivos removidos
-
-- Nenhum.
+- `supabase/migrations/20260521003000_tarefas_bloquear_reenvio_r0_fluxo.sql`
+- `docs/backups/tarefas_fluxo_rebuild_pre_backup.md`
+- `docs/backups/tarefas_fluxo_rebuild_pre_tree.txt`
+- `docs/diff_tarefas_fluxo_rebuild_final.md`
+- `docs/manifest_tarefas_fluxo_rebuild_final.json`
+- `docs/rollback_tarefas_fluxo_rebuild_final.sql`
+- `docs/tarefas_fluxo_validacao_final.md`
 
 ## Banco/RPC/Trigger impactados
 
-- Nenhum. Nao houve alteracao em migrations, tabelas, RPCs, triggers ou Edge Functions.
+- RPC alterada por migration nova: `tarefas_rpc_executor_enviar_respostas`.
+- Tabelas lidas/escritas pela RPC: `operational_assignments`, `operational_field_answers`, `operational_execution_logs`, `colaborador_setores`.
+- Triggers: nenhuma trigger criada ou alterada.
 
 ## Diff real
 
-- `.gitignore`: adiciona `.tools` para impedir commit do Node portatil local.
-- `package-lock.json`: sincronizado com `package.json` por `npm install`, incluindo dependencias que ja estavam declaradas no manifest mas faltavam no lockfile.
-- `docs/PADRAO_ARQUITETURA_E_GOVERNANCA.md`: registra o padrao obrigatorio de arquitetura, governanca, banco, modulo/menu, nomenclatura e validacao.
-- `docs/MEMORIA_PROJETO_CODEX.md`: memoria inicial do projeto.
-- `docs/ULTIMA_ALTERACAO_CODEX.md`: registro desta alteracao.
+- `tarefas_minhasTarefasPage.tsx`: removeu roteamento legado direto e passou a renderizar `FluxoExecutorPanel`, `FluxoAprovadorPanel` e `FluxoAuditorPanel` conforme papel/status.
+- `tarefas_fluxoStatusMachine.ts`: bloqueou envio R0 em `devolvida`; executor em devolucao deve responder plano pela RPC propria.
+- `tarefas_useFluxoTarefa.ts`: removeu mencao literal a tabela legada no comentario do fluxo oficial.
+- Migration nova: impede overwrite de R0, valida permissao do executor/setor/admin e trava a linha da tarefa com `FOR UPDATE`.
 
 ## Validacao feita
 
-- `npm install` executado com Node portatil local.
-- Servidor Vite abriu em `http://127.0.0.1:8080/` antes desta alteracao documental.
-- `npm install --package-lock-only` executado apos sincronizar com `origin/main`.
-- `npm run build` executado com sucesso apos commits do Claude.
-- `npm test` executado com sucesso apos commits do Claude: 2 arquivos, 12 testes passaram.
-- Avisos nao bloqueantes do build: Browserslist desatualizado, chunks grandes, `eval` em dependencia `bluebird`, imports dinamicos que nao geram chunk separado.
+- `npm.cmd run build`: sucesso.
+- `git diff --check`: sucesso.
+- Busca por `operational_field_reviews` em `src/modules/tarefas/fluxo` e `tarefas_minhasTarefasPage.tsx`: sem resultados.
+- Busca por `useAssignmentExecution`, `usePlanosAcao`, `DrawerActionRouter`, `EmbeddedReviewPanel`, `DynamicFieldRenderer`, `ExecutorPlanoAprovadorCard` na pagina oficial: sem resultados.
+- Busca por RPCs antigas `_criar_plano_acao` no fluxo e pagina: sem resultados.
 
 ## Rollback sugerido
 
-- Reverter o commit desta alteracao.
-- Alternativa manual: remover `.tools` do `.gitignore`, restaurar `package-lock.json` do commit anterior e apagar os dois arquivos de docs criados.
+- Reverter o commit da alteracao.
+- Para banco, executar `docs/rollback_tarefas_fluxo_rebuild_final.sql` se a migration `20260521003000_tarefas_bloquear_reenvio_r0_fluxo.sql` ja tiver sido aplicada.
 
 ## Pendencias
 
-- Rodar `npm audit` em tarefa separada e decidir atualizacoes com possivel impacto.
-- Confirmar no Lovable apos push se o ambiente usa npm ou bun.
+- Aplicar a migration no Supabase/Lovable.
+- Rodar o checklist manual `docs/tarefas_fluxo_validacao_final.md` no preview Lovable com usuarios de executor, aprovador e auditor.
