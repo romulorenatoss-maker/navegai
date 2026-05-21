@@ -39,6 +39,13 @@ export function FluxoPerguntaHistoricoCard({
   rodape,
 }: Props) {
   const r0 = pergunta.respostaOriginalExecutor;
+  const planosAprovadorOrdenados =
+    papel === "executor" && acoesAtivas
+      ? [...pergunta.planosAprovador].sort((a, b) => {
+          if (a.respondido !== b.respondido) return a.respondido ? 1 : -1;
+          return b.rodada - a.rodada;
+        })
+      : pergunta.planosAprovador;
 
   return (
     <Card className="max-w-full overflow-hidden">
@@ -97,7 +104,7 @@ export function FluxoPerguntaHistoricoCard({
         </div>
 
         {/* Planos do aprovador R1, R2, R3... */}
-        {pergunta.planosAprovador.map((plano) => (
+        {planosAprovadorOrdenados.map((plano) => (
           <FluxoPlanoAprovadorCard
             key={plano.id}
             plano={plano}
