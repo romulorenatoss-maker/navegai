@@ -18,7 +18,8 @@ function parseFolderInput(raw: string): string {
   const v = raw.trim();
   const m = v.match(/\/folders\/([a-zA-Z0-9_-]+)/);
   if (m) return m[1];
-  return v;
+  // Strip query string / fragment / trailing slash (e.g. "ID?usp=drive_link")
+  return v.split(/[?#]/)[0].replace(/\/+$/, "");
 }
 
 export default function IntegracoesPage() {
