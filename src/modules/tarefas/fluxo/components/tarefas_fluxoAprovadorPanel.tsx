@@ -29,6 +29,7 @@ import { EvidenciaPreview } from "@/modules/tarefas/components/tarefas_dynamicFi
 import { FluxoBannerPendenciaAuditor } from "./tarefas_fluxoBannerPendenciaAuditor";
 import { FluxoPerguntaHistoricoCard } from "./tarefas_fluxoPerguntaHistoricoCard";
 import { FluxoBotaoConformeNaoConforme } from "./tarefas_fluxoBotaoConformeNaoConforme";
+import { ResumoNotasModal } from "./tarefas_resumoNotasModal";
 import type { RespostaPlanoValorJson } from "../types/tarefas_fluxoTypes";
 
 interface Props {
@@ -62,6 +63,7 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
   const [planosDraft, setPlanosDraft] = useState<Record<string, PlanoDraft>>({});
   // Resposta a planos do auditor: estrutura indexada por idx do item
   const [respostasAuditor, setRespostasAuditor] = useState<Record<string, RespostaPlanoValorJson>>({});
+  const [resumoOpen, setResumoOpen] = useState(false);
 
   if (isLoading || !data) {
     return (
@@ -106,9 +108,10 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
     } catch { /* toast no hook */ }
   };
 
-  const handleAprovar = async () => {
+  const handleAprovar = async (notas?: unknown) => {
     try {
-      await actions.aprovarParaAuditoria.mutateAsync({ assignmentId });
+      await actions.aprovarParaAuditoria.mutateAsync({ assignmentId, notas });
+      setResumoOpen(false);
       invalidate();
     } catch { /* toast no hook */ }
   };
@@ -224,15 +227,24 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
           <Button
             type="button"
             size="sm"
-            onClick={handleAprovar}
+            onClick={() => setResumoOpen(true)}
             disabled={actions.isSubmitting}
             className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
           >
             <Send className="h-3.5 w-3.5 mr-1.5" />
-            {actions.isSubmitting ? "Aprovando..." : "Aprovar e enviar para auditoria"}
+            {actions.isSubmitting ? "Aprovando..." : "Aprovar e ver resumo"}
           </Button>
         </div>
       )}
+
+      <ResumoNotasModal
+        open={resumoOpen}
+        onOpenChange={setResumoOpen}
+        modo="aprovador"
+        data={data}
+        isSubmitting={actions.isSubmitting}
+        onConfirmar={handleAprovar}
+      />
     </div>
   );
 }

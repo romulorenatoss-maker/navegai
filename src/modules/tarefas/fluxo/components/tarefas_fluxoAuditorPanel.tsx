@@ -24,6 +24,7 @@ import { statusLabel } from "../services/tarefas_fluxoStatusMachine";
 import { ItensPlanoBuilder, type ItemPlano } from "@/modules/tarefas/components/tarefas_itensPlanoBuilder";
 import { FluxoPerguntaHistoricoCard } from "./tarefas_fluxoPerguntaHistoricoCard";
 import { FluxoBotaoConformeNaoConforme } from "./tarefas_fluxoBotaoConformeNaoConforme";
+import { ResumoNotasModal } from "./tarefas_resumoNotasModal";
 
 interface Props {
   assignmentId: string;
@@ -53,6 +54,7 @@ export function FluxoAuditorPanel({ assignmentId }: Props) {
 
   const [avaliacao, setAvaliacao] = useState<Record<string, "conforme" | "nao_conforme">>({});
   const [planosDraft, setPlanosDraft] = useState<Record<string, PlanoDraft>>({});
+  const [resumoOpen, setResumoOpen] = useState(false);
 
   if (isLoading || !data) {
     return (
@@ -85,9 +87,10 @@ export function FluxoAuditorPanel({ assignmentId }: Props) {
     } catch { /* toast no hook */ }
   };
 
-  const handleFinalizar = async () => {
+  const handleFinalizar = async (notas?: unknown) => {
     try {
-      await actions.aprovarAuditoria.mutateAsync({ assignmentId });
+      await actions.aprovarAuditoria.mutateAsync({ assignmentId, notas });
+      setResumoOpen(false);
       invalidate();
     } catch { /* toast no hook */ }
   };
@@ -220,15 +223,24 @@ export function FluxoAuditorPanel({ assignmentId }: Props) {
           <Button
             type="button"
             size="sm"
-            onClick={handleFinalizar}
+            onClick={() => setResumoOpen(true)}
             disabled={actions.isSubmitting}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
             <Send className="h-3.5 w-3.5 mr-1.5" />
-            {actions.isSubmitting ? "Finalizando..." : "Aprovar auditoria e concluir tarefa"}
+            {actions.isSubmitting ? "Finalizando..." : "Concluir e ver resumo"}
           </Button>
         </div>
       )}
+
+      <ResumoNotasModal
+        open={resumoOpen}
+        onOpenChange={setResumoOpen}
+        modo="auditor"
+        data={data}
+        isSubmitting={actions.isSubmitting}
+        onConfirmar={handleFinalizar}
+      />
     </div>
   );
 }
