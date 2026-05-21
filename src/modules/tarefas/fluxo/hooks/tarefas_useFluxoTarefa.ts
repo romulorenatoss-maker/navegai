@@ -44,7 +44,7 @@ export function useFluxoTarefa(assignmentId: string | null): UseFluxoTarefaResul
       if (!assignmentId) return null;
       const { data, error } = await (supabase as any)
         .from("operational_assignments")
-        .select("*, operational_templates(ada_config_snapshot)")
+        .select("*, operational_templates(ada_config_snapshot), profiles_aval:avaliado_id(id, nome), setor_avaliado:setores!operational_assignments_setor_avaliado_id_fkey(id, nome)")
         .eq("id", assignmentId)
         .single();
       if (error) throw error;

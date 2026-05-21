@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import type { ResumoNotasPergunta } from "../hooks/tarefas_useResumoNotas";
 
 export interface ResumoNotasRespostaManual {
+  resultado?: "ok" | "nao_ok";
   resposta?: string;
   na?: boolean;
   justificativaNa?: string;
@@ -20,6 +21,7 @@ type StatusKey = "ok" | "nao_ok" | "na" | "pendente";
 
 function getStatus(
   pergunta: ResumoNotasPergunta,
+  resultado: ResumoNotasRespostaManual["resultado"],
   marcadaNa: boolean,
 ): { key: StatusKey; label: string; className: string } {
   if (marcadaNa) {
@@ -29,6 +31,21 @@ function getStatus(
       className: "bg-blue-100 text-blue-700 border-blue-200",
     };
   }
+  if (pergunta.origem === "manual" && resultado === "ok") {
+    return {
+      key: "ok",
+      label: "OK / Conforme",
+      className: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    };
+  }
+  if (pergunta.origem === "manual" && resultado === "nao_ok") {
+    return {
+      key: "nao_ok",
+      label: "Nao OK",
+      className: "bg-red-100 text-red-700 border-red-200",
+    };
+  }
+
   const d = pergunta.descontoAplicado;
   if (d === null || d === undefined || pergunta.metricaPendente) {
     return {
@@ -40,7 +57,7 @@ function getStatus(
   if ((d as number) > 0) {
     return {
       key: "nao_ok",
-      label: "Não OK",
+      label: "Nao OK",
       className: "bg-red-100 text-red-700 border-red-200",
     };
   }
@@ -54,16 +71,22 @@ function getStatus(
 export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange }: Props) {
   const isManual = pergunta.origem === "manual";
   const marcadaNa = !!resposta?.na;
-  const status = getStatus(pergunta, marcadaNa);
+  const resultadoManual = resposta?.resultado;
+  const status = getStatus(pergunta, resultadoManual, marcadaNa);
 
   const peso = pergunta.peso;
   const desconto = pergunta.descontoAplicado;
-  const descontoPendente = desconto === null || desconto === undefined;
+  const descontoPendente =
+    isManual ? !marcadaNa && !resultadoManual : desconto === null || desconto === undefined;
 
-  // Nota da pergunta (mantido = peso - desconto), só calcula quando backend retornou desconto
+  // Nota da pergunta (mantido = peso - desconto), so calcula quando backend retornou desconto.
   let notaPerguntaLabel: string;
   if (marcadaNa) {
-    notaPerguntaLabel = `N/A · devolve ${pergunta.pontoDevolvidoNa} / peso ${peso}`;
+    notaPerguntaLabel = `Nota da pergunta: N/A - devolve ${pergunta.pontoDevolvidoNa} / peso ${peso}`;
+  } else if (isManual && resultadoManual === "ok") {
+    notaPerguntaLabel = `Nota da pergunta: ${peso} / peso ${peso}`;
+  } else if (isManual && resultadoManual === "nao_ok") {
+    notaPerguntaLabel = `Nota da pergunta: 0 / peso ${peso}`;
   } else if (descontoPendente) {
     notaPerguntaLabel = `Nota da pergunta: pendente backend / peso ${peso}`;
   } else {
@@ -92,7 +115,7 @@ export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange }: Props)
             {status.label}
           </span>
           <Badge variant={pergunta.origem === "automatica" ? "secondary" : "outline"} className="w-fit">
-            {pergunta.origem === "automatica" ? "Automática" : "Manual"}
+            {pergunta.origem === "automatica" ? "Automatica" : "Manual"}
           </Badge>
         </div>
       </div>
@@ -102,6 +125,10 @@ export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange }: Props)
       <div className="text-xs">
         {marcadaNa ? (
           <span className="text-blue-700">N/A: ponto devolvido {pergunta.pontoDevolvidoNa}</span>
+        ) : isManual && resultadoManual === "ok" ? (
+          <span className="text-emerald-700 font-medium">Sem desconto - ganhou {peso} pts</span>
+        ) : isManual && resultadoManual === "nao_ok" ? (
+          <span className="text-red-700 font-medium">Desconto: -{peso}</span>
         ) : descontoPendente ? (
           <span className="text-amber-800">Desconto pendente backend</span>
         ) : (desconto as number) > 0 ? (
@@ -118,6 +145,30 @@ export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange }: Props)
 
       {isManual && (
         <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => onChange?.({ resultado: "ok", na: false })}
+              className={`rounded-md border px-3 py-2 text-xs font-semibold transition-colors ${
+                !marcadaNa && resultadoManual === "ok"
+                  ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                  : "border-border text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              OK / ganhou {peso} pts
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange?.({ resultado: "nao_ok", na: false })}
+              className={`rounded-md border px-3 py-2 text-xs font-semibold transition-colors ${
+                !marcadaNa && resultadoManual === "nao_ok"
+                  ? "border-red-500 bg-red-50 text-red-700"
+                  : "border-border text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              Nao OK / perde {peso} pts
+            </button>
+          </div>
           <Textarea
             value={resposta?.resposta ?? ""}
             onChange={(e) => onChange?.({ resposta: e.target.value })}
@@ -128,7 +179,9 @@ export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange }: Props)
           <label className="flex items-center gap-2 text-xs">
             <Checkbox
               checked={marcadaNa}
-              onCheckedChange={(checked) => onChange?.({ na: checked === true })}
+              onCheckedChange={(checked) =>
+                onChange?.({ na: checked === true, resultado: checked === true ? undefined : resultadoManual })
+              }
             />
             Marcar N/A
           </label>
@@ -139,7 +192,7 @@ export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange }: Props)
                 value={resposta?.justificativaNa ?? ""}
                 onChange={(e) => onChange?.({ justificativaNa: e.target.value })}
                 className="text-xs min-h-[52px]"
-                placeholder="Explique por que esta pergunta não se aplica"
+                placeholder="Explique por que esta pergunta nao se aplica"
               />
             </div>
           )}

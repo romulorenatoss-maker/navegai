@@ -155,14 +155,18 @@ export interface TarefaFluxoAssignment {
   aprovador_id: string | null;
   avaliador_id: string | null;
   auditor_id: string | null;
+  avaliado_id?: string | null;
   setor_executor_id: string | null;
   setor_aprovador_id: string | null;
+  setor_avaliado_id?: string | null;
   setor_auditor_id: string | null;
   created_by: string | null;
   /** Snapshot completo do template, para fields. */
   template_snapshot: any;
   /** Snapshot ao vivo do template (para tarefas não-finais). */
   operational_templates?: any;
+  profiles_aval?: { id: string; nome: string | null } | null;
+  setor_avaliado?: { id: string; nome: string | null } | null;
   /** Scores eventualmente preenchidos. */
   score_executor?: number | null;
   score_aprovacao?: number | null;

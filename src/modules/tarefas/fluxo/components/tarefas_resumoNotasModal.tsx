@@ -29,6 +29,29 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
       }),
     [respostas, resumo.perguntasManuais],
   );
+  const manualSemResultado = useMemo(
+    () =>
+      resumo.perguntasManuais.some((p) => {
+        const r = respostas[p.id];
+        return !r?.na && !r?.resultado;
+      }),
+    [respostas, resumo.perguntasManuais],
+  );
+
+  const notaManualPreview = useMemo(() => {
+    const total = resumo.perguntasManuais.reduce((s, p) => s + p.peso, 0);
+    const respondidas = resumo.perguntasManuais.filter((p) => {
+      const r = respostas[p.id];
+      return r?.na || r?.resultado;
+    });
+    const pontos = resumo.perguntasManuais.reduce((s, p) => {
+      const r = respostas[p.id];
+      if (r?.na) return s + p.pontoDevolvidoNa;
+      if (r?.resultado === "ok") return s + p.peso;
+      return s;
+    }, 0);
+    return { total, pontos, completo: respondidas.length === resumo.perguntasManuais.length };
+  }, [respostas, resumo.perguntasManuais]);
 
   const payload = {
     origem: "resumo_notas_frontend",
@@ -111,12 +134,18 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
             const destinoPendente = resumo.destino.tipo === "nao_mapeado" || resumo.destino.label === "pendente de backend";
             const destinoPrefixo =
               resumo.destino.tipo === "setor" ? "setor " : resumo.destino.tipo === "pessoa" ? "" : "";
+            const notaTexto =
+              notaFinal ?? (
+                notaManualPreview.total > 0
+                  ? `previa manual ${notaManualPreview.pontos}/${notaManualPreview.total}${notaManualPreview.completo ? "" : " (incompleta)"}`
+                  : "pendente de backend"
+              );
             return (
               <>
                 <p className="text-sm font-semibold">
                   Nota final:{" "}
                   <span className={notaFinal === null || notaFinal === undefined ? "text-amber-700" : "text-foreground"}>
-                    {notaFinal ?? "pendente de backend"}
+                    {notaTexto}
                   </span>
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -137,7 +166,7 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
           <Button
             type="button"
             onClick={() => onConfirmar(payload)}
-            disabled={isSubmitting || naSemJustificativa || resumo.isLoading}
+            disabled={isSubmitting || naSemJustificativa || manualSemResultado || resumo.isLoading}
           >
             <Send className="h-3.5 w-3.5 mr-1.5" />
             {modo === "aprovador" ? "Enviar para auditoria" : "Concluir auditoria"}
