@@ -355,6 +355,14 @@ function PlanoAuditorRespostaForm({
 }) {
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
   const [progress, setProgress] = useState<Record<string, number>>({});
+  const completo = itens.every((item, idx) => {
+    if (!item.obrigatorio) return true;
+    const r: any = resposta[String(idx)] ?? {};
+    if (item.tipo === "texto" || (item.tipo as string) === "descricao") {
+      return !!r.valor_texto?.trim();
+    }
+    return !!r.evidencia_url;
+  });
 
   const mediaConfig = (tipo: string) => {
     if (tipo === "foto") return { accept: "image/*", capture: "environment" as const, label: "Tirar foto" };
@@ -516,11 +524,16 @@ function PlanoAuditorRespostaForm({
         type="button"
         size="sm"
         onClick={onEnviar}
-        disabled={disabled || isSubmitting}
+        disabled={disabled || isSubmitting || !completo}
         className="w-full bg-purple-600 hover:bg-purple-700 text-white"
       >
         {isSubmitting ? "Enviando..." : "Enviar resposta ao auditor"}
       </Button>
+      {!completo && (
+        <p className="text-[10px] text-muted-foreground text-center">
+          Preencha todos os itens obrigatórios antes de enviar.
+        </p>
+      )}
     </div>
   );
 }
