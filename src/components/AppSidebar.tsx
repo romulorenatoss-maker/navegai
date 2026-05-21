@@ -54,7 +54,6 @@ const allNavSections = [
     title: "Tarefas",
     items: [
       { to: "/tarefas/dashboard", icon: FolderKanban, label: "Dashboard" },
-      { to: "/tarefas/lista", icon: ClipboardList, label: "Lista" },
       { to: "/tarefas/execucao", icon: PlayCircle, label: "Execução" },
       { to: "/tarefas/rotinas", icon: ListChecks, label: "Rotinas" },
       { to: "/tarefas/agendamentos", icon: Clock, label: "Agenda" },

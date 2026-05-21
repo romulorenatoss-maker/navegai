@@ -88,7 +88,6 @@ const App = () => (
               {/* MÓDULO TAREFAS — rotas oficiais */}
               <Route path="/tarefas" element={<TarefasDashboardPage />} />
               <Route path="/tarefas/dashboard" element={<TarefasDashboardPage />} />
-              <Route path="/tarefas/lista" element={<TarefasExecucaoPage />} />
               <Route path="/tarefas/detalhes/:id" element={<TarefasExecucaoPage />} />
               <Route path="/tarefas/rotinas" element={<TarefasRotinasPage />} />
               <Route path="/tarefas/agendamentos" element={<TarefasAgendamentosPage />} />

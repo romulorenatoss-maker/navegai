@@ -1,7 +1,6 @@
 export const TAREFAS_ROUTES = {
   root: "/tarefas",
   dashboard: "/tarefas/dashboard",
-  lista: "/tarefas/lista",
   detalhes: "/tarefas/detalhes/:id",
   rotinas: "/tarefas/rotinas",
   agendamentos: "/tarefas/agendamentos",
@@ -14,7 +13,6 @@ export const TAREFAS_ROUTES = {
 
 export const TAREFAS_MENU_ROUTES = [
   TAREFAS_ROUTES.dashboard,
-  TAREFAS_ROUTES.lista,
   TAREFAS_ROUTES.execucao,
   TAREFAS_ROUTES.rotinas,
   TAREFAS_ROUTES.agendamentos,

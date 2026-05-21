@@ -2,7 +2,6 @@ import { TAREFAS_ROUTES } from "@/modules/tarefas/routes/tarefas_routes";
 
 export const TAREFAS_PERMISSION_KEYS = {
   dashboard: "tarefas.dashboard.visualizar",
-  lista: "tarefas.lista.visualizar",
   execucao: "tarefas.execucao.visualizar",
   rotinas: "tarefas.rotinas.visualizar",
   agendamentos: "tarefas.agendamentos.visualizar",
@@ -27,8 +26,7 @@ export const TAREFAS_ACTION_KEYS = {
 export const TAREFAS_SCREEN_PERMISSIONS = [
   { path: TAREFAS_ROUTES.root, label: "Tarefas", permissionKey: TAREFAS_PERMISSION_KEYS.dashboard },
   { path: TAREFAS_ROUTES.dashboard, label: "Dashboard", permissionKey: TAREFAS_PERMISSION_KEYS.dashboard },
-  { path: TAREFAS_ROUTES.lista, label: "Lista", permissionKey: TAREFAS_PERMISSION_KEYS.lista },
-  { path: TAREFAS_ROUTES.detalhes, label: "Detalhes", permissionKey: TAREFAS_PERMISSION_KEYS.lista },
+  { path: TAREFAS_ROUTES.detalhes, label: "Detalhes", permissionKey: TAREFAS_PERMISSION_KEYS.execucao },
   { path: TAREFAS_ROUTES.execucao, label: "Execução", permissionKey: TAREFAS_PERMISSION_KEYS.execucao },
   { path: TAREFAS_ROUTES.rotinas, label: "Rotinas", permissionKey: TAREFAS_PERMISSION_KEYS.rotinas },
   { path: TAREFAS_ROUTES.agendamentos, label: "Agenda", permissionKey: TAREFAS_PERMISSION_KEYS.agendamentos },
@@ -41,9 +39,10 @@ export const TAREFAS_SCREEN_PERMISSIONS = [
 export const TAREFAS_LEGACY_PERMISSION_PATH_MAP: Record<string, string> = {
   "/tarefas/gestao": TAREFAS_ROUTES.dashboard,
   "/tarefas/minhas": TAREFAS_ROUTES.execucao,
-  "/tarefas/aprovacao": TAREFAS_ROUTES.lista,
-  "/tarefas/avaliacao": TAREFAS_ROUTES.lista,
-  "/tarefas/contingencias": TAREFAS_ROUTES.lista,
+  "/tarefas/lista": TAREFAS_ROUTES.execucao,
+  "/tarefas/aprovacao": TAREFAS_ROUTES.execucao,
+  "/tarefas/avaliacao": TAREFAS_ROUTES.execucao,
+  "/tarefas/contingencias": TAREFAS_ROUTES.execucao,
   "/tarefas/tempo-avaliacoes": TAREFAS_ROUTES.desempenho,
   "/relatorios/tarefas": TAREFAS_ROUTES.relatorios,
   "/desempenho/operacional": TAREFAS_ROUTES.desempenho,
@@ -51,7 +50,7 @@ export const TAREFAS_LEGACY_PERMISSION_PATH_MAP: Record<string, string> = {
 
 export const TAREFAS_ROUTE_PERMISSION_FALLBACKS: Record<string, string[]> = {
   [TAREFAS_ROUTES.root]: [TAREFAS_ROUTES.dashboard],
-  [TAREFAS_ROUTES.detalhes]: [TAREFAS_ROUTES.lista, TAREFAS_ROUTES.execucao],
+  [TAREFAS_ROUTES.detalhes]: [TAREFAS_ROUTES.execucao],
 };
 
 export const TAREFAS_PERMISSION_ROUTES = TAREFAS_SCREEN_PERMISSIONS.map((screen) => screen.path);
