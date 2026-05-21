@@ -135,6 +135,14 @@ interface Props {
   setorExecutorId?: string | null;
   meusSetorIds?: string[];
   isAdmin?: boolean;
+  /**
+   * 🆕 Trava o campo ORIGINAL (resposta R0) como read-only, mesmo se o
+   * `review` legacy não estiver marcado como `devolvido`. Usado quando
+   * existe plano de ação pendente na nova tabela tarefas_planos_acao_aprovador
+   * (que não popula operational_field_reviews). Garante regra:
+   * "não destravar nenhuma pergunta respondida depois de enviada para outro setor".
+   */
+  lockOriginal?: boolean;
 }
 
 function evaluateVisibility(condition: any, allAnswers: Record<string, FieldAnswer>): boolean {
@@ -271,7 +279,7 @@ export function EvidenciaPreview({
   );
 }
 
-export function DynamicFieldRenderer({ field, answer, review, userRole, disabled, allAnswers, onChange, assignmentId, numeroTarefa, nomeTarefa, origemTarefa, showValidation = true, approverPlan, allReviews = [], horarioLimite, dataPrevista, profileId, responsavelId, setorExecutorId, meusSetorIds = [], isAdmin = false }: Props) {
+export function DynamicFieldRenderer({ field, answer, review, userRole, disabled, allAnswers, onChange, assignmentId, numeroTarefa, nomeTarefa, origemTarefa, showValidation = true, approverPlan, allReviews = [], horarioLimite, dataPrevista, profileId, responsavelId, setorExecutorId, meusSetorIds = [], isAdmin = false, lockOriginal = false }: Props) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadingPlano, setUploadingPlano] = useState<Record<string, boolean>>({});
@@ -306,7 +314,10 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
   const planRound = Number(review?.rodada ?? 1);
   const planResponseFieldId = `${field.id}__plano_acao__r${planRound}`;
   const planAnswer: FieldAnswer = allAnswers?.[planResponseFieldId] || { field_id: planResponseFieldId };
-  const isOriginalLockedByPlan = isReturned; // Campo bloqueado sempre que devolvido — evidência original preservada
+  // 🆕 lockOriginal cobre o caso do novo modelo (plano de ação em
+  // tarefas_planos_acao_aprovador, sem entrada em operational_field_reviews).
+  // Regra: pergunta respondida nunca destrava depois de enviada a outro setor.
+  const isOriginalLockedByPlan = isReturned || lockOriginal;
   const [openRodada, setOpenRodada] = useState<number | null>(review?.rodada ?? null);
   const error = showValidation ? validateField(field, answer) : null;
   const val: FieldAnswer = answer || { field_id: field.id };

@@ -1350,11 +1350,16 @@ export default function OperationalExecucaoPage() {
                       const latestReview = exec.getLatestReview(f.id);
                       const fieldDevolvido = latestReview?.devolvido === true;
                       const planosDoField = planos.planosAprovadorPorField(f.id).filter(p => !p.respondido);
+                      // 🆕 Trava resposta original (R0) sempre que há plano pendente
+                      // OU já houve devolução do legacy. Regra: pergunta respondida
+                      // não destrava depois de enviada a outro setor.
+                      const lockOriginal = planosDoField.length > 0;
                       return (
                       <div key={f.id} className="space-y-2">
                         <DynamicFieldRenderer field={f} answer={exec.answers[f.id]}
                           review={latestReview} userRole="executor"
                           disabled={fieldDevolvido ? false : (isDevolvida && !fieldDevolvido)}
+                          lockOriginal={lockOriginal}
                           allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id}
                           numeroTarefa={selectedAssignment.numero_tarefa ?? 0}
                           nomeTarefa={selectedAssignment.template_snapshot?.nome ?? "tarefa"}
@@ -1442,11 +1447,14 @@ export default function OperationalExecucaoPage() {
                         <div className="space-y-3">
                           {sFields.map(f => {
                             const planosDoField = planos.planosAprovadorPorField(f.id).filter(p => !p.respondido);
+                            // 🆕 Trava R0 quando há plano pendente (mesma regra do bloco sem seções)
+                            const lockOriginal = planosDoField.length > 0;
                             return (
                             <div key={f.id} className="space-y-2">
                               <DynamicFieldRenderer field={f} answer={exec.answers[f.id]}
                                 review={exec.getLatestReview(f.id)} userRole="executor"
                                 disabled={isDevolvida && exec.getLatestReview(f.id)?.devolvido !== true}
+                                lockOriginal={lockOriginal}
                                 allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id}
                                 numeroTarefa={selectedAssignment.numero_tarefa ?? 0}
                                 nomeTarefa={selectedAssignment.template_snapshot?.nome ?? "tarefa"}
