@@ -15,6 +15,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { getNotaResumoAssignment } from "@/modules/tarefas/utils/tarefas_notasResumoUtils";
 
 
 // ── helpers ──
@@ -83,6 +84,58 @@ export default function DesempenhoOperacionalPage() {
     },
   });
 
+  const { data: assignmentScores = [] } = useQuery({
+    queryKey: ["op-assignment-score-fallbacks", profileId, startDate.toISOString(), endDate.toISOString()],
+    enabled: !!profileId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("operational_assignments")
+        .select("*, operational_templates(nome, tipo_execucao)")
+        .or(`responsavel_id.eq.${profileId},avaliado_id.eq.${profileId},aprovador_id.eq.${profileId},auditor_id.eq.${profileId}`)
+        .gte("data_prevista", startOfDay(startDate).toISOString().slice(0, 10))
+        .lte("data_prevista", endOfDay(endDate).toISOString().slice(0, 10))
+        .not("status", "in", "(cancelada,arquivada)");
+      if (error) throw error;
+
+      const rows = data || [];
+      const assignmentIds = rows.map((a: any) => a.id).filter(Boolean);
+      if (assignmentIds.length === 0) return rows;
+
+      const [scoreResult, auditResult] = await Promise.all([
+        (supabase as any)
+          .from("operational_score_logs")
+          .select("*")
+          .in("assignment_id", assignmentIds),
+        (supabase as any)
+          .from("operational_audit_trail")
+          .select("*")
+          .in("assignment_id", assignmentIds)
+          .order("created_at", { ascending: true }),
+      ]);
+      if (scoreResult.error) throw scoreResult.error;
+      if (auditResult.error) throw auditResult.error;
+
+      const scoreByAssignment = new Map<string, any[]>();
+      (scoreResult.data || []).forEach((log: any) => {
+        const list = scoreByAssignment.get(log.assignment_id) || [];
+        list.push(log);
+        scoreByAssignment.set(log.assignment_id, list);
+      });
+      const auditByAssignment = new Map<string, any[]>();
+      (auditResult.data || []).forEach((log: any) => {
+        const list = auditByAssignment.get(log.assignment_id) || [];
+        list.push(log);
+        auditByAssignment.set(log.assignment_id, list);
+      });
+
+      return rows.map((a: any) => ({
+        ...a,
+        score_logs: scoreByAssignment.get(a.id) || [],
+        audit_trail: auditByAssignment.get(a.id) || [],
+      }));
+    },
+  });
+
   // ── Fetch rankings (all users, current period) ──
   const { data: allScores = [] } = useQuery({
     queryKey: ["op-rankings-all", startDate.toISOString(), endDate.toISOString()],
@@ -113,10 +166,58 @@ export default function DesempenhoOperacionalPage() {
 
   // ── Computed stats ──
   // ── Computed stats (with weighted average using multiplicador) ──
-  const myExecutorLogs = scoreLogs.filter((s: any) => s.tipo_score === "executor" && s.profile_id === profileId);
-  const myAvaliadoLogs = scoreLogs.filter((s: any) => s.tipo_score === "avaliado" && s.target_profile_id === profileId);
+  const scoreLogKeys = useMemo(
+    () => new Set(scoreLogs.map((s: any) => `${s.assignment_id}:${s.tipo_score}`)),
+    [scoreLogs],
+  );
+  const makeFallbackLog = (assignment: any, tipo: "executor" | "avaliado" | "aprovador", score: number) => ({
+    id: `fallback-${assignment.id}-${tipo}`,
+    assignment_id: assignment.id,
+    tipo_score: tipo,
+    profile_id: tipo === "executor" ? profileId : assignment.responsavel_id,
+    target_profile_id: tipo === "executor" ? assignment.responsavel_id : profileId,
+    score_final: score,
+    detalhe_calculo: {
+      formula: "Nota recuperada de operational_assignments/operational_audit_trail",
+      origem: "fallback_visual",
+    },
+    operational_assignments: assignment,
+  });
+  const fallbackExecutorLogs = assignmentScores
+    .filter((a: any) => a.responsavel_id === profileId && !scoreLogKeys.has(`${a.id}:executor`))
+    .map((a: any) => {
+      const score = getNotaResumoAssignment(a, "executor");
+      return score != null ? makeFallbackLog(a, "executor", score) : null;
+    })
+    .filter(Boolean);
+  const fallbackAvaliadoLogs = assignmentScores
+    .filter((a: any) => a.avaliado_id === profileId && !scoreLogKeys.has(`${a.id}:avaliado`))
+    .map((a: any) => {
+      const score = getNotaResumoAssignment(a, "avaliado");
+      return score != null ? makeFallbackLog(a, "avaliado", score) : null;
+    })
+    .filter(Boolean);
+  const fallbackAprovadorLogs = assignmentScores
+    .filter((a: any) => a.aprovador_id === profileId && !scoreLogKeys.has(`${a.id}:aprovador`))
+    .map((a: any) => {
+      const score = getNotaResumoAssignment(a, "aprovador");
+      return score != null ? makeFallbackLog(a, "aprovador", score) : null;
+    })
+    .filter(Boolean);
+
+  const myExecutorLogs = [
+    ...scoreLogs.filter((s: any) => s.tipo_score === "executor" && s.profile_id === profileId),
+    ...fallbackExecutorLogs,
+  ];
+  const myAvaliadoLogs = [
+    ...scoreLogs.filter((s: any) => s.tipo_score === "avaliado" && s.target_profile_id === profileId),
+    ...fallbackAvaliadoLogs,
+  ];
   // Nota dada pelo auditor → aprovador (tipo_score='aprovador' gerado pelo trigger recalcular_score_assignment)
-  const myAprovadorLogs = scoreLogs.filter((s: any) => s.tipo_score === "aprovador" && s.target_profile_id === profileId);
+  const myAprovadorLogs = [
+    ...scoreLogs.filter((s: any) => s.tipo_score === "aprovador" && s.target_profile_id === profileId),
+    ...fallbackAprovadorLogs,
+  ];
 
   const weightedAvg = (logs: any[]) => {
     if (logs.length === 0) return null;

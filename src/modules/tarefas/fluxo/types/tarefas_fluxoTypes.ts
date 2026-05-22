@@ -189,6 +189,30 @@ export interface TarefaFluxoContingencia {
   [key: string]: unknown;
 }
 
+export interface TarefaFluxoAuditTrail {
+  id: string;
+  assignment_id: string;
+  tipo_evento: string;
+  executado_por: string | null;
+  motivo: string | null;
+  dados_anteriores: any;
+  dados_novos: any;
+  created_at: string;
+  profiles?: { nome: string | null } | null;
+}
+
+export interface TarefaFluxoScoreLog {
+  id: string;
+  assignment_id: string;
+  profile_id: string;
+  target_profile_id: string | null;
+  target_setor_id: string | null;
+  tipo_score: string;
+  score_final: number | null;
+  detalhe_calculo: any;
+  created_at: string;
+}
+
 // ============================================================================
 // Estrutura ÚNICA retornada pelo hook useFluxoTarefa
 // ============================================================================
@@ -196,6 +220,8 @@ export interface TarefaFluxoData {
   assignment: TarefaFluxoAssignment;
   perguntas: TarefaFluxoPergunta[];
   contingencias: TarefaFluxoContingencia[];
+  auditTrail: TarefaFluxoAuditTrail[];
+  scoreLogs: TarefaFluxoScoreLog[];
   papelUsuario: TarefasFluxoPapel;
   planosAprovadorPendentes: PlanoAprovador[];
   planosAuditorPendentes: PlanoAuditor[];

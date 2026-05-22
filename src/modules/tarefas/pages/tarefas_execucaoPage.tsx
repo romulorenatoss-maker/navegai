@@ -13,6 +13,7 @@ import { EmbeddedContingencyPanel } from "@/modules/tarefas/components/tarefas_e
 import { FluxoExecutorPanel } from "@/modules/tarefas/fluxo/components/tarefas_fluxoExecutorPanel";
 import { FluxoAprovadorPanel } from "@/modules/tarefas/fluxo/components/tarefas_fluxoAprovadorPanel";
 import { FluxoAuditorPanel } from "@/modules/tarefas/fluxo/components/tarefas_fluxoAuditorPanel";
+import { FluxoHistoricoFinalPanel } from "@/modules/tarefas/fluxo/components/tarefas_fluxoHistoricoFinalPanel";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Progress } from "@/components/ui/progress";
@@ -488,8 +489,10 @@ export default function TarefasExecucaoPage() {
     && selectedAssignment.status === "aguardando_validacao"
     && selectedAssignment.created_by === profile?.id;
 
-  const fluxoDrawerRole: "executor" | "aprovador" | "auditor" | "readonly" =
-    selectedAssignment?.status === "aguardando_auditoria" && isAuditorView ? "auditor"
+  const isFluxoFinal = !!selectedAssignment && ["concluida", "aprovada", "reprovada"].includes(selectedAssignment.status);
+  const fluxoDrawerRole: "executor" | "aprovador" | "auditor" | "readonly" | "historico_final" =
+    isFluxoFinal ? "historico_final"
+    : selectedAssignment?.status === "aguardando_auditoria" && isAuditorView ? "auditor"
     : selectedAssignment?.status === "aguardando_aprovacao" && isAprovadorView ? "aprovador"
     : isExecutorView ? "executor"
     : isAuditorView ? "auditor"
@@ -799,6 +802,10 @@ export default function TarefasExecucaoPage() {
 
             {selectedAssignment && !showContingencyPanel && fluxoDrawerRole === "auditor" && (
               <FluxoAuditorPanel assignmentId={selectedAssignment.id} />
+            )}
+
+            {selectedAssignment && !showContingencyPanel && fluxoDrawerRole === "historico_final" && (
+              <FluxoHistoricoFinalPanel assignmentId={selectedAssignment.id} />
             )}
 
             {selectedAssignment && !showContingencyPanel && fluxoDrawerRole === "readonly" && (

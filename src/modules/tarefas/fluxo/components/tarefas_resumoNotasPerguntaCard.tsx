@@ -14,6 +14,7 @@ interface Props {
   pergunta: ResumoNotasPergunta;
   resposta?: ResumoNotasRespostaManual;
   onChange?: (patch: Partial<ResumoNotasRespostaManual>) => void;
+  readOnly?: boolean;
 }
 
 type StatusKey = "ok" | "perdeu" | "na" | "sem_dados";
@@ -107,14 +108,15 @@ function calcularVisual(pergunta: ResumoNotasPergunta, resposta?: ResumoNotasRes
   };
 }
 
-export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange }: Props) {
+export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange, readOnly }: Props) {
   const isManual = pergunta.origem === "manual";
   const marcadaNa = !!resposta?.na;
   const resultadoManual = resposta?.resultado;
   const visual = calcularVisual(pergunta, resposta);
   const styles = statusVisual[visual.status];
   const peso = Number(pergunta.peso ?? 0);
-  const permiteNa = pergunta.permiteNa && !!onChange;
+  const canEdit = !!onChange && !readOnly;
+  const permiteNa = pergunta.permiteNa && canEdit;
 
   return (
     <div className={`rounded-md border p-4 space-y-3 max-w-full overflow-hidden ${styles.container}`}>
@@ -131,7 +133,7 @@ export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange }: Props)
           </div>
         </div>
 
-        {pergunta.permiteNa && (
+        {canEdit && pergunta.permiteNa && (
           <label className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
             <Checkbox
               checked={marcadaNa}
@@ -165,7 +167,7 @@ export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange }: Props)
         ) : null}
       </div>
 
-      {isManual && !marcadaNa && (
+      {isManual && !marcadaNa && canEdit && (
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -200,7 +202,7 @@ export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange }: Props)
         </div>
       )}
 
-      {marcadaNa && (
+      {marcadaNa && canEdit && (
         <div className="space-y-1">
           <Label className="text-[11px]">Justificativa do N/A *</Label>
           <Textarea

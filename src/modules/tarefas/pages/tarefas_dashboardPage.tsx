@@ -15,6 +15,7 @@ import { BarChart3, AlertTriangle, CheckCircle2, Clock, Users, Shield, RotateCcw
 import { useContingencyManagement } from "@/modules/tarefas/hooks/tarefas_useContingencyManagement";
 import { useOperationalTransition } from "@/modules/tarefas/hooks/tarefas_useTransition";
 import { useAprovadorActions } from "@/modules/tarefas/fluxo/hooks/tarefas_useAprovadorActions";
+import { getNotaResumoAssignment } from "@/modules/tarefas/utils/tarefas_notasResumoUtils";
 
 export default function TarefasDashboardPage() {
   const { profile } = useAuth();
@@ -40,12 +41,57 @@ export default function TarefasDashboardPage() {
     queryKey: ["operational_gestao_assignments", periodoInicio, periodoFim],
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("operational_assignments")
-        .select("*, operational_templates(nome, tipo_execucao, setor_id, requer_aprovacao_gestor, bloquear_fechamento_com_contingencia, modo_pontuacao, destino_score, executor_setor_id, aprovador_setor_id, avaliado_setor_id, setores:setores!operational_templates_setor_id_fkey(nome), horario_limite_execucao), profiles!operational_assignments_responsavel_id_fkey(id, nome)")
+        .select("*, operational_templates(nome, tipo_execucao, setor_id, requer_aprovacao_gestor, bloquear_fechamento_com_contingencia, modo_pontuacao, destino_score, executor_setor_id, aprovador_setor_id, avaliado_setor_id, setores:setores!operational_templates_setor_id_fkey(nome), horario_limite_execucao), profiles!operational_assignments_responsavel_id_fkey(id, nome), avaliado_profile:profiles!operational_assignments_avaliado_id_fkey(id, nome), aprovador_profile:profiles!operational_assignments_aprovador_id_fkey(id, nome), auditor_profile:profiles!operational_assignments_auditor_id_fkey(id, nome)")
         .gte("data_prevista", periodoInicio)
         .lte("data_prevista", periodoFim)
         .order("data_prevista", { ascending: false });
       if (error) throw error;
-      return data;
+      const rows = data || [];
+      const assignmentIds = rows.map((a: any) => a.id).filter(Boolean);
+      if (assignmentIds.length === 0) return rows;
+
+      const [scoreResult, auditResult] = await Promise.all([
+        (supabase as any)
+          .from("operational_score_logs")
+          .select("*")
+          .in("assignment_id", assignmentIds),
+        (supabase as any)
+          .from("operational_audit_trail")
+          .select("*")
+          .in("assignment_id", assignmentIds)
+          .order("created_at", { ascending: true }),
+      ]);
+      if (scoreResult.error) throw scoreResult.error;
+      if (auditResult.error) throw auditResult.error;
+
+      const scoreByAssignment = new Map<string, any[]>();
+      (scoreResult.data || []).forEach((log: any) => {
+        const list = scoreByAssignment.get(log.assignment_id) || [];
+        list.push(log);
+        scoreByAssignment.set(log.assignment_id, list);
+      });
+      const auditByAssignment = new Map<string, any[]>();
+      (auditResult.data || []).forEach((log: any) => {
+        const list = auditByAssignment.get(log.assignment_id) || [];
+        list.push(log);
+        auditByAssignment.set(log.assignment_id, list);
+      });
+
+      return rows.map((a: any) => {
+        const rowWithHistorico = {
+          ...a,
+          score_logs: scoreByAssignment.get(a.id) || [],
+          audit_trail: auditByAssignment.get(a.id) || [],
+        };
+        return {
+          ...rowWithHistorico,
+          pontuacao_obtida: rowWithHistorico.pontuacao_obtida ?? getNotaResumoAssignment(rowWithHistorico, "final"),
+          score_executor: rowWithHistorico.score_executor ?? getNotaResumoAssignment(rowWithHistorico, "executor"),
+          score_avaliado: rowWithHistorico.score_avaliado ?? getNotaResumoAssignment(rowWithHistorico, "avaliado"),
+          score_aprovador: rowWithHistorico.score_aprovador ?? getNotaResumoAssignment(rowWithHistorico, "aprovador"),
+          score_auditor: rowWithHistorico.score_auditor ?? getNotaResumoAssignment(rowWithHistorico, "auditor"),
+        };
+      });
     },
   });
 
@@ -157,14 +203,32 @@ export default function TarefasDashboardPage() {
 
   const filtered = useMemo(() => {
     return assignments.filter((a: any) => {
-      if (filtroSetor !== "todos" && a.operational_templates?.setor_id !== filtroSetor) return false;
-      if (filtroColaborador !== "todos" && a.responsavel_id !== filtroColaborador) return false;
+      const template = a.operational_templates || {};
+      const setoresDaTarefa = [
+        template.setor_id,
+        template.executor_setor_id,
+        template.aprovador_setor_id,
+        template.avaliado_setor_id,
+        a.setor_executor_id,
+        a.setor_avaliado_id,
+        a.setor_aprovador_id,
+      ].filter(Boolean);
+      const pessoasDaTarefa = [
+        a.responsavel_id,
+        a.avaliado_id,
+        a.aprovador_id,
+        a.auditor_id,
+      ].filter(Boolean);
+      if (filtroSetor !== "todos" && !setoresDaTarefa.includes(filtroSetor)) return false;
+      if (filtroColaborador !== "todos" && !pessoasDaTarefa.includes(filtroColaborador)) return false;
       if (filtroStatus !== "todos" && a.status !== filtroStatus) return false;
       return true;
     });
   }, [assignments, filtroSetor, filtroColaborador, filtroStatus]);
 
   const awaitingApproval = useMemo(() => assignments.filter((a: any) => a.status === "aguardando_aprovacao"), [assignments]);
+  const scoreFor = (assignment: any, tipo: "executor" | "avaliado" | "aprovador" | "auditor" | "final") =>
+    getNotaResumoAssignment(assignment, tipo);
 
   // Metrics
   const metrics = useMemo(() => {
@@ -180,16 +244,26 @@ export default function TarefasDashboardPage() {
 
   // Rankings with triple score support
   const rankings = useMemo(() => {
-    const byUser: Record<string, { nome: string; total: number; concluidas: number; scoreExecSum: number; scoreAvdoSum: number; scoreAvdrSum: number; countExec: number; countAvdo: number; countAvdr: number }> = {};
+    const byUser: Record<string, { nome: string; total: number; concluidas: number; scoreExecSum: number; scoreAvdoSum: number; scoreAvdrSum: number; scoreAuditSum?: number; countExec: number; countAvdo: number; countAvdr: number; countAudit?: number }> = {};
+    const ensureUser = (id: string, nome?: string | null) => {
+      if (!byUser[id]) {
+        byUser[id] = { nome: nome || "-", total: 0, concluidas: 0, scoreExecSum: 0, scoreAvdoSum: 0, scoreAvdrSum: 0, scoreAuditSum: 0, countExec: 0, countAvdo: 0, countAvdr: 0, countAudit: 0 };
+      } else if (nome && (byUser[id].nome === "-" || byUser[id].nome.length <= 3)) {
+        byUser[id].nome = nome;
+      }
+      return byUser[id];
+    };
     filtered.forEach((a: any) => {
       // Executor
       const uid = a.responsavel_id;
       if (uid) {
         if (!byUser[uid]) byUser[uid] = { nome: a.profiles?.nome || "—", total: 0, concluidas: 0, scoreExecSum: 0, scoreAvdoSum: 0, scoreAvdrSum: 0, countExec: 0, countAvdo: 0, countAvdr: 0 };
-        byUser[uid].total++;
+        const user = ensureUser(uid, a.profiles?.nome);
+        user.total++;
         if (["concluida", "aprovada"].includes(a.status)) {
-          byUser[uid].concluidas++;
-          if (a.score_executor != null) { byUser[uid].scoreExecSum += Number(a.score_executor); byUser[uid].countExec++; }
+          user.concluidas++;
+          const score = scoreFor(a, "executor");
+          if (score != null) { user.scoreExecSum += score; user.countExec++; }
         }
       }
       // Avaliado (can differ from executor)
@@ -197,17 +271,28 @@ export default function TarefasDashboardPage() {
       if (avdoId && avdoId !== uid) {
         if (!byUser[avdoId]) byUser[avdoId] = { nome: "—", total: 0, concluidas: 0, scoreExecSum: 0, scoreAvdoSum: 0, scoreAvdrSum: 0, countExec: 0, countAvdo: 0, countAvdr: 0 };
       }
-      if (avdoId && ["concluida", "aprovada"].includes(a.status) && a.score_avaliado != null) {
+      if (avdoId) ensureUser(avdoId, a.avaliado_profile?.nome);
+      const scoreAvdo = scoreFor(a, "avaliado");
+      if (avdoId && ["concluida", "aprovada"].includes(a.status) && scoreAvdo != null) {
         if (!byUser[avdoId]) byUser[avdoId] = { nome: "—", total: 0, concluidas: 0, scoreExecSum: 0, scoreAvdoSum: 0, scoreAvdrSum: 0, countExec: 0, countAvdo: 0, countAvdr: 0 };
-        byUser[avdoId].scoreAvdoSum += Number(a.score_avaliado);
+        byUser[avdoId].scoreAvdoSum += scoreAvdo;
         byUser[avdoId].countAvdo++;
       }
       // Avaliador
       const avdrId = a.aprovador_id;
-      if (avdrId && ["concluida", "aprovada"].includes(a.status) && a.score_aprovador != null) {
+      if (avdrId) ensureUser(avdrId, a.aprovador_profile?.nome);
+      const scoreAvdr = scoreFor(a, "aprovador");
+      if (avdrId && ["concluida", "aprovada"].includes(a.status) && scoreAvdr != null) {
         if (!byUser[avdrId]) byUser[avdrId] = { nome: "—", total: 0, concluidas: 0, scoreExecSum: 0, scoreAvdoSum: 0, scoreAvdrSum: 0, countExec: 0, countAvdo: 0, countAvdr: 0 };
-        byUser[avdrId].scoreAvdrSum += Number(a.score_aprovador);
+        byUser[avdrId].scoreAvdrSum += scoreAvdr;
         byUser[avdrId].countAvdr++;
+      }
+      const auditId = a.auditor_id;
+      const scoreAudit = scoreFor(a, "auditor");
+      if (auditId && ["concluida", "aprovada"].includes(a.status) && scoreAudit != null) {
+        const user = ensureUser(auditId, a.auditor_profile?.nome);
+        user.scoreAuditSum = (user.scoreAuditSum ?? 0) + scoreAudit;
+        user.countAudit = (user.countAudit ?? 0) + 1;
       }
     });
     return Object.entries(byUser)
@@ -216,6 +301,7 @@ export default function TarefasDashboardPage() {
         scoreExecMedio: u.countExec > 0 ? Math.round(u.scoreExecSum / u.countExec) : null,
         scoreAvdoMedio: u.countAvdo > 0 ? Math.round(u.scoreAvdoSum / u.countAvdo) : null,
         scoreAvdrMedio: u.countAvdr > 0 ? Math.round(u.scoreAvdrSum / u.countAvdr) : null,
+        scoreAuditMedio: (u.countAudit ?? 0) > 0 ? Math.round((u.scoreAuditSum ?? 0) / (u.countAudit ?? 1)) : null,
         taxa: u.total > 0 ? Math.round((u.concluidas / u.total) * 100) : 0,
       }))
       .sort((a, b) => (b.scoreExecMedio ?? 0) - (a.scoreExecMedio ?? 0));
@@ -364,6 +450,7 @@ export default function TarefasDashboardPage() {
                   <th className="text-center text-caption font-medium text-muted-foreground uppercase px-4 py-2">Executor</th>
                   <th className="text-center text-caption font-medium text-muted-foreground uppercase px-4 py-2">Avaliado</th>
                   <th className="text-center text-caption font-medium text-muted-foreground uppercase px-4 py-2">Avaliador</th>
+                  <th className="text-center text-caption font-medium text-muted-foreground uppercase px-4 py-2">Auditor</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -393,6 +480,7 @@ export default function TarefasDashboardPage() {
                       <td className="px-4 py-3 text-center">{renderScore(r.scoreExecMedio)}</td>
                       <td className="px-4 py-3 text-center">{renderScore(r.scoreAvdoMedio)}</td>
                       <td className="px-4 py-3 text-center">{renderScore(r.scoreAvdrMedio)}</td>
+                      <td className="px-4 py-3 text-center">{renderScore(r.scoreAuditMedio)}</td>
                     </tr>
                   );
                 })}
