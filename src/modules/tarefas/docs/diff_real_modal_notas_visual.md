@@ -2,45 +2,48 @@
 
 ## Escopo
 
-Correcao cirurgica apenas no frontend do modulo Tarefas.
+Correcao cirurgica apenas na apresentacao frontend do Resumo de Notas do modulo Tarefas.
 
 ## Arquivos alterados
 
 - `src/modules/tarefas/fluxo/components/tarefas_resumoNotasModal.tsx`
 - `src/modules/tarefas/fluxo/components/tarefas_resumoNotasPerguntaCard.tsx`
 
-## Alteracoes aplicadas
+## Resultado visual
 
-### `tarefas_resumoNotasPerguntaCard.tsx`
+O mesmo componente atende os modos:
 
-- Substituido o card resumido por um card visual por pergunta.
-- Cada pergunta agora exibe:
-  - titulo da pergunta;
-  - status colorido;
-  - peso;
-  - pontos ganhos;
-  - pontos perdidos;
-  - pontos devolvidos por N/A;
-  - justificativa de N/A quando existir;
-  - resultado final da pergunta.
-- Status visual:
-  - verde: OK / ganhou ponto;
-  - vermelho: perdeu ponto / desconto aplicado;
-  - amarelo: N/A / ponto devolvido;
-  - cinza: sem dados suficientes.
+- aprovador;
+- auditor.
 
-### `tarefas_resumoNotasModal.tsx`
+Cada pergunta agora segue o padrao visual solicitado:
 
-- Removida a exibicao de texto de previa incompleta.
-- Rodape passa a exibir:
-  - nota final;
-  - total possivel;
-  - pontos ganhos;
-  - pontos perdidos;
-  - pontos devolvidos por N/A;
-  - quantidade de perguntas sem dados;
-  - destino da nota.
-- Payload visual passa a incluir `resumo_totais`, sem alterar RPC ou backend.
+- pergunta em bloco unico;
+- fundo verde quando ganhou ponto;
+- fundo vermelho quando perdeu ponto;
+- fundo amarelo quando N/A devolve ponto;
+- fundo cinza quando nao existe dado suficiente;
+- N/A no canto direito quando a pergunta permite;
+- nota da pergunta no proprio bloco;
+- resultado em pontos dentro da pergunta.
+
+## Rodape/nota final
+
+A nota final saiu do resumo em grade e passou para um card azul no fim do scroll do modal:
+
+- titulo `Nota final da Aprovacao` ou `Nota final da Auditoria`;
+- valor grande em `pts`;
+- total possivel;
+- pontos ganhos;
+- pontos perdidos;
+- pontos devolvidos por N/A;
+- destino da nota.
+
+Os botoes ficam abaixo do conteudo:
+
+- `Voltar`;
+- `Enviar para auditoria` no aprovador;
+- `Confirmar Auditoria` no auditor.
 
 ## Nao alterado
 
@@ -50,7 +53,7 @@ Correcao cirurgica apenas no frontend do modulo Tarefas.
 - Trigger.
 - RLS.
 - Banco de dados.
-- Fluxo R1/R2.
 - Rotas.
 - Permissoes.
+- Fluxo R1/R2.
 

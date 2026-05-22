@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
-import { AlertCircle, Send } from "lucide-react";
+import { ArrowLeft, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { ResumoNotasPerguntaCard, type ResumoNotasRespostaManual } from "./tarefas_resumoNotasPerguntaCard";
-import { useResumoNotas, type ResumoNotasModo } from "../hooks/tarefas_useResumoNotas";
+import { useResumoNotas, type ResumoNotasModo, type ResumoNotasPergunta } from "../hooks/tarefas_useResumoNotas";
 import type { TarefaFluxoData } from "../types/tarefas_fluxoTypes";
 
 interface Props {
@@ -16,33 +16,64 @@ interface Props {
   onConfirmar: (notas: unknown) => void;
 }
 
+const respostaKey = (pergunta: ResumoNotasPergunta) => `${pergunta.origem}:${pergunta.id}`;
+
 export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting, onConfirmar }: Props) {
   const resumo = useResumoNotas(data, modo);
   const [respostas, setRespostas] = useState<Record<string, ResumoNotasRespostaManual>>({});
 
+  const perguntasResumo = useMemo(
+    () =>
+      [...resumo.perguntasAutomaticas, ...resumo.perguntasManuais].sort((a, b) => {
+        const ordem = a.ordem - b.ordem;
+        if (ordem !== 0) return ordem;
+        return a.origem.localeCompare(b.origem);
+      }),
+    [resumo.perguntasAutomaticas, resumo.perguntasManuais],
+  );
+
   const naSemJustificativa = useMemo(
     () =>
-      resumo.perguntasManuais.some((p) => {
-        const r = respostas[p.id];
+      perguntasResumo.some((p) => {
+        const r = respostas[respostaKey(p)];
         return r?.na && !r.justificativaNa?.trim();
       }),
-    [respostas, resumo.perguntasManuais],
+    [perguntasResumo, respostas],
   );
 
   const manualSemResultado = useMemo(
     () =>
       resumo.perguntasManuais.some((p) => {
-        const r = respostas[p.id];
+        const r = respostas[respostaKey(p)];
         return !r?.na && !r?.resultado;
       }),
     [respostas, resumo.perguntasManuais],
   );
 
   const totaisNotas = useMemo(() => {
-    const automaticas = resumo.perguntasAutomaticas.reduce(
+    return perguntasResumo.reduce(
       (acc, pergunta) => {
         const peso = Number(pergunta.peso ?? 0);
+        const resposta = respostas[respostaKey(pergunta)];
         acc.total += peso;
+
+        if (resposta?.na) {
+          const devolvido = Number(pergunta.pontoDevolvidoNa ?? peso);
+          acc.pontos += devolvido;
+          acc.devolvidosNa += devolvido;
+          return acc;
+        }
+
+        if (pergunta.origem === "manual") {
+          if (resposta?.resultado === "ok") {
+            acc.pontos += peso;
+          } else if (resposta?.resultado === "nao_ok") {
+            acc.descontos += peso;
+          } else {
+            acc.manuaisPendentes += 1;
+          }
+          return acc;
+        }
 
         if (pergunta.descontoAplicado === null || pergunta.descontoAplicado === undefined || pergunta.metricaPendente) {
           acc.semDados += 1;
@@ -54,50 +85,12 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
         acc.pontos += Math.max(0, peso - desconto);
         return acc;
       },
-      { total: 0, pontos: 0, descontos: 0, devolvidosNa: 0, semDados: 0 },
+      { total: 0, pontos: 0, descontos: 0, devolvidosNa: 0, semDados: 0, manuaisPendentes: 0 },
     );
-
-    const manuais = resumo.perguntasManuais.reduce(
-      (acc, pergunta) => {
-        const peso = Number(pergunta.peso ?? 0);
-        const resposta = respostas[pergunta.id];
-
-        acc.total += peso;
-        if (resposta?.na) {
-          const devolvido = Number(pergunta.pontoDevolvidoNa ?? peso);
-          acc.pontos += devolvido;
-          acc.devolvidosNa += devolvido;
-          return acc;
-        }
-
-        if (resposta?.resultado === "ok") {
-          acc.pontos += peso;
-          return acc;
-        }
-
-        if (resposta?.resultado === "nao_ok") {
-          acc.descontos += peso;
-          return acc;
-        }
-
-        acc.manuaisPendentes += 1;
-        return acc;
-      },
-      { total: 0, pontos: 0, descontos: 0, devolvidosNa: 0, manuaisPendentes: 0 },
-    );
-
-    return {
-      total: automaticas.total + manuais.total,
-      pontos: automaticas.pontos + manuais.pontos,
-      descontos: automaticas.descontos + manuais.descontos,
-      devolvidosNa: automaticas.devolvidosNa + manuais.devolvidosNa,
-      semDados: automaticas.semDados,
-      manuaisPendentes: manuais.manuaisPendentes,
-    };
-  }, [respostas, resumo.perguntasAutomaticas, resumo.perguntasManuais]);
+  }, [perguntasResumo, respostas]);
 
   const confirmarDisabled = isSubmitting || naSemJustificativa || manualSemResultado || resumo.isLoading;
-  const textoAcaoFinal = modo === "aprovador" ? "Enviar respostas e notas ao auditor" : "Concluir auditoria com notas";
+  const textoAcaoFinal = modo === "aprovador" ? "Enviar para auditoria" : "Confirmar Auditoria";
   const motivoBloqueio = resumo.isLoading
     ? "Carregando resumo de notas..."
     : naSemJustificativa
@@ -106,11 +99,24 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
         ? "Marque OK, Nao OK ou N/A em todas as perguntas manuais antes de enviar."
         : null;
 
+  const respostasManuais = resumo.perguntasManuais.reduce<Record<string, ResumoNotasRespostaManual>>((acc, p) => {
+    const resposta = respostas[respostaKey(p)];
+    if (resposta) acc[p.id] = resposta;
+    return acc;
+  }, {});
+
+  const respostasNa = perguntasResumo.reduce<Record<string, ResumoNotasRespostaManual>>((acc, p) => {
+    const resposta = respostas[respostaKey(p)];
+    if (resposta?.na) acc[respostaKey(p)] = resposta;
+    return acc;
+  }, {});
+
   const payload = {
     origem: "resumo_notas_frontend",
     modo,
     destino: resumo.destino,
-    respostas_manuais: respostas,
+    respostas_manuais: respostasManuais,
+    respostas_na: respostasNa,
     perguntas_automaticas: resumo.perguntasAutomaticas.map((p) => ({
       id: p.id,
       metrica_pendente: p.metricaPendente,
@@ -132,9 +138,12 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
     modo === "aprovador"
       ? resumo.scoreExistente.aprovacao
       : resumo.scoreExistente.aprovador ?? resumo.scoreExistente.auditor;
-  const notaFinalTexto = notaFinalExistente ?? `${totaisNotas.pontos}/${totaisNotas.total}`;
+  const notaFinalPontos = notaFinalExistente ?? totaisNotas.pontos;
   const destinoPendente = resumo.destino.tipo === "nao_mapeado" || resumo.destino.label === "nome nao carregado";
   const destinoPrefixo = resumo.destino.tipo === "setor" ? "setor " : resumo.destino.tipo === "pessoa" ? "" : "";
+  const tituloNotaFinal = modo === "aprovador" ? "Nota final da Aprovacao" : "Nota final da Auditoria";
+  const sujeitoNota = modo === "aprovador" ? "nota da aprovacao" : "nota do aprovador";
+  const destinoLabel = destinoPendente ? resumo.destino.label : `${destinoPrefixo}${resumo.destino.label}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -146,105 +155,67 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-          <div className="p-4 space-y-4">
-            {totaisNotas.semDados > 0 && (
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 flex gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                {totaisNotas.semDados} pergunta(s) automatica(s) estao sem dados suficientes no fluxo carregado.
-              </div>
-            )}
-
-            <section className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Perguntas automaticas
-              </h3>
-              {resumo.perguntasAutomaticas.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Nenhuma pergunta automatica encontrada.</p>
-              ) : (
-                resumo.perguntasAutomaticas.map((p) => (
-                  <ResumoNotasPerguntaCard key={p.id} pergunta={p} />
-                ))
-              )}
-            </section>
-
-            <Separator />
-
-            <section className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Perguntas manuais
-              </h3>
-              {resumo.perguntasManuais.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Nenhuma pergunta manual encontrada.</p>
-              ) : (
-                resumo.perguntasManuais.map((p) => (
+          <div className="p-4 space-y-3">
+            {perguntasResumo.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Nenhuma pergunta de nota encontrada.</p>
+            ) : (
+              perguntasResumo.map((p) => {
+                const key = respostaKey(p);
+                return (
                   <ResumoNotasPerguntaCard
-                    key={p.id}
+                    key={key}
                     pergunta={p}
-                    resposta={respostas[p.id]}
+                    resposta={respostas[key]}
                     onChange={(patch) =>
                       setRespostas((prev) => ({
                         ...prev,
-                        [p.id]: { ...(prev[p.id] ?? {}), ...patch },
+                        [key]: { ...(prev[key] ?? {}), ...patch },
                       }))
                     }
                   />
-                ))
-              )}
-            </section>
+                );
+              })
+            )}
+
+            <div className="rounded-md border border-blue-200 bg-blue-50 p-4 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-base font-bold text-foreground">{tituloNotaFinal}</p>
+                <p className="text-2xl font-bold text-blue-700 whitespace-nowrap">{notaFinalPontos} pts</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Total possivel: {totaisNotas.total} pts. Ganhos: {totaisNotas.pontos} pts. Perdidos: {totaisNotas.descontos} pts.
+                {totaisNotas.devolvidosNa > 0 ? ` Devolvidos por N/A: ${totaisNotas.devolvidosNa} pts.` : ""}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Ao confirmar, {sujeitoNota} sera gravada para:{" "}
+                <strong className={destinoPendente ? "text-amber-700" : "text-foreground"}>{destinoLabel}</strong>
+              </p>
+              {totaisNotas.semDados > 0 ? (
+                <p className="text-xs text-slate-700">{totaisNotas.semDados} pergunta(s) sem dados suficientes.</p>
+              ) : null}
+            </div>
           </div>
         </div>
 
-        <div className="px-4 py-3 border-t bg-muted/20 space-y-3 shrink-0">
-          <div className="rounded-md border bg-background p-3 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-              <p className="text-base font-bold">
-                Nota final: <span className="text-primary">{notaFinalTexto}</span>
-              </p>
-              <span className="text-xs text-muted-foreground">Total possivel: {totaisNotas.total} pts</span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-              <div className="rounded border border-emerald-200 bg-emerald-50 px-2.5 py-2">
-                <p className="text-muted-foreground">Pontos ganhos</p>
-                <p className="font-bold text-emerald-700">{totaisNotas.pontos}</p>
-              </div>
-              <div className="rounded border border-red-200 bg-red-50 px-2.5 py-2">
-                <p className="text-muted-foreground">Pontos perdidos</p>
-                <p className="font-bold text-red-700">-{totaisNotas.descontos}</p>
-              </div>
-              <div className="rounded border border-amber-200 bg-amber-50 px-2.5 py-2">
-                <p className="text-muted-foreground">Devolvidos N/A</p>
-                <p className="font-bold text-amber-800">{totaisNotas.devolvidosNa}</p>
-              </div>
-              <div className="rounded border border-slate-200 bg-slate-50 px-2.5 py-2">
-                <p className="text-muted-foreground">Sem dados</p>
-                <p className="font-bold text-slate-700">{totaisNotas.semDados}</p>
-              </div>
-            </div>
-
-            <p className="text-xs text-muted-foreground">
-              Esta nota sera lancada para:{" "}
-              <strong className={destinoPendente ? "text-amber-700" : "text-foreground"}>
-                {destinoPendente ? resumo.destino.label : `${destinoPrefixo}${resumo.destino.label}`}
-              </strong>
-            </p>
-          </div>
-
+        <div className="px-4 py-3 border-t bg-background space-y-3 shrink-0">
           {motivoBloqueio && (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
               {motivoBloqueio}
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row gap-2">
+          <Separator />
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-              Cancelar
+              <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
+              Voltar
             </Button>
             <Button
               type="button"
               onClick={() => onConfirmar(payload)}
               disabled={confirmarDisabled}
-              className="w-full sm:flex-1"
+              className="w-full sm:w-auto sm:min-w-[230px] bg-blue-600 hover:bg-blue-700 text-white"
             >
               <Send className="h-3.5 w-3.5 mr-1.5" />
               {isSubmitting ? "Enviando..." : textoAcaoFinal}

@@ -1,40 +1,64 @@
 # Validacao - modal de notas visual
 
-## Validacoes de codigo
+## Validacoes executadas
 
-- `rg "Pendente backend|pendente backend|preveia manual|previa manual|incompleta|avaliador_fim_em|finalizado_em|aprovador_inicio_em|aprovador_fim_em|avaliador_inicio_em" src/modules/tarefas/fluxo/components src/modules/tarefas/fluxo/hooks src/modules/tarefas/fluxo/services src/modules/tarefas/services/tarefas_pontuacao_config_service.ts`
-  - Resultado esperado: zero ocorrencias funcionais no modal/hook/service do resumo.
+### Busca de termos proibidos/legados
 
-- `git diff --check`
-  - Resultado esperado: sem erro de whitespace.
+Comando:
 
-## Validacao visual esperada
+`rg -n "Pendente backend|pendente backend|previa manual|incompleta|avaliador_fim_em|finalizado_em|aprovador_inicio_em|aprovador_fim_em|avaliador_inicio_em" src/modules/tarefas/fluxo/components src/modules/tarefas/fluxo/hooks src/modules/tarefas/fluxo/services src/modules/tarefas/services/tarefas_pontuacao_config_service.ts`
 
-### Por pergunta
+Resultado:
 
-- Pergunta OK aparece verde.
-- Pergunta com desconto aparece vermelha.
-- Pergunta N/A aparece amarela e exige justificativa.
-- Pergunta sem dado suficiente aparece cinza e mostra fonte/dado faltante.
-- Cada pergunta mostra peso, pontos ganhos, desconto, devolucao N/A e resultado final.
+- zero ocorrencias funcionais nos componentes/hook/service do resumo.
 
-### Rodape
+### Whitespace
 
-- Exibe nota final no formato `pontos/total`.
-- Exibe total possivel.
-- Exibe pontos ganhos.
-- Exibe pontos perdidos.
-- Exibe pontos devolvidos por N/A.
-- Exibe quantidade de perguntas sem dados.
-- Exibe para quem a nota sera lancada.
+Comando:
 
-## Validacao de restricoes
+`git diff --check`
 
-- Nao foi criado SQL.
-- Nao foi criada migration.
-- Nao foi alterada RPC.
-- Nao foi alterado trigger.
-- Nao foi alterado RLS.
-- Nao foi alterado banco.
-- Nao foi alterado modulo fora de Tarefas.
+Resultado:
+
+- sem erro.
+
+### Sintaxe TSX
+
+Validacao via TypeScript API no Node REPL interno:
+
+- `tarefas_resumoNotasModal.tsx`: sem diagnostics;
+- `tarefas_resumoNotasPerguntaCard.tsx`: sem diagnostics.
+
+## Build local
+
+`npm run build` nao roda nesta maquina porque `npm` nao esta disponivel no PATH.
+
+Tentativa de chamar `node` diretamente tambem falha com `Acesso negado` no executavel do WindowsApps.
+
+## Validacao visual esperada no Lovable
+
+### Aprovador
+
+- abrir `Aprovar e ver resumo`;
+- perguntas aparecem em blocos coloridos;
+- N/A aparece no canto direito quando permitido;
+- nota da pergunta aparece dentro de cada bloco;
+- card `Nota final da Aprovacao` aparece no fim;
+- botao final `Enviar para auditoria` fica abaixo do conteudo.
+
+### Auditor
+
+- abrir `Concluir e ver resumo`;
+- perguntas aparecem no mesmo layout do aprovador;
+- card `Nota final da Auditoria` aparece no fim;
+- botao final `Confirmar Auditoria` fica abaixo do conteudo.
+
+## Restricoes confirmadas
+
+- Sem SQL.
+- Sem migration.
+- Sem RPC.
+- Sem trigger.
+- Sem RLS.
+- Sem mudanca fora do modulo Tarefas.
 
