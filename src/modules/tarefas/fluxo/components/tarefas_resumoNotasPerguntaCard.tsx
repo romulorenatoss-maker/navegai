@@ -17,102 +17,123 @@ interface Props {
   onChange?: (patch: Partial<ResumoNotasRespostaManual>) => void;
 }
 
-type StatusKey = "ok" | "nao_ok" | "na" | "pendente";
+type StatusKey = "ok" | "perdeu" | "na" | "sem_dados";
 
-function getStatus(
-  pergunta: ResumoNotasPergunta,
-  resultado: ResumoNotasRespostaManual["resultado"],
-  marcadaNa: boolean,
-): { key: StatusKey; label: string; className: string } {
+const statusVisual: Record<StatusKey, { label: string; chip: string; border: string; panel: string }> = {
+  ok: {
+    label: "OK - ganhou ponto",
+    chip: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    border: "border-l-emerald-500",
+    panel: "bg-emerald-50/60 border-emerald-200",
+  },
+  perdeu: {
+    label: "Perdeu ponto",
+    chip: "bg-red-100 text-red-700 border-red-200",
+    border: "border-l-red-500",
+    panel: "bg-red-50/60 border-red-200",
+  },
+  na: {
+    label: "N/A - ponto devolvido",
+    chip: "bg-amber-100 text-amber-800 border-amber-200",
+    border: "border-l-amber-500",
+    panel: "bg-amber-50/70 border-amber-200",
+  },
+  sem_dados: {
+    label: "Sem dados suficientes",
+    chip: "bg-slate-100 text-slate-700 border-slate-200",
+    border: "border-l-slate-400",
+    panel: "bg-slate-50/70 border-slate-200",
+  },
+};
+
+function calcularVisual(pergunta: ResumoNotasPergunta, resposta?: ResumoNotasRespostaManual) {
+  const peso = Number(pergunta.peso ?? 0);
+  const marcadaNa = !!resposta?.na;
+  const resultadoManual = resposta?.resultado;
+
   if (marcadaNa) {
     return {
-      key: "na",
-      label: "N/A",
-      className: "bg-blue-100 text-blue-700 border-blue-200",
-    };
-  }
-  if (pergunta.origem === "manual" && resultado === "ok") {
-    return {
-      key: "ok",
-      label: "OK / Conforme",
-      className: "bg-emerald-100 text-emerald-700 border-emerald-200",
-    };
-  }
-  if (pergunta.origem === "manual" && resultado === "nao_ok") {
-    return {
-      key: "nao_ok",
-      label: "Nao OK",
-      className: "bg-red-100 text-red-700 border-red-200",
+      status: "na" as const,
+      pontosGanhos: pergunta.pontoDevolvidoNa,
+      pontosPerdidos: 0,
+      pontosDevolvidos: pergunta.pontoDevolvidoNa,
+      mensagem: resposta?.justificativaNa?.trim() || "Justificativa obrigatoria para N/A.",
+      justificativa: resposta?.justificativaNa?.trim() ?? "",
     };
   }
 
-  const d = pergunta.descontoAplicado;
-  if (d === null || d === undefined || pergunta.metricaPendente) {
+  if (pergunta.origem === "manual" && resultadoManual === "ok") {
     return {
-      key: "pendente",
-      label: "Sem dados",
-      className: "bg-amber-100 text-amber-800 border-amber-200",
+      status: "ok" as const,
+      pontosGanhos: peso,
+      pontosPerdidos: 0,
+      pontosDevolvidos: 0,
+      mensagem: resposta?.resposta?.trim() || "Conforme.",
+      justificativa: "",
     };
   }
-  if ((d as number) > 0) {
+
+  if (pergunta.origem === "manual" && resultadoManual === "nao_ok") {
     return {
-      key: "nao_ok",
-      label: "Nao OK",
-      className: "bg-red-100 text-red-700 border-red-200",
+      status: "perdeu" as const,
+      pontosGanhos: 0,
+      pontosPerdidos: peso,
+      pontosDevolvidos: 0,
+      mensagem: resposta?.resposta?.trim() || "Nao conforme.",
+      justificativa: "",
     };
   }
+
+  if (pergunta.descontoAplicado === null || pergunta.descontoAplicado === undefined || pergunta.metricaPendente) {
+    return {
+      status: "sem_dados" as const,
+      pontosGanhos: 0,
+      pontosPerdidos: 0,
+      pontosDevolvidos: 0,
+      mensagem: pergunta.valorExibido,
+      justificativa: "",
+    };
+  }
+
+  const pontosPerdidos = Math.max(0, Number(pergunta.descontoAplicado ?? 0));
+  const pontosGanhos = Math.max(0, peso - pontosPerdidos);
   return {
-    key: "ok",
-    label: "OK / Conforme",
-    className: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    status: pontosPerdidos > 0 ? ("perdeu" as const) : ("ok" as const),
+    pontosGanhos,
+    pontosPerdidos,
+    pontosDevolvidos: 0,
+    mensagem: pergunta.valorExibido,
+    justificativa: "",
   };
+}
+
+function LinhaResumo({ label, value, className = "" }: { label: string; value: string | number; className?: string }) {
+  return (
+    <div className="rounded-md border bg-background px-2.5 py-2 min-w-0">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={`text-sm font-semibold break-words ${className}`}>{value}</p>
+    </div>
+  );
 }
 
 export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange }: Props) {
   const isManual = pergunta.origem === "manual";
   const marcadaNa = !!resposta?.na;
   const resultadoManual = resposta?.resultado;
-  const status = getStatus(pergunta, resultadoManual, marcadaNa);
-
-  const peso = pergunta.peso;
-  const desconto = pergunta.descontoAplicado;
-  const descontoPendente =
-    isManual ? !marcadaNa && !resultadoManual : desconto === null || desconto === undefined;
-
-  // Nota da pergunta (mantido = peso - desconto), calculada quando ha resultado automatico ou manual.
-  let notaPerguntaLabel: string;
-  if (marcadaNa) {
-    notaPerguntaLabel = `Nota da pergunta: N/A - devolve ${pergunta.pontoDevolvidoNa} / peso ${peso}`;
-  } else if (isManual && resultadoManual === "ok") {
-    notaPerguntaLabel = `Nota da pergunta: ${peso} / peso ${peso}`;
-  } else if (isManual && resultadoManual === "nao_ok") {
-    notaPerguntaLabel = `Nota da pergunta: 0 / peso ${peso}`;
-  } else if (descontoPendente) {
-    notaPerguntaLabel = `Nota da pergunta: sem dados / peso ${peso}`;
-  } else {
-    const nota = Math.max(0, peso - (desconto as number));
-    notaPerguntaLabel = `Nota da pergunta: ${nota} / peso ${peso}`;
-  }
+  const visual = calcularVisual(pergunta, resposta);
+  const styles = statusVisual[visual.status];
+  const peso = Number(pergunta.peso ?? 0);
 
   return (
-    <div
-      className={`rounded-md border bg-card p-3 space-y-2 max-w-full overflow-hidden border-l-4 ${
-        status.key === "ok"
-          ? "border-l-emerald-500"
-          : status.key === "nao_ok"
-            ? "border-l-red-500"
-            : status.key === "na"
-              ? "border-l-blue-500"
-              : "border-l-amber-500"
-      }`}
-    >
+    <div className={`rounded-md border bg-card p-3 space-y-3 max-w-full overflow-hidden border-l-4 ${styles.border}`}>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-sm font-medium break-words">{pergunta.pergunta}</p>
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Pergunta</p>
+          <p className="text-sm font-semibold break-words">{pergunta.pergunta}</p>
         </div>
         <div className="flex flex-wrap gap-1.5 shrink-0">
-          <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${status.className}`}>
-            {status.label}
+          <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${styles.chip}`}>
+            {styles.label}
           </span>
           <Badge variant={pergunta.origem === "automatica" ? "secondary" : "outline"} className="w-fit">
             {pergunta.origem === "automatica" ? "Automatica" : "Manual"}
@@ -120,27 +141,24 @@ export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange }: Props)
         </div>
       </div>
 
-      <div className="text-xs font-medium text-foreground">{notaPerguntaLabel}</div>
+      <div className={`rounded-md border p-3 space-y-3 ${styles.panel}`}>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <LinhaResumo label="Peso" value={peso} />
+          <LinhaResumo label="Pontos" value={`${visual.pontosGanhos}/${peso}`} className="text-emerald-700" />
+          <LinhaResumo label="Desconto" value={`-${visual.pontosPerdidos}`} className={visual.pontosPerdidos > 0 ? "text-red-700" : "text-muted-foreground"} />
+          <LinhaResumo label="Devolvido N/A" value={visual.pontosDevolvidos} className={visual.pontosDevolvidos > 0 ? "text-amber-800" : "text-muted-foreground"} />
+        </div>
 
-      <div className="text-xs">
-        {marcadaNa ? (
-          <span className="text-blue-700">N/A: ponto devolvido {pergunta.pontoDevolvidoNa}</span>
-        ) : isManual && resultadoManual === "ok" ? (
-          <span className="text-emerald-700 font-medium">Sem desconto - ganhou {peso} pts</span>
-        ) : isManual && resultadoManual === "nao_ok" ? (
-          <span className="text-red-700 font-medium">Desconto: -{peso}</span>
-        ) : descontoPendente ? (
-          <span className="text-amber-800">Calculo sem dados suficientes</span>
-        ) : (desconto as number) > 0 ? (
-          <span className="text-red-700 font-medium">Desconto: -{desconto as number}</span>
-        ) : (
-          <span className="text-emerald-700">Sem desconto</span>
-        )}
-      </div>
-
-      <div className="rounded bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground break-words">
-        {pergunta.valorExibido}
-        {pergunta.fonte ? <span className="block mt-1">Fonte: {pergunta.fonte}</span> : null}
+        <div className="rounded bg-background/70 px-2.5 py-2 text-xs break-words">
+          <p className="font-medium text-foreground">Resultado final da pergunta: {visual.pontosGanhos}/{peso}</p>
+          <p className="text-muted-foreground mt-1">Mensagem: {visual.mensagem}</p>
+          {visual.justificativa && (
+            <p className="text-amber-800 mt-1">Justificativa N/A: {visual.justificativa}</p>
+          )}
+          {visual.status === "sem_dados" && pergunta.fonte && (
+            <p className="text-muted-foreground mt-1">Dado faltante/fonte: {pergunta.fonte}</p>
+          )}
+        </div>
       </div>
 
       {isManual && (
@@ -174,17 +192,19 @@ export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange }: Props)
             onChange={(e) => onChange?.({ resposta: e.target.value })}
             disabled={marcadaNa}
             className="text-xs min-h-[58px]"
-            placeholder="Resposta manual"
+            placeholder="Observacao da avaliacao manual"
           />
-          <label className="flex items-center gap-2 text-xs">
-            <Checkbox
-              checked={marcadaNa}
-              onCheckedChange={(checked) =>
-                onChange?.({ na: checked === true, resultado: checked === true ? undefined : resultadoManual })
-              }
-            />
-            Marcar N/A
-          </label>
+          {pergunta.permiteNa && (
+            <label className="flex items-center gap-2 text-xs">
+              <Checkbox
+                checked={marcadaNa}
+                onCheckedChange={(checked) =>
+                  onChange?.({ na: checked === true, resultado: checked === true ? undefined : resultadoManual })
+                }
+              />
+              Marcar N/A
+            </label>
+          )}
           {marcadaNa && (
             <div className="space-y-1">
               <Label className="text-[11px]">Justificativa do N/A *</Label>

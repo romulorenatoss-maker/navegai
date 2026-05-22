@@ -28,6 +28,7 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
       }),
     [respostas, resumo.perguntasManuais],
   );
+
   const manualSemResultado = useMemo(
     () =>
       resumo.perguntasManuais.some((p) => {
@@ -37,31 +38,61 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
     [respostas, resumo.perguntasManuais],
   );
 
-  const notaCalculadaPreview = useMemo(() => {
-    const totalAuto = resumo.perguntasAutomaticas.reduce((s, p) => s + p.peso, 0);
-    const pontosAuto = resumo.perguntasAutomaticas.reduce((s, p) => {
-      if (p.descontoAplicado === null || p.descontoAplicado === undefined) return s;
-      return s + Math.max(0, p.peso - p.descontoAplicado);
-    }, 0);
-    const autoCompleto = resumo.perguntasAutomaticas.every(
-      (p) => p.descontoAplicado !== null && p.descontoAplicado !== undefined,
+  const totaisNotas = useMemo(() => {
+    const automaticas = resumo.perguntasAutomaticas.reduce(
+      (acc, pergunta) => {
+        const peso = Number(pergunta.peso ?? 0);
+        acc.total += peso;
+
+        if (pergunta.descontoAplicado === null || pergunta.descontoAplicado === undefined || pergunta.metricaPendente) {
+          acc.semDados += 1;
+          return acc;
+        }
+
+        const desconto = Math.max(0, Number(pergunta.descontoAplicado ?? 0));
+        acc.descontos += desconto;
+        acc.pontos += Math.max(0, peso - desconto);
+        return acc;
+      },
+      { total: 0, pontos: 0, descontos: 0, devolvidosNa: 0, semDados: 0 },
     );
 
-    const totalManual = resumo.perguntasManuais.reduce((s, p) => s + p.peso, 0);
-    const respondidas = resumo.perguntasManuais.filter((p) => {
-      const r = respostas[p.id];
-      return r?.na || r?.resultado;
-    });
-    const pontosManual = resumo.perguntasManuais.reduce((s, p) => {
-      const r = respostas[p.id];
-      if (r?.na) return s + p.pontoDevolvidoNa;
-      if (r?.resultado === "ok") return s + p.peso;
-      return s;
-    }, 0);
+    const manuais = resumo.perguntasManuais.reduce(
+      (acc, pergunta) => {
+        const peso = Number(pergunta.peso ?? 0);
+        const resposta = respostas[pergunta.id];
+
+        acc.total += peso;
+        if (resposta?.na) {
+          const devolvido = Number(pergunta.pontoDevolvidoNa ?? peso);
+          acc.pontos += devolvido;
+          acc.devolvidosNa += devolvido;
+          return acc;
+        }
+
+        if (resposta?.resultado === "ok") {
+          acc.pontos += peso;
+          return acc;
+        }
+
+        if (resposta?.resultado === "nao_ok") {
+          acc.descontos += peso;
+          return acc;
+        }
+
+        acc.manuaisPendentes += 1;
+        return acc;
+      },
+      { total: 0, pontos: 0, descontos: 0, devolvidosNa: 0, manuaisPendentes: 0 },
+    );
+
     return {
-      total: totalAuto + totalManual,
-      pontos: pontosAuto + pontosManual,
-      completo: autoCompleto && respondidas.length === resumo.perguntasManuais.length,
+      total: automaticas.total + manuais.total,
+      pontos: automaticas.pontos + manuais.pontos,
+      descontos: automaticas.descontos + manuais.descontos,
+      devolvidosNa: automaticas.devolvidosNa + manuais.devolvidosNa,
+      semDados: automaticas.semDados,
+      manuaisPendentes: manuais.manuaisPendentes,
     };
   }, [respostas, resumo.perguntasAutomaticas, resumo.perguntasManuais]);
 
@@ -93,33 +124,42 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
           : Math.max(0, p.peso - p.descontoAplicado),
     })),
     score_existente: resumo.scoreExistente,
+    resumo_totais: totaisNotas,
     backend_pendente: resumo.backendPendente,
   };
+
+  const notaFinalExistente =
+    modo === "aprovador"
+      ? resumo.scoreExistente.aprovacao
+      : resumo.scoreExistente.aprovador ?? resumo.scoreExistente.auditor;
+  const notaFinalTexto = notaFinalExistente ?? `${totaisNotas.pontos}/${totaisNotas.total}`;
+  const destinoPendente = resumo.destino.tipo === "nao_mapeado" || resumo.destino.label === "nome nao carregado";
+  const destinoPrefixo = resumo.destino.tipo === "setor" ? "setor " : resumo.destino.tipo === "pessoa" ? "" : "";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100vw-24px)] max-w-3xl h-[90vh] max-h-[90vh] p-0 overflow-hidden flex flex-col">
-        <DialogHeader className="px-4 py-3 border-b">
+        <DialogHeader className="px-4 py-3 border-b shrink-0">
           <DialogTitle className="text-base">
-            Resumo de Notas · {modo === "aprovador" ? "Aprovação" : "Auditoria"}
+            Resumo de Notas - {modo === "aprovador" ? "Aprovacao" : "Auditoria"}
           </DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="p-4 space-y-4">
-            {resumo.backendPendente && (
-              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 flex gap-2">
+            {totaisNotas.semDados > 0 && (
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 flex gap-2">
                 <AlertCircle className="h-4 w-4 shrink-0" />
-                Ha metricas/destino sem dados suficientes no fluxo atual. O resumo reaproveita o calculo existente sem assumir regra nova.
+                {totaisNotas.semDados} pergunta(s) automatica(s) estao sem dados suficientes no fluxo carregado.
               </div>
             )}
 
             <section className="space-y-2">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Perguntas automáticas
+                Perguntas automaticas
               </h3>
               {resumo.perguntasAutomaticas.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Nenhuma pergunta automática encontrada.</p>
+                <p className="text-xs text-muted-foreground">Nenhuma pergunta automatica encontrada.</p>
               ) : (
                 resumo.perguntasAutomaticas.map((p) => (
                   <ResumoNotasPerguntaCard key={p.id} pergunta={p} />
@@ -155,42 +195,47 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
         </div>
 
         <div className="px-4 py-3 border-t bg-muted/20 space-y-3 shrink-0">
-          {(() => {
-            const notaFinal =
-              modo === "aprovador"
-                ? resumo.scoreExistente.aprovacao
-                : resumo.scoreExistente.aprovador ?? resumo.scoreExistente.auditor;
-            const destinoPendente = resumo.destino.tipo === "nao_mapeado" || resumo.destino.label === "nome nao carregado";
-            const destinoPrefixo =
-              resumo.destino.tipo === "setor" ? "setor " : resumo.destino.tipo === "pessoa" ? "" : "";
-            const notaTexto =
-              notaFinal ?? (
-                notaCalculadaPreview.total > 0
-                  ? `nota calculada ${notaCalculadaPreview.pontos}/${notaCalculadaPreview.total}${notaCalculadaPreview.completo ? "" : " (incompleta)"}`
-                  : "sem dados suficientes"
-              );
-            return (
-              <>
-                <p className="text-sm font-semibold">
-                  Nota final:{" "}
-                  <span className={notaFinal === null || notaFinal === undefined ? "text-amber-700" : "text-foreground"}>
-                    {notaTexto}
-                  </span>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Esta nota será lançada para:{" "}
-                  <strong className={destinoPendente ? "text-amber-700" : "text-foreground"}>
-                    {destinoPendente ? resumo.destino.label : `${destinoPrefixo}${resumo.destino.label}`}
-                  </strong>
-                </p>
-              </>
-            );
-          })()}
+          <div className="rounded-md border bg-background p-3 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+              <p className="text-base font-bold">
+                Nota final: <span className="text-primary">{notaFinalTexto}</span>
+              </p>
+              <span className="text-xs text-muted-foreground">Total possivel: {totaisNotas.total} pts</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              <div className="rounded border border-emerald-200 bg-emerald-50 px-2.5 py-2">
+                <p className="text-muted-foreground">Pontos ganhos</p>
+                <p className="font-bold text-emerald-700">{totaisNotas.pontos}</p>
+              </div>
+              <div className="rounded border border-red-200 bg-red-50 px-2.5 py-2">
+                <p className="text-muted-foreground">Pontos perdidos</p>
+                <p className="font-bold text-red-700">-{totaisNotas.descontos}</p>
+              </div>
+              <div className="rounded border border-amber-200 bg-amber-50 px-2.5 py-2">
+                <p className="text-muted-foreground">Devolvidos N/A</p>
+                <p className="font-bold text-amber-800">{totaisNotas.devolvidosNa}</p>
+              </div>
+              <div className="rounded border border-slate-200 bg-slate-50 px-2.5 py-2">
+                <p className="text-muted-foreground">Sem dados</p>
+                <p className="font-bold text-slate-700">{totaisNotas.semDados}</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Esta nota sera lancada para:{" "}
+              <strong className={destinoPendente ? "text-amber-700" : "text-foreground"}>
+                {destinoPendente ? resumo.destino.label : `${destinoPrefixo}${resumo.destino.label}`}
+              </strong>
+            </p>
+          </div>
+
           {motivoBloqueio && (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
               {motivoBloqueio}
             </div>
           )}
+
           <div className="flex flex-col sm:flex-row gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Cancelar
