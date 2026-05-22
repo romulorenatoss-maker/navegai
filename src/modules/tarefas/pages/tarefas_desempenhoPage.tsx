@@ -41,6 +41,24 @@ export default function DesempenhoOperacionalPage() {
   const [viewAsProfileId, setViewAsProfileId] = useState<string>(profile?.id || "");
   const profileId = isAdmin && viewAsProfileId ? viewAsProfileId : (profile?.id || "");
 
+  const { data: perfilSetorIds = [], isLoading: isLoadingSetores } = useQuery({
+    queryKey: ["desempenho_profile_setores", profileId],
+    enabled: !!profileId,
+    queryFn: async () => {
+      const [{ data: profileRow, error: profileError }, { data: setorRows, error: setoresError }] = await Promise.all([
+        supabase.from("profiles").select("setor_id").eq("id", profileId).maybeSingle(),
+        supabase.from("colaborador_setores").select("setor_id").eq("profile_id", profileId),
+      ]);
+      if (profileError) throw profileError;
+      if (setoresError) throw setoresError;
+
+      return Array.from(new Set([
+        profileRow?.setor_id,
+        ...(setorRows || []).map((row: any) => row.setor_id),
+      ].filter(Boolean))) as string[];
+    },
+  });
+
   // Lista de colaboradores que têm tarefas associadas (apenas para admin)
   const { data: colaboradoresComTarefas = [] } = useQuery({
     queryKey: ["desempenho_colaboradores_com_tarefas"],
@@ -69,13 +87,21 @@ export default function DesempenhoOperacionalPage() {
 
   // ── Fetch score logs for logged user ──
   const { data: scoreLogs = [], isLoading } = useQuery({
-    queryKey: ["op-score-logs", profileId, startDate.toISOString(), endDate.toISOString()],
+    queryKey: ["op-score-logs", profileId, perfilSetorIds.join("|"), startDate.toISOString(), endDate.toISOString()],
     enabled: !!profileId,
     queryFn: async () => {
+      const filters = [
+        `target_profile_id.eq.${profileId}`,
+        `profile_id.eq.${profileId}`,
+      ];
+      if (perfilSetorIds.length > 0) {
+        filters.push(`target_setor_id.in.(${perfilSetorIds.join(",")})`);
+      }
+
       const { data, error } = await (supabase as any)
         .from("operational_score_logs")
         .select("*, operational_assignments(data_prevista, status, operational_templates(nome, tipo_execucao))")
-        .or(`target_profile_id.eq.${profileId},profile_id.eq.${profileId}`)
+        .or(filters.join(","))
         .gte("created_at", startOfDay(startDate).toISOString())
         .lte("created_at", endOfDay(endDate).toISOString())
         .order("created_at", { ascending: false });
@@ -85,13 +111,29 @@ export default function DesempenhoOperacionalPage() {
   });
 
   const { data: assignmentScores = [] } = useQuery({
-    queryKey: ["op-assignment-score-fallbacks", profileId, startDate.toISOString(), endDate.toISOString()],
+    queryKey: ["op-assignment-score-fallbacks", profileId, perfilSetorIds.join("|"), startDate.toISOString(), endDate.toISOString()],
     enabled: !!profileId,
     queryFn: async () => {
+      const filters = [
+        `responsavel_id.eq.${profileId}`,
+        `avaliado_id.eq.${profileId}`,
+        `aprovador_id.eq.${profileId}`,
+        `auditor_id.eq.${profileId}`,
+      ];
+      if (perfilSetorIds.length > 0) {
+        const setorial = perfilSetorIds.join(",");
+        filters.push(
+          `setor_executor_id.in.(${setorial})`,
+          `setor_avaliado_id.in.(${setorial})`,
+          `setor_aprovador_id.in.(${setorial})`,
+          `setor_auditor_id.in.(${setorial})`,
+        );
+      }
+
       const { data, error } = await (supabase as any)
         .from("operational_assignments")
         .select("*, operational_templates(nome, tipo_execucao)")
-        .or(`responsavel_id.eq.${profileId},avaliado_id.eq.${profileId},aprovador_id.eq.${profileId},auditor_id.eq.${profileId}`)
+        .or(filters.join(","))
         .gte("data_prevista", startOfDay(startDate).toISOString().slice(0, 10))
         .lte("data_prevista", endOfDay(endDate).toISOString().slice(0, 10))
         .not("status", "in", "(cancelada,arquivada)");
@@ -170,6 +212,11 @@ export default function DesempenhoOperacionalPage() {
     () => new Set(scoreLogs.map((s: any) => `${s.assignment_id}:${s.tipo_score}`)),
     [scoreLogs],
   );
+  const isSetorDoPerfil = (setorId?: string | null) => !!setorId && perfilSetorIds.includes(setorId);
+  const isScoreLogDoPerfil = (log: any) =>
+    log.profile_id === profileId ||
+    log.target_profile_id === profileId ||
+    isSetorDoPerfil(log.target_setor_id);
   const makeFallbackLog = (assignment: any, tipo: "executor" | "avaliado" | "aprovador", score: number) => ({
     id: `fallback-${assignment.id}-${tipo}`,
     assignment_id: assignment.id,
@@ -184,21 +231,21 @@ export default function DesempenhoOperacionalPage() {
     operational_assignments: assignment,
   });
   const fallbackExecutorLogs = assignmentScores
-    .filter((a: any) => a.responsavel_id === profileId && !scoreLogKeys.has(`${a.id}:executor`))
+    .filter((a: any) => (a.responsavel_id === profileId || isSetorDoPerfil(a.setor_executor_id)) && !scoreLogKeys.has(`${a.id}:executor`))
     .map((a: any) => {
       const score = getNotaResumoAssignment(a, "executor");
       return score != null ? makeFallbackLog(a, "executor", score) : null;
     })
     .filter(Boolean);
   const fallbackAvaliadoLogs = assignmentScores
-    .filter((a: any) => a.avaliado_id === profileId && !scoreLogKeys.has(`${a.id}:avaliado`))
+    .filter((a: any) => (a.avaliado_id === profileId || isSetorDoPerfil(a.setor_avaliado_id)) && !scoreLogKeys.has(`${a.id}:avaliado`))
     .map((a: any) => {
       const score = getNotaResumoAssignment(a, "avaliado");
       return score != null ? makeFallbackLog(a, "avaliado", score) : null;
     })
     .filter(Boolean);
   const fallbackAprovadorLogs = assignmentScores
-    .filter((a: any) => a.aprovador_id === profileId && !scoreLogKeys.has(`${a.id}:aprovador`))
+    .filter((a: any) => (a.aprovador_id === profileId || isSetorDoPerfil(a.setor_aprovador_id)) && !scoreLogKeys.has(`${a.id}:aprovador`))
     .map((a: any) => {
       const score = getNotaResumoAssignment(a, "aprovador");
       return score != null ? makeFallbackLog(a, "aprovador", score) : null;
@@ -206,16 +253,16 @@ export default function DesempenhoOperacionalPage() {
     .filter(Boolean);
 
   const myExecutorLogs = [
-    ...scoreLogs.filter((s: any) => s.tipo_score === "executor" && s.profile_id === profileId),
+    ...scoreLogs.filter((s: any) => s.tipo_score === "executor" && isScoreLogDoPerfil(s)),
     ...fallbackExecutorLogs,
   ];
   const myAvaliadoLogs = [
-    ...scoreLogs.filter((s: any) => s.tipo_score === "avaliado" && s.target_profile_id === profileId),
+    ...scoreLogs.filter((s: any) => s.tipo_score === "avaliado" && isScoreLogDoPerfil(s)),
     ...fallbackAvaliadoLogs,
   ];
   // Nota dada pelo auditor → aprovador (tipo_score='aprovador' gerado pelo trigger recalcular_score_assignment)
   const myAprovadorLogs = [
-    ...scoreLogs.filter((s: any) => s.tipo_score === "aprovador" && s.target_profile_id === profileId),
+    ...scoreLogs.filter((s: any) => s.tipo_score === "aprovador" && isScoreLogDoPerfil(s)),
     ...fallbackAprovadorLogs,
   ];
 
@@ -233,6 +280,10 @@ export default function DesempenhoOperacionalPage() {
   const avgExecutor = weightedAvg(myExecutorLogs);
   const avgAvaliado = weightedAvg(myAvaliadoLogs);
   const avgAvaliador = weightedAvg(myAprovadorLogs);
+  const notasGerais = [avgExecutor, avgAvaliado, avgAvaliador].filter((v): v is number => v != null);
+  const avgGlobal = notasGerais.length > 0
+    ? Math.round(notasGerais.reduce((sum, v) => sum + v, 0) / notasGerais.length)
+    : null;
 
   // ── Rankings ──
   const rankings = useMemo(() => {
@@ -303,7 +354,7 @@ export default function DesempenhoOperacionalPage() {
         <SummaryCard icon={<Target className="w-5 h-5" />} label="Média Executor" value={avgExecutor} />
         <SummaryCard icon={<User className="w-5 h-5" />} label="Média Avaliado" value={avgAvaliado} />
         <SummaryCard icon={<BarChart3 className="w-5 h-5" />} label="Média Avaliador" value={avgAvaliador} />
-        <SummaryCard icon={<TrendingUp className="w-5 h-5" />} label="Nota Global" value={avgExecutor != null ? Math.round((avgExecutor || 0) * 0.4 + 0) : null} suffix="(Op 40%)" />
+        <SummaryCard icon={<TrendingUp className="w-5 h-5" />} label="Nota Global" value={avgGlobal} suffix="geral" />
         <SummaryCard icon={<Trophy className="w-5 h-5" />} label="Posição Ranking" value={myRankPosition || null} suffix={`/ ${rankings.length}`} plain />
       </div>
 
@@ -318,7 +369,7 @@ export default function DesempenhoOperacionalPage() {
         {/* ── Por Execução ── */}
         <TabsContent value="execucoes">
           <div className="bg-card border border-border rounded-lg shadow-card">
-            {isLoading ? (
+            {isLoading || isLoadingSetores ? (
               <div className="p-8 text-center text-muted-foreground">Carregando...</div>
             ) : myExecutorLogs.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">Nenhuma execução no período.</div>
@@ -366,7 +417,7 @@ export default function DesempenhoOperacionalPage() {
         {/* ── Como Avaliado ── */}
         <TabsContent value="avaliado">
           <div className="bg-card border border-border rounded-lg shadow-card">
-            {isLoading ? (
+            {isLoading || isLoadingSetores ? (
               <div className="p-8 text-center text-muted-foreground">Carregando...</div>
             ) : myAvaliadoLogs.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">Nenhuma avaliação recebida no período.</div>
