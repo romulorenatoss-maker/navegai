@@ -150,7 +150,7 @@ export function calcularRespostaAutomatica(
 
   switch (metrica) {
     case "executor_entregou_no_prazo": {
-      const fim = dataMs(a.fim_em ?? a.concluida_em);
+      const fim = dataMs(a.fim_em);
       const prazo = dataMs(a.prazo_execucao);
       const atrasou = !!a.flag_sla_estourado || (!!fim && !!prazo && fim > prazo);
       return atrasou

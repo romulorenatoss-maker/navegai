@@ -20,7 +20,7 @@ Funcao:
 
 | Metrica | Fonte atual | Resultado |
 |---|---|---|
-| `executor_entregou_no_prazo` / `executor_atrasou` / `prazo_global` | `fim_em`, `concluida_em`, `prazo_execucao`, `flag_sla_estourado` | Sim/Nao + desconto |
+| `executor_entregou_no_prazo` / `executor_atrasou` / `prazo_global` | `fim_em`, `prazo_execucao`, `flag_sla_estourado` | Sim/Nao + desconto |
 | `executor_teve_atraso_etapa` / `atraso_etapa` | planos, contingencias, flags SLA | Sim/Nao + desconto |
 | `executor_obrigatorias_respondidas` / `obrigatorias_respondidas` | fields obrigatorios + `operational_field_answers` | Sim/Nao + desconto |
 | `executor_evidencias_anexadas` / `evidencias_anexadas` | fields com evidencia obrigatoria + respostas | Sim/Nao + desconto |

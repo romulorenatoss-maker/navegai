@@ -16,7 +16,7 @@ Auditor finaliza auditoria positiva e clica "Aprovar auditoria" / "Finalizar".
 2. Status deve ser `aguardando_auditoria`
 3. **Bloqueio:** não permite finalizar se há plano do auditor pendente (aprovador ainda não respondeu)
 4. Muda status para `concluida`
-5. Marca `concluida_em = now()`
+5. Marca `fim_em = COALESCE(fim_em, now())` e `auditor_fim_em = COALESCE(auditor_fim_em, now())`
 6. Registra evento em `operational_audit_trail` com notas
 
 ## Parâmetros

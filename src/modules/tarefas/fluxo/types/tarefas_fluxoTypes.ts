@@ -150,7 +150,6 @@ export interface TarefaFluxoAssignment {
   data_prevista: string | null;
   prazo_execucao: string | null;
   fim_em: string | null;
-  concluida_em: string | null;
   responsavel_id: string | null;
   aprovador_id: string | null;
   avaliador_id: string | null;
