@@ -24,6 +24,7 @@ import type {
   PlanoAprovador,
   PlanoAuditor,
   RespostaOriginal,
+  TarefaFluxoContingencia,
 } from "../types/tarefas_fluxoTypes";
 
 export interface UseFluxoTarefaResult {
@@ -109,17 +110,36 @@ export function useFluxoTarefa(assignmentId: string | null): UseFluxoTarefaResul
     refetchOnMount: true,
   });
 
+  // CONTINGENCIAS existentes, usadas pelo calculo automatico antigo de notas.
+  const contingenciasQ = useQuery({
+    queryKey: ["tarefas_fluxo_contingencias", assignmentId],
+    queryFn: async () => {
+      if (!assignmentId) return [];
+      const { data, error } = await (supabase as any)
+        .from("operational_contingencies")
+        .select("*")
+        .eq("assignment_id", assignmentId);
+      if (error) throw error;
+      return (data ?? []) as TarefaFluxoContingencia[];
+    },
+    enabled: !!assignmentId,
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+
   const isLoading =
     assignmentQ.isLoading ||
     respostasQ.isLoading ||
     planosAprovQ.isLoading ||
-    planosAuditQ.isLoading;
+    planosAuditQ.isLoading ||
+    contingenciasQ.isLoading;
 
   const error =
     assignmentQ.error ??
     respostasQ.error ??
     planosAprovQ.error ??
-    planosAuditQ.error;
+    planosAuditQ.error ??
+    contingenciasQ.error;
 
   const assignment = assignmentQ.data ?? null;
 
@@ -129,6 +149,7 @@ export function useFluxoTarefa(assignmentId: string | null): UseFluxoTarefaResul
         respostasOriginais: respostasQ.data ?? [],
         planosAprovador: planosAprovQ.data ?? [],
         planosAuditor: planosAuditQ.data ?? [],
+        contingencias: contingenciasQ.data ?? [],
         profileId: profile?.id ?? null,
         isAdmin: !!isAdmin,
       })
@@ -139,6 +160,7 @@ export function useFluxoTarefa(assignmentId: string | null): UseFluxoTarefaResul
     qc.invalidateQueries({ queryKey: ["tarefas_fluxo_respostas_originais", assignmentId] });
     qc.invalidateQueries({ queryKey: ["tarefas_fluxo_planos_aprovador", assignmentId] });
     qc.invalidateQueries({ queryKey: ["tarefas_fluxo_planos_auditor", assignmentId] });
+    qc.invalidateQueries({ queryKey: ["tarefas_fluxo_contingencias", assignmentId] });
     qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
   };
 

@@ -4,6 +4,7 @@ import {
   getPontuacaoConfig,
   type AprovadorPerguntaPadrao,
 } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
+import { calcularRespostaAutomatica } from "../services/tarefas_resumoNotasCalculoService";
 import type { TarefaFluxoData } from "../types/tarefas_fluxoTypes";
 
 export type ResumoNotasModo = "aprovador" | "auditor";
@@ -21,6 +22,7 @@ export interface ResumoNotasPergunta {
   valorExibido: string;
   permiteNa: boolean;
   metricaPendente: boolean;
+  respostaAutomatica?: "sim" | "nao" | null;
   fonte?: string | null;
 }
 
@@ -29,9 +31,6 @@ export interface ResumoNotasDestino {
   label: string;
 }
 
-const isManual = (p: AprovadorPerguntaPadrao) =>
-  p.metrica_calculo === "manual" || p.origem_pergunta === "manual_padrao_configuracao";
-
 const fieldId = (field: any, index: number) =>
   String(field?.id ?? field?.tempId ?? `${field?.label ?? "pergunta"}-${index}`);
 
@@ -39,6 +38,18 @@ const getSnapshotFields = (data: TarefaFluxoData | null) => {
   const frozen = data?.assignment?.template_snapshot?.fields;
   const live = data?.assignment?.operational_templates?.ada_config_snapshot?.fields;
   return (Array.isArray(frozen) ? frozen : Array.isArray(live) ? live : []) as any[];
+};
+
+const getSnapshotChecklists = (data: TarefaFluxoData | null, modo: ResumoNotasModo) => {
+  const frozen = data?.assignment?.template_snapshot;
+  const live = data?.assignment?.operational_templates?.ada_config_snapshot;
+  const snap = frozen?.ada_config_snapshot ?? frozen;
+  const key = modo === "auditor" ? "validador" : "aprovador";
+  const legacyKey = modo === "auditor" ? "auditor" : "aprovador";
+  const fromFrozen = snap?.checklists?.[key] ?? snap?.checklists?.[legacyKey];
+  const fromLive = live?.checklists?.[key] ?? live?.checklists?.[legacyKey];
+  const list = Array.isArray(fromFrozen) && fromFrozen.length > 0 ? fromFrozen : fromLive;
+  return (Array.isArray(list) ? list : []) as any[];
 };
 
 const firstString = (...vals: any[]): string | null => {
@@ -82,15 +93,30 @@ const getDestino = (data: TarefaFluxoData | null): ResumoNotasDestino => {
 
   if (pessoaNome) return { tipo: "pessoa", label: pessoaNome };
   if (setorNome) return { tipo: "setor", label: setorNome };
-  if (pessoaId) return { tipo: "pessoa", label: "pendente de backend" };
-  if (setorId) return { tipo: "setor", label: "pendente de backend" };
+  if (pessoaId) return { tipo: "pessoa", label: "nome nao carregado" };
+  if (setorId) return { tipo: "setor", label: "nome nao carregado" };
   if (destinoScore) {
     return {
       tipo: destinoScore === "setor" ? "setor" : "pessoa",
-      label: "pendente de backend",
+      label: "nome nao carregado",
     };
   }
-  return { tipo: "nao_mapeado", label: "pendente de backend" };
+  return { tipo: "nao_mapeado", label: "destino nao mapeado" };
+};
+
+const getPerguntaId = (p: any, index: number) =>
+  String(p?.tempId ?? p?.id ?? p?.pergunta_origem_id ?? `${p?.pergunta ?? p?.pergunta_padrao ?? "pergunta"}-${index}`);
+
+const getPerguntaTexto = (p: any) =>
+  String(p?.pergunta ?? p?.pergunta_padrao ?? p?.label ?? "Pergunta sem titulo");
+
+const getMetrica = (p: any) =>
+  String(p?.metrica_calculo ?? p?.metric_key ?? "manual");
+
+const getOrigem = (p: any): ResumoNotasOrigem => {
+  const origem = String(p?.origem ?? p?.origem_pergunta ?? "");
+  const metrica = getMetrica(p);
+  return origem.includes("manual") || metrica === "manual" ? "manual" : "automatica";
 };
 
 export function useResumoNotas(data: TarefaFluxoData | null, modo: ResumoNotasModo) {
@@ -103,40 +129,51 @@ export function useResumoNotas(data: TarefaFluxoData | null, modo: ResumoNotasMo
   return useMemo(() => {
     const config = configQ.data;
     const fields = getSnapshotFields(data);
+    const checklistSnapshot = getSnapshotChecklists(data, modo).filter((p) => p?.ativo !== false);
     const destino = getDestino(data);
-    const pacote =
+    const pacoteGlobal =
       modo === "auditor"
-        ? (config?.validador_pacote_padrao ?? [])
-        : (config?.aprovador_pacote_padrao ?? []);
+        ? ((config?.validador_pacote_padrao ?? []) as AprovadorPerguntaPadrao[])
+        : ((config?.aprovador_pacote_padrao ?? []) as AprovadorPerguntaPadrao[]);
+    const pacote = (checklistSnapshot.length > 0 ? checklistSnapshot : pacoteGlobal).filter((p: any) => p?.ativo !== false);
 
     const perguntasAutomaticas: ResumoNotasPergunta[] = pacote
-      .filter((p) => p.ativo && !isManual(p))
-      .sort((a, b) => a.ordem - b.ordem)
-      .map((p) => ({
-        id: p.id,
-        ordem: p.ordem,
-        pergunta: p.pergunta,
-        origem: "automatica",
-        tipo: p.tipo,
+      .filter((p: any) => getOrigem(p) === "automatica")
+      .sort((a: any, b: any) => Number(a.ordem ?? 0) - Number(b.ordem ?? 0))
+      .map((p: any, index: number) => {
+        const peso = Number(p.peso ?? 0);
+        const calculo = calcularRespostaAutomatica(data, modo, getMetrica(p));
+        return {
+          id: getPerguntaId(p, index),
+          ordem: Number(p.ordem ?? index + 1),
+          pergunta: getPerguntaTexto(p),
+          origem: "automatica",
+          tipo: String(p.tipo ?? "sim_nao"),
+          peso,
+          descontoAplicado: calculo.calculavel ? (calculo.tiraPonto ? peso : 0) : null,
+          pontoDevolvidoNa: peso,
+          valorExibido: calculo.label,
+          permiteNa: p.permite_na !== false,
+          metricaPendente: !calculo.calculavel,
+          respostaAutomatica: calculo.resposta,
+          fonte: calculo.fonte,
+        };
+      });
+
+    const perguntasManuaisBase = pacote
+      .filter((p: any) => getOrigem(p) === "manual")
+      .map((p: any, index: number) => ({
+        id: getPerguntaId(p, index),
+        ordem: Number(p.ordem ?? index + 1),
+        pergunta: getPerguntaTexto(p),
+        tipo: String(p.tipo ?? "conforme_nao_conforme"),
         peso: Number(p.peso ?? 0),
-        descontoAplicado: null,
-        pontoDevolvidoNa: Number(p.peso ?? 0),
-        valorExibido: p.metrica_pendente ? "Pendente de backend" : "Aguardando resultado do serviço",
-        permiteNa: true,
-        metricaPendente: !!p.metrica_pendente,
-        fonte: p.fonte_dados ?? null,
+        permiteNa: p.permite_na !== false,
       }));
 
-    const perguntasManuaisBase =
-      modo === "auditor"
-        ? pacote.filter((p) => p.ativo && isManual(p)).map((p) => ({
-            id: p.id,
-            ordem: p.ordem,
-            pergunta: p.pergunta,
-            tipo: p.tipo,
-            peso: Number(p.peso ?? 0),
-          }))
-        : fields
+    const perguntasManuaisCampos =
+      modo === "aprovador"
+        ? fields
             .filter((f) => f?.aprovador_verificar && String(f?.aprovador_pergunta ?? "").trim())
             .map((f, index) => ({
               id: fieldId(f, index),
@@ -144,9 +181,11 @@ export function useResumoNotas(data: TarefaFluxoData | null, modo: ResumoNotasMo
               pergunta: String(f.aprovador_pergunta),
               tipo: String(f.aprovador_tipo_resposta ?? "conforme_nao_conforme"),
               peso: Number(f.aprovador_peso ?? f.peso ?? 0),
-            }));
+              permiteNa: true,
+            }))
+        : [];
 
-    const perguntasManuais: ResumoNotasPergunta[] = perguntasManuaisBase
+    const perguntasManuais: ResumoNotasPergunta[] = [...perguntasManuaisBase, ...perguntasManuaisCampos]
       .sort((a, b) => a.ordem - b.ordem)
       .map((p) => ({
         ...p,
@@ -154,7 +193,7 @@ export function useResumoNotas(data: TarefaFluxoData | null, modo: ResumoNotasMo
         descontoAplicado: null,
         pontoDevolvidoNa: p.peso,
         valorExibido: "Resposta manual pendente",
-        permiteNa: true,
+        permiteNa: p.permiteNa,
         metricaPendente: false,
         fonte: null,
       }));

@@ -37,20 +37,33 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
     [respostas, resumo.perguntasManuais],
   );
 
-  const notaManualPreview = useMemo(() => {
-    const total = resumo.perguntasManuais.reduce((s, p) => s + p.peso, 0);
+  const notaCalculadaPreview = useMemo(() => {
+    const totalAuto = resumo.perguntasAutomaticas.reduce((s, p) => s + p.peso, 0);
+    const pontosAuto = resumo.perguntasAutomaticas.reduce((s, p) => {
+      if (p.descontoAplicado === null || p.descontoAplicado === undefined) return s;
+      return s + Math.max(0, p.peso - p.descontoAplicado);
+    }, 0);
+    const autoCompleto = resumo.perguntasAutomaticas.every(
+      (p) => p.descontoAplicado !== null && p.descontoAplicado !== undefined,
+    );
+
+    const totalManual = resumo.perguntasManuais.reduce((s, p) => s + p.peso, 0);
     const respondidas = resumo.perguntasManuais.filter((p) => {
       const r = respostas[p.id];
       return r?.na || r?.resultado;
     });
-    const pontos = resumo.perguntasManuais.reduce((s, p) => {
+    const pontosManual = resumo.perguntasManuais.reduce((s, p) => {
       const r = respostas[p.id];
       if (r?.na) return s + p.pontoDevolvidoNa;
       if (r?.resultado === "ok") return s + p.peso;
       return s;
     }, 0);
-    return { total, pontos, completo: respondidas.length === resumo.perguntasManuais.length };
-  }, [respostas, resumo.perguntasManuais]);
+    return {
+      total: totalAuto + totalManual,
+      pontos: pontosAuto + pontosManual,
+      completo: autoCompleto && respondidas.length === resumo.perguntasManuais.length,
+    };
+  }, [respostas, resumo.perguntasAutomaticas, resumo.perguntasManuais]);
 
   const confirmarDisabled = isSubmitting || naSemJustificativa || manualSemResultado || resumo.isLoading;
   const textoAcaoFinal = modo === "aprovador" ? "Enviar respostas e notas ao auditor" : "Concluir auditoria com notas";
@@ -70,7 +83,14 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
     perguntas_automaticas: resumo.perguntasAutomaticas.map((p) => ({
       id: p.id,
       metrica_pendente: p.metricaPendente,
+      resposta: p.respostaAutomatica,
       valor_exibido: p.valorExibido,
+      peso: p.peso,
+      desconto_aplicado: p.descontoAplicado,
+      nota_obtida:
+        p.descontoAplicado === null || p.descontoAplicado === undefined
+          ? null
+          : Math.max(0, p.peso - p.descontoAplicado),
     })),
     score_existente: resumo.scoreExistente,
     backend_pendente: resumo.backendPendente,
@@ -90,7 +110,7 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
             {resumo.backendPendente && (
               <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 flex gap-2">
                 <AlertCircle className="h-4 w-4 shrink-0" />
-                Há métricas/destino pendentes de backend. O frontend está preparado, sem assumir cálculo final.
+                Ha metricas/destino sem dados suficientes no fluxo atual. O resumo reaproveita o calculo existente sem assumir regra nova.
               </div>
             )}
 
@@ -140,14 +160,14 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
               modo === "aprovador"
                 ? resumo.scoreExistente.aprovacao
                 : resumo.scoreExistente.aprovador ?? resumo.scoreExistente.auditor;
-            const destinoPendente = resumo.destino.tipo === "nao_mapeado" || resumo.destino.label === "pendente de backend";
+            const destinoPendente = resumo.destino.tipo === "nao_mapeado" || resumo.destino.label === "nome nao carregado";
             const destinoPrefixo =
               resumo.destino.tipo === "setor" ? "setor " : resumo.destino.tipo === "pessoa" ? "" : "";
             const notaTexto =
               notaFinal ?? (
-                notaManualPreview.total > 0
-                  ? `previa manual ${notaManualPreview.pontos}/${notaManualPreview.total}${notaManualPreview.completo ? "" : " (incompleta)"}`
-                  : "pendente de backend"
+                notaCalculadaPreview.total > 0
+                  ? `nota calculada ${notaCalculadaPreview.pontos}/${notaCalculadaPreview.total}${notaCalculadaPreview.completo ? "" : " (incompleta)"}`
+                  : "sem dados suficientes"
               );
             return (
               <>
@@ -160,7 +180,7 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
                 <p className="text-xs text-muted-foreground">
                   Esta nota será lançada para:{" "}
                   <strong className={destinoPendente ? "text-amber-700" : "text-foreground"}>
-                    {destinoPendente ? "pendente de backend" : `${destinoPrefixo}${resumo.destino.label}`}
+                    {destinoPendente ? resumo.destino.label : `${destinoPrefixo}${resumo.destino.label}`}
                   </strong>
                 </p>
               </>

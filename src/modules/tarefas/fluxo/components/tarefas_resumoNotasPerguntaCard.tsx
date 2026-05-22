@@ -50,7 +50,7 @@ function getStatus(
   if (d === null || d === undefined || pergunta.metricaPendente) {
     return {
       key: "pendente",
-      label: "Pendente backend",
+      label: "Sem dados",
       className: "bg-amber-100 text-amber-800 border-amber-200",
     };
   }
@@ -79,7 +79,7 @@ export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange }: Props)
   const descontoPendente =
     isManual ? !marcadaNa && !resultadoManual : desconto === null || desconto === undefined;
 
-  // Nota da pergunta (mantido = peso - desconto), so calcula quando backend retornou desconto.
+  // Nota da pergunta (mantido = peso - desconto), calculada quando ha resultado automatico ou manual.
   let notaPerguntaLabel: string;
   if (marcadaNa) {
     notaPerguntaLabel = `Nota da pergunta: N/A - devolve ${pergunta.pontoDevolvidoNa} / peso ${peso}`;
@@ -88,7 +88,7 @@ export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange }: Props)
   } else if (isManual && resultadoManual === "nao_ok") {
     notaPerguntaLabel = `Nota da pergunta: 0 / peso ${peso}`;
   } else if (descontoPendente) {
-    notaPerguntaLabel = `Nota da pergunta: pendente backend / peso ${peso}`;
+    notaPerguntaLabel = `Nota da pergunta: sem dados / peso ${peso}`;
   } else {
     const nota = Math.max(0, peso - (desconto as number));
     notaPerguntaLabel = `Nota da pergunta: ${nota} / peso ${peso}`;
@@ -130,7 +130,7 @@ export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange }: Props)
         ) : isManual && resultadoManual === "nao_ok" ? (
           <span className="text-red-700 font-medium">Desconto: -{peso}</span>
         ) : descontoPendente ? (
-          <span className="text-amber-800">Desconto pendente backend</span>
+          <span className="text-amber-800">Calculo sem dados suficientes</span>
         ) : (desconto as number) > 0 ? (
           <span className="text-red-700 font-medium">Desconto: -{desconto as number}</span>
         ) : (

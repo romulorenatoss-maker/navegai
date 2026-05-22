@@ -172,6 +172,22 @@ export interface TarefaFluxoAssignment {
   score_aprovacao?: number | null;
   score_aprovador?: number | null;
   score_auditor?: number | null;
+  flag_sla_estourado?: boolean | null;
+  flag_sla_etapa_estourado?: boolean | null;
+  flag_atraso_plano_acao?: boolean | null;
+  flag_reincidencia_atraso?: boolean | null;
+}
+
+export interface TarefaFluxoContingencia {
+  id: string;
+  assignment_id: string;
+  status?: string | null;
+  prazo_resolucao?: string | null;
+  prazo_sla?: string | null;
+  resolvida_em?: string | null;
+  resolvido_em?: string | null;
+  dentro_prazo?: boolean | null;
+  [key: string]: unknown;
 }
 
 // ============================================================================
@@ -180,6 +196,7 @@ export interface TarefaFluxoAssignment {
 export interface TarefaFluxoData {
   assignment: TarefaFluxoAssignment;
   perguntas: TarefaFluxoPergunta[];
+  contingencias: TarefaFluxoContingencia[];
   papelUsuario: TarefasFluxoPapel;
   planosAprovadorPendentes: PlanoAprovador[];
   planosAuditorPendentes: PlanoAuditor[];

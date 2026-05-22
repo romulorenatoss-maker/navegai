@@ -141,7 +141,7 @@ export const VALIDADOR_PACOTE_PADRAO_DEFAULT: AprovadorPerguntaPadrao[] = [
     tipo: "sim_nao", peso: 20, ativo: true,
     metrica_calculo: "aprovador_fora_sla",
     origem_pergunta: "automatica_sistema", camada_alvo: "aprovador",
-    fonte_dados: "operational_assignments.avaliador_fim_em vs prazo SLA do aprovador",
+    fonte_dados: "flag_sla_etapa_estourado e historico atual do fluxo",
     regra_calculo: "Comparar prazo limite da avaliação do aprovador com data/hora real de conclusão.",
     permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true,
   },

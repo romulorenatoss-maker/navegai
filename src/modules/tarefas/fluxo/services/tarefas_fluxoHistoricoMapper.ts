@@ -186,6 +186,7 @@ export function construirTarefaFluxoData(args: {
   respostasOriginais: RespostaOriginal[];
   planosAprovador: PlanoAprovador[];
   planosAuditor: PlanoAuditor[];
+  contingencias?: any[];
   profileId: string | null;
   isAdmin: boolean;
 }): TarefaFluxoData {
@@ -203,6 +204,7 @@ export function construirTarefaFluxoData(args: {
   return {
     assignment: args.assignment,
     perguntas,
+    contingencias: args.contingencias ?? [],
     papelUsuario: papel,
     planosAprovadorPendentes: args.planosAprovador.filter((p) => !p.respondido && !p.deleted_at),
     planosAuditorPendentes: args.planosAuditor.filter((p) => !p.respondido),
