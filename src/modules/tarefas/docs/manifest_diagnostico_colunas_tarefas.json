@@ -1,0 +1,93 @@
+{
+  "tipo": "diagnostico_colunas_tarefas",
+  "gerado_em": "2026-05-22T00:28:27-03:00",
+  "escopo": "Modulo Tarefas: operational_assignments, RPCs do fluxo executor-aprovador-auditor e referencias a colunas fantasmas.",
+  "alteracoes_funcionais_aplicadas_nesta_etapa": false,
+  "sql_alterado_nesta_etapa": false,
+  "rpc_alterada_nesta_etapa": false,
+  "trigger_alterada_nesta_etapa": false,
+  "frontend_alterado_nesta_etapa": false,
+  "observacao": "Foram gerados apenas artefatos de diagnostico em docs. Nao houve correcao de banco, RPC, trigger, RLS ou frontend.",
+  "fontes_consultadas": [
+    "src/integrations/supabase/types.ts",
+    "src/modules/tarefas",
+    "supabase/migrations"
+  ],
+  "limite_do_diagnostico": "Nao houve conexao direta ao banco vivo do Lovable/Supabase. A confirmacao final exige pg_get_functiondef no banco vivo.",
+  "operational_assignments": {
+    "finalizado_em": false,
+    "fim_em": true,
+    "concluida_em": false,
+    "aprovado_em": true,
+    "auditado_em": true,
+    "auditor_fim_em": true,
+    "avaliador_fim_em": false,
+    "avaliador_inicio_em": false,
+    "aprovador_fim_em": false,
+    "aprovador_inicio_em": false
+  },
+  "rpcs_revisadas": [
+    {
+      "nome": "tarefas_rpc_executor_enviar_respostas",
+      "ultima_definicao_local": "supabase/migrations/20260521114645_9ba0776f-3680-41d5-a3c8-7be17ab046f2.sql",
+      "campos_fantasmas_na_ultima_definicao_local": []
+    },
+    {
+      "nome": "tarefas_rpc_executor_responder_plano_aprovador",
+      "ultima_definicao_local": "supabase/migrations/20260521113000_tarefas_rpc_fluxo_aliases_completos.sql",
+      "campos_fantasmas_na_ultima_definicao_local": []
+    },
+    {
+      "nome": "tarefas_rpc_aprovador_criar_plano_acao",
+      "ultima_definicao_local": "supabase/migrations/20260521113000_tarefas_rpc_fluxo_aliases_completos.sql",
+      "campos_fantasmas_na_ultima_definicao_local": []
+    },
+    {
+      "nome": "tarefas_rpc_aprovador_criar_plano_executor",
+      "ultima_definicao_local": "supabase/migrations/20260521113000_tarefas_rpc_fluxo_aliases_completos.sql",
+      "campos_fantasmas_na_ultima_definicao_local": []
+    },
+    {
+      "nome": "tarefas_rpc_aprovador_aprovar_para_auditoria",
+      "ultima_definicao_local": "supabase/migrations/20260521113000_tarefas_rpc_fluxo_aliases_completos.sql",
+      "campos_fantasmas_na_ultima_definicao_local": []
+    },
+    {
+      "nome": "tarefas_rpc_aprovador_responder_plano_auditor",
+      "ultima_definicao_local": "supabase/migrations/20260521113000_tarefas_rpc_fluxo_aliases_completos.sql",
+      "campos_fantasmas_na_ultima_definicao_local": []
+    },
+    {
+      "nome": "tarefas_rpc_auditor_criar_plano_acao",
+      "ultima_definicao_local": "supabase/migrations/20260521113000_tarefas_rpc_fluxo_aliases_completos.sql",
+      "campos_fantasmas_na_ultima_definicao_local": []
+    },
+    {
+      "nome": "tarefas_rpc_auditor_criar_plano_aprovador",
+      "ultima_definicao_local": "supabase/migrations/20260521113000_tarefas_rpc_fluxo_aliases_completos.sql",
+      "campos_fantasmas_na_ultima_definicao_local": []
+    },
+    {
+      "nome": "tarefas_rpc_auditor_aprovar_auditoria",
+      "ultima_definicao_local": "supabase/migrations/20260522001500_tarefas_rpc_auditor_aprovar_auditoria_fim_em.sql",
+      "campos_fantasmas_na_ultima_definicao_local": []
+    }
+  ],
+  "achados_principais": [
+    "A coluna concluida_em nao existe em operational_assignments.",
+    "A coluna finalizado_em nao existe em operational_assignments.",
+    "A coluna real de fim/conclusao geral e fim_em.",
+    "A auditoria possui marcadores reais auditado_em, auditado_por e auditor_fim_em.",
+    "O erro concluida_em vem da RPC tarefas_rpc_auditor_aprovar_auditoria quando o banco vivo usa uma definicao antiga.",
+    "No repo local, a ultima definicao dessa RPC ja usa fim_em/auditor_fim_em/auditado_em."
+  ],
+  "arquivos_gerados": [
+    "src/modules/tarefas/docs/mapa_colunas_reais_operational_assignments.md",
+    "src/modules/tarefas/docs/mapa_rpcs_tarefas_colunas_usadas.md",
+    "src/modules/tarefas/docs/inconsistencias_colunas_fantasmas_tarefas.md",
+    "src/modules/tarefas/docs/origem_erro_concluida_em.md",
+    "src/modules/tarefas/docs/sugestao_correcao_sem_aplicar.md",
+    "src/modules/tarefas/docs/manifest_diagnostico_colunas_tarefas.json"
+  ],
+  "proxima_acao_requer_autorizacao": true
+}
