@@ -16,6 +16,10 @@ import { EvidenciaPreview } from "@/modules/tarefas/components/tarefas_dynamicFi
 import { FluxoPlanoAprovadorCard } from "./tarefas_fluxoPlanoAprovadorCard";
 import { FluxoPlanoAuditorCard } from "./tarefas_fluxoPlanoAuditorCard";
 import type { TarefaFluxoPergunta } from "../types/tarefas_fluxoTypes";
+import {
+  tarefasCalcularPrazoStatus,
+  tarefasFormatarDataHora,
+} from "@/modules/tarefas/utils/tarefas_slaPrazoUtils";
 
 interface Props {
   pergunta: TarefaFluxoPergunta;
@@ -30,8 +34,34 @@ interface Props {
   mostrarRespostaOriginal?: boolean;
   mostrarPlanosAprovador?: boolean;
   mostrarPlanosAuditor?: boolean;
+  prazoExecucao?: string | null;
   /** Conteúdo extra a renderizar no rodapé do card (ex: botão criar plano). */
   rodape?: React.ReactNode;
+}
+
+function PrazoRespostaResumo({
+  prazo,
+  respondidoEm,
+}: {
+  prazo?: string | null;
+  respondidoEm?: string | null;
+}) {
+  if (!prazo || !respondidoEm) return null;
+  const status = tarefasCalcularPrazoStatus({ prazo, referencia: respondidoEm });
+  if (status.status === "sem_prazo") return null;
+  const cls = status.status === "fora_prazo"
+    ? "bg-red-100 text-red-700 border-red-200"
+    : "bg-emerald-100 text-emerald-700 border-emerald-200";
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+      <span className="text-muted-foreground">Prazo limite: {tarefasFormatarDataHora(prazo)}</span>
+      <span className={`rounded-full border px-2 py-0.5 font-semibold ${cls}`}>
+        {status.badgeLabel}
+      </span>
+      <span className="text-muted-foreground">{status.detalheLabel}</span>
+    </div>
+  );
 }
 
 export function FluxoPerguntaHistoricoCard({
@@ -44,6 +74,7 @@ export function FluxoPerguntaHistoricoCard({
   mostrarRespostaOriginal = true,
   mostrarPlanosAprovador = true,
   mostrarPlanosAuditor = true,
+  prazoExecucao,
   rodape,
 }: Props) {
   const r0 = pergunta.respostaOriginalExecutor;
@@ -89,15 +120,12 @@ export function FluxoPerguntaHistoricoCard({
                   />
                 )}
                 {r0.respondido_em && (
-                  <p className="text-[10px] text-muted-foreground">
-                    Respondido em{" "}
-                    {new Date(r0.respondido_em).toLocaleString("pt-BR", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-muted-foreground">
+                      Respondido em {tarefasFormatarDataHora(r0.respondido_em)}
+                    </p>
+                    <PrazoRespostaResumo prazo={prazoExecucao} respondidoEm={r0.respondido_em} />
+                  </div>
                 )}
               </>
             ) : (

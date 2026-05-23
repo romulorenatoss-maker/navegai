@@ -167,6 +167,31 @@ export function ResumoNotasPerguntaCard({ pergunta, resposta, onChange, readOnly
         ) : null}
       </div>
 
+      {pergunta.ocorrencias && pergunta.ocorrencias.length > 0 && (
+        <div className="rounded-md border bg-background/70 p-2.5 space-y-2">
+          <p className="text-[11px] font-semibold text-foreground">
+            Ocorrencias que explicam esta nota
+          </p>
+          <div className="space-y-2">
+            {pergunta.ocorrencias.map((ocorrencia, index) => {
+              const ocorrenciaCls = ocorrencia.status === "fora_prazo"
+                ? "border-red-200 bg-red-50 text-red-800"
+                : "border-emerald-200 bg-emerald-50 text-emerald-800";
+              return (
+                <div key={`${ocorrencia.titulo}-${index}`} className={`rounded-md border p-2 text-[11px] ${ocorrenciaCls}`}>
+                  <p className="font-semibold break-words">{index + 1}. {ocorrencia.titulo}</p>
+                  <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-1 text-muted-foreground">
+                    {ocorrencia.prazoPrevistoLabel && <span>SLA previsto: {ocorrencia.prazoPrevistoLabel}</span>}
+                    {ocorrencia.prazoRealLabel && <span>Prazo definido: {ocorrencia.prazoRealLabel}</span>}
+                  </div>
+                  <p className="mt-1 font-medium">{ocorrencia.detalhe}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {isManual && !marcadaNa && canEdit && (
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">

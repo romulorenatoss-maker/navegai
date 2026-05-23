@@ -9,6 +9,11 @@ import { ShieldCheck, Clock, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EvidenciaPreview } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import type { PlanoAuditor } from "../types/tarefas_fluxoTypes";
+import {
+  tarefasCalcularPrazoPlanoPadraoStatus,
+  tarefasCalcularPrazoStatus,
+  tarefasFormatarDataHora,
+} from "@/modules/tarefas/utils/tarefas_slaPrazoUtils";
 
 interface Props {
   plano: PlanoAuditor;
@@ -20,16 +25,18 @@ interface Props {
 export function FluxoPlanoAuditorCard({ plano, podeResponder, onResponder }: Props) {
   const itens = Array.isArray(plano.itens_plano) ? plano.itens_plano : [];
   const resp = plano.resposta_valor_json ?? {};
-
-  const prazoAtrasado = (() => {
-    if (!plano.prazo_resolucao) return false;
-    try {
-      const ref = plano.respondido_em ? new Date(plano.respondido_em) : new Date();
-      return ref > new Date(plano.prazo_resolucao);
-    } catch {
-      return false;
-    }
-  })();
+  const prazoPlano = tarefasCalcularPrazoPlanoPadraoStatus(plano);
+  const prazoResposta = tarefasCalcularPrazoStatus({
+    prazo: plano.prazo_resolucao,
+    referencia: plano.respondido_em,
+    semReferenciaUsaAgora: !plano.respondido,
+  });
+  const prazoPlanoCls = prazoPlano.status === "fora_prazo"
+    ? "bg-red-100 text-red-700 border-red-200"
+    : "bg-emerald-100 text-emerald-700 border-emerald-200";
+  const prazoRespostaCls = prazoResposta.status === "fora_prazo"
+    ? "bg-red-100 text-red-700 border-red-200"
+    : "bg-emerald-100 text-emerald-700 border-emerald-200";
 
   return (
     <div className="border-2 border-purple-300 rounded-lg overflow-hidden max-w-full">
@@ -51,11 +58,21 @@ export function FluxoPlanoAuditorCard({ plano, podeResponder, onResponder }: Pro
           <p className="text-xs text-foreground">{plano.instrucao}</p>
         )}
         <div className="flex flex-wrap gap-1.5 max-w-full">
-          {plano.prazo_resolucao && (
-            <span className={`text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 max-w-full whitespace-normal break-words ${prazoAtrasado ? "bg-rose-100 text-rose-800" : "bg-purple-50 text-purple-800"}`}>
+          {prazoPlano.prazoPadraoLabel && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 max-w-full whitespace-normal break-words bg-slate-50 text-slate-700 border border-slate-200">
               <Clock className="h-3 w-3" />
-              Prazo: {new Date(plano.prazo_resolucao).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-              {prazoAtrasado && " · atrasado"}
+              SLA padrao: {prazoPlano.prazoPadraoLabel}
+            </span>
+          )}
+          {plano.prazo_resolucao && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 max-w-full whitespace-normal break-words bg-purple-50 text-purple-800">
+              <Clock className="h-3 w-3" />
+              Prazo definido: {tarefasFormatarDataHora(plano.prazo_resolucao)}
+            </span>
+          )}
+          {plano.prazo_resolucao && prazoPlano.status !== "sem_prazo" && (
+            <span className={`text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 max-w-full whitespace-normal break-words border font-semibold ${prazoPlanoCls}`}>
+              {prazoPlano.badgeLabel}
             </span>
           )}
           {itens.map((item, i) => (
@@ -101,10 +118,21 @@ export function FluxoPlanoAuditorCard({ plano, podeResponder, onResponder }: Pro
               );
             })}
             {plano.respondido_em && (
-              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                Respondido em {new Date(plano.respondido_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-              </p>
+              <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                <span className="inline-flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                  Respondido em {tarefasFormatarDataHora(plano.respondido_em)}
+                </span>
+                {prazoResposta.status !== "sem_prazo" && (
+                  <>
+                    <span>Prazo limite: {tarefasFormatarDataHora(plano.prazo_resolucao)}</span>
+                    <span className={`rounded-full border px-2 py-0.5 font-semibold ${prazoRespostaCls}`}>
+                      {prazoResposta.badgeLabel}
+                    </span>
+                    <span>{prazoResposta.detalheLabel}</span>
+                  </>
+                )}
+              </div>
             )}
           </div>
         ) : (

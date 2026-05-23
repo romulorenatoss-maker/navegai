@@ -135,6 +135,7 @@ export function FluxoAuditorPanel({ assignmentId }: Props) {
           pergunta={p}
           papel="auditor"
           acoesAtivas={false}
+          prazoExecucao={a.prazo_execucao}
           rodape={
             <div className="space-y-2 mt-2 border-t pt-2">
               {perms.podeAuditorCriarPlanoAprovador && (

@@ -124,6 +124,7 @@ export function ResumoNotasModal({ open, onOpenChange, modo, data, isSubmitting,
       valor_exibido: p.valorExibido,
       peso: p.peso,
       desconto_aplicado: p.descontoAplicado,
+      ocorrencias: p.ocorrencias ?? [],
       nota_obtida:
         p.descontoAplicado === null || p.descontoAplicado === undefined
           ? null

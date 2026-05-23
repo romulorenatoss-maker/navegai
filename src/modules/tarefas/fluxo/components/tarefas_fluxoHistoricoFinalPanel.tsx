@@ -78,6 +78,7 @@ export function FluxoHistoricoFinalPanel({ assignmentId }: Props) {
           pergunta={pergunta}
           papel="spectator"
           acoesAtivas={false}
+          prazoExecucao={a.prazo_execucao}
           mostrarPlanosAprovador={opts.mostrarPlanosAprovador}
           mostrarPlanosAuditor={opts.mostrarPlanosAuditor}
         />

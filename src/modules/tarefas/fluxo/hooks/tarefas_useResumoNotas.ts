@@ -4,7 +4,7 @@ import {
   getPontuacaoConfig,
   type AprovadorPerguntaPadrao,
 } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
-import { calcularRespostaAutomatica } from "../services/tarefas_resumoNotasCalculoService";
+import { calcularRespostaAutomatica, type ResultadoCalculoOcorrencia } from "../services/tarefas_resumoNotasCalculoService";
 import type { TarefaFluxoData } from "../types/tarefas_fluxoTypes";
 
 export type ResumoNotasModo = "aprovador" | "auditor";
@@ -24,6 +24,7 @@ export interface ResumoNotasPergunta {
   metricaPendente: boolean;
   respostaAutomatica?: "sim" | "nao" | null;
   fonte?: string | null;
+  ocorrencias?: ResultadoCalculoOcorrencia[];
 }
 
 export interface ResumoNotasDestino {
@@ -157,6 +158,7 @@ export function useResumoNotas(data: TarefaFluxoData | null, modo: ResumoNotasMo
           metricaPendente: !calculo.calculavel,
           respostaAutomatica: calculo.resposta,
           fonte: calculo.fonte,
+          ocorrencias: calculo.ocorrencias ?? [],
         };
       });
 

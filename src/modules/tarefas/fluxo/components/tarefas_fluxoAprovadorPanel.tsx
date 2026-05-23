@@ -162,6 +162,7 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
           pergunta={p}
           papel="aprovador"
           acoesAtivas={true}
+          prazoExecucao={a.prazo_execucao}
           onAprovadorResponderPlanoAuditor={(planoId) => handleResponderPlanoAuditor(planoId)}
           entrePlanosAprovadorEAuditor={
             perms.podeAprovadorCriarPlanoExecutorParaField(p.fieldId) ? (

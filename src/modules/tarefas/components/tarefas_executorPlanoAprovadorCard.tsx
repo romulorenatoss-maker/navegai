@@ -17,6 +17,11 @@ import { Send, Upload, Loader2, CheckCircle2, AlertTriangle, Clock } from "lucid
 import { supabase } from "@/integrations/supabase/client";
 import { EvidenciaPreview } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import { toast } from "sonner";
+import {
+  tarefasCalcularPrazoPlanoPadraoStatus,
+  tarefasCalcularPrazoStatus,
+  tarefasFormatarDataHora,
+} from "@/modules/tarefas/utils/tarefas_slaPrazoUtils";
 // Tipos locais permissivos para aceitar tanto PlanoAcaoRow (hook legacy) quanto
 // PlanoAprovador (novo fluxo). Mantém comportamento idêntico — apenas relaxa
 // o contrato estrutural para o build passar nos dois consumidores.
@@ -42,6 +47,9 @@ interface PlanoCardShape {
   instrucao: string | null;
   itens_plano: PlanoAcaoItem[] | Array<{ tipo: string; titulo: string; obrigatorio: boolean }>;
   prazo_resolucao: string | null;
+  criado_em?: string | null;
+  prazo_alterado?: boolean | null;
+  prazo_prorrogado?: boolean | null;
   criticidade: "baixa" | "media" | "alta" | null;
 }
 
@@ -147,14 +155,14 @@ export function ExecutorPlanoAprovadorCard({ plano, fieldLabel, assignmentId, ti
     }
   };
 
-  const prazoAtrasado = (() => {
-    if (!plano.prazo_resolucao) return false;
-    try {
-      return new Date(plano.prazo_resolucao).getTime() < Date.now();
-    } catch {
-      return false;
-    }
-  })();
+  const prazoStatus = tarefasCalcularPrazoStatus({
+    prazo: plano.prazo_resolucao,
+    referencia: null,
+    semReferenciaUsaAgora: true,
+  });
+  const prazoPlano = tarefasCalcularPrazoPlanoPadraoStatus(plano);
+  const prazoCls = prazoStatus.status === "fora_prazo" ? "text-red-700 font-bold" : "text-emerald-700 font-semibold";
+  const prazoPlanoCls = prazoPlano.status === "fora_prazo" ? "text-red-700 font-bold" : "text-emerald-700 font-semibold";
 
   const corBorda = plano.criticidade === "alta" ? "border-red-300" : plano.criticidade === "media" ? "border-amber-300" : "border-emerald-300";
   const corHeader = plano.criticidade === "alta" ? "bg-red-50" : plano.criticidade === "media" ? "bg-amber-50" : "bg-emerald-50";
@@ -170,10 +178,13 @@ export function ExecutorPlanoAprovadorCard({ plano, fieldLabel, assignmentId, ti
             {fieldLabel && <span className="text-xs font-normal text-muted-foreground">— {fieldLabel}</span>}
           </span>
           {plano.prazo_resolucao && (
-            <span className={`text-[10px] flex items-center gap-1 ${prazoAtrasado ? "text-red-700 font-bold" : "text-muted-foreground"}`}>
+            <span className={`text-[10px] flex flex-wrap items-center gap-1 ${prazoCls}`}>
               <Clock className="h-3 w-3" />
-              {new Date(plano.prazo_resolucao).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-              {prazoAtrasado && " ⚠ Atrasado"}
+              Prazo: {tarefasFormatarDataHora(plano.prazo_resolucao)}
+              <span>{prazoStatus.badgeLabel}</span>
+              {prazoPlano.status !== "sem_prazo" && (
+                <span className={prazoPlanoCls}>SLA padrao: {prazoPlano.badgeLabel}</span>
+              )}
             </span>
           )}
         </CardTitle>
