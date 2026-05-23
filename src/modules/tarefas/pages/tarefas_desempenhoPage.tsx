@@ -17,7 +17,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { getNotaResumoAssignment } from "@/modules/tarefas/utils/tarefas_notasResumoUtils";
+import { getNotaResumoAssignment, extrairResumosNotas } from "@/modules/tarefas/utils/tarefas_notasResumoUtils";
+import { useFluxoTarefa } from "@/modules/tarefas/fluxo/hooks/tarefas_useFluxoTarefa";
+import { ResumoNotasReadonly } from "@/modules/tarefas/fluxo/components/tarefas_resumoNotasReadonly";
+import type { TarefaFluxoData } from "@/modules/tarefas/fluxo/types/tarefas_fluxoTypes";
 
 
 // ── helpers ──
@@ -41,6 +44,8 @@ export default function DesempenhoOperacionalPage() {
   const [endDate, setEndDate] = useState<Date>(endOfMonth(now));
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedNotaLog, setSelectedNotaLog] = useState<any | null>(null);
+  const selectedAssignmentId = selectedNotaLog?.assignment_id ?? null;
+  const selectedFluxo = useFluxoTarefa(selectedAssignmentId);
 
   // Admin pode visualizar o desempenho de qualquer colaborador
   const [viewAsProfileId, setViewAsProfileId] = useState<string>(profile?.id || "");
@@ -479,6 +484,7 @@ export default function DesempenhoOperacionalPage() {
           <TabsTrigger value="notas">Minhas Notas</TabsTrigger>
           <TabsTrigger value="execucoes">Por Execução</TabsTrigger>
           <TabsTrigger value="avaliado">Como Avaliado</TabsTrigger>
+          <TabsTrigger value="aprovador">Como Aprovador</TabsTrigger>
           <TabsTrigger value="ranking">Ranking</TabsTrigger>
         </TabsList>
 
@@ -555,6 +561,10 @@ export default function DesempenhoOperacionalPage() {
                         </div>
                         <div className="flex items-center gap-3">
                           <span className={cn("text-lg font-bold font-tabular", scoreColor(log.score_final || 0))}>{log.score_final ?? "—"}</span>
+                          <Button type="button" variant="outline" size="sm" onClick={(event) => { event.stopPropagation(); setSelectedNotaLog(log); }}>
+                            <Eye className="w-4 h-4 mr-2" />
+                            Ver nota
+                          </Button>
                           {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                         </div>
                       </div>
@@ -601,6 +611,10 @@ export default function DesempenhoOperacionalPage() {
                         </div>
                         <div className="flex items-center gap-3">
                           <span className={cn("text-lg font-bold font-tabular", scoreColor(log.score_final || 0))}>{log.score_final ?? "—"}</span>
+                          <Button type="button" variant="outline" size="sm" onClick={(event) => { event.stopPropagation(); setSelectedNotaLog(log); }}>
+                            <Eye className="w-4 h-4 mr-2" />
+                            Ver nota
+                          </Button>
                           {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                         </div>
                       </div>
@@ -644,6 +658,64 @@ export default function DesempenhoOperacionalPage() {
                                 </table>
                               </div>
                             </div>
+                          )}
+                        </motion.div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* ── Como Aprovador ── */}
+        <TabsContent value="aprovador">
+          <div className="bg-card border border-border rounded-lg shadow-card">
+            {isLoading || isLoadingSetores ? (
+              <div className="p-8 text-center text-muted-foreground">Carregando...</div>
+            ) : myAprovadorLogs.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">Nenhuma nota como aprovador no período.</div>
+            ) : (
+              <div className="divide-y divide-border">
+                {myAprovadorLogs.map((log: any) => {
+                  const det = log.detalhe_calculo || {};
+                  const assignment = log.operational_assignments;
+                  const template = assignment?.operational_templates;
+                  const expanded = expandedId === log.id;
+                  return (
+                    <div key={log.id} className="px-4 py-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpandedId(expanded ? null : log.id)}>
+                          <p className="text-body font-medium text-foreground truncate">{template?.nome || "—"}</p>
+                          <p className="text-caption text-muted-foreground">
+                            {assignment?.data_prevista ? format(new Date(assignment.data_prevista), "dd/MM/yyyy") : "—"} · {origemNotaLabel(log)}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between sm:justify-end gap-3">
+                          <span className={cn("text-lg font-bold font-tabular", scoreColor(log.score_final || 0))}>{log.score_final ?? "—"}</span>
+                          <Button type="button" variant="outline" size="sm" onClick={() => setSelectedNotaLog(log)}>
+                            <Eye className="w-4 h-4 mr-2" />
+                            Ver nota
+                          </Button>
+                          <button type="button" className="text-muted-foreground" onClick={() => setExpandedId(expanded ? null : log.id)}>
+                            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                      {expanded && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className="mt-3 space-y-2">
+                          {Array.isArray(det.itens) && det.itens.length > 0 ? (
+                            det.itens.slice(0, 5).map((item: any, index: number) => (
+                              <div key={`${item.pergunta ?? index}`} className="rounded-md border bg-muted/20 p-2">
+                                <p className="text-xs font-medium text-foreground">{item.pergunta || `Critério ${index + 1}`}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Nota: {item.nota_obtida ?? "—"} / {item.nota_maxima ?? item.peso ?? "—"}
+                                </p>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-caption text-muted-foreground">{det.formula || "Use Ver nota para abrir o resumo completo do fluxo."}</p>
                           )}
                         </motion.div>
                       )}
@@ -701,6 +773,8 @@ export default function DesempenhoOperacionalPage() {
                 log={selectedNotaLog}
                 tipoLabel={tipoNotaLabel(String(selectedNotaLog.tipo_score))}
                 origemLabel={origemNotaLabel(selectedNotaLog)}
+                fluxoData={selectedFluxo.data}
+                isLoadingFluxo={selectedFluxo.isLoading}
               />
             )}
           </div>
@@ -733,12 +807,30 @@ function ScoreBar({ label, value }: { label: string; value?: number }) {
   );
 }
 
-function DetalheNotaRecebida({ log, tipoLabel, origemLabel }: { log: any; tipoLabel: string; origemLabel: string }) {
+function DetalheNotaRecebida({
+  log,
+  tipoLabel,
+  origemLabel,
+  fluxoData,
+  isLoadingFluxo,
+}: {
+  log: any;
+  tipoLabel: string;
+  origemLabel: string;
+  fluxoData: TarefaFluxoData | null;
+  isLoadingFluxo: boolean;
+}) {
   const det = log?.detalhe_calculo || {};
   const assignment = log?.operational_assignments;
   const template = assignment?.operational_templates;
   const itens = Array.isArray(det.itens) ? det.itens : [];
   const nota = Number(log?.score_final ?? 0);
+  const resumosSalvos = extrairResumosNotas(fluxoData?.auditTrail ?? []);
+  const resumoPertinente =
+    log?.tipo_score === "aprovador"
+      ? resumosSalvos.auditor
+      : resumosSalvos.aprovador;
+  const modoResumo = log?.tipo_score === "aprovador" ? "auditor" : "aprovador";
   const componenteNotas = [
     {
       label: "Pontualidade",
@@ -846,6 +938,130 @@ function DetalheNotaRecebida({ log, tipoLabel, origemLabel }: { log: any; tipoLa
           )}
         </div>
       )}
+
+      <div className="rounded-lg border bg-card p-4 space-y-3">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Dados do fluxo da tarefa</p>
+          <p className="text-xs text-muted-foreground">
+            Respostas, planos de ação e resumo reconstruídos da mesma fonte usada na execução.
+          </p>
+        </div>
+        {isLoadingFluxo ? (
+          <p className="text-xs text-muted-foreground">Carregando dados do fluxo...</p>
+        ) : fluxoData ? (
+          <div className="space-y-3">
+            <ResumoNotasReadonly
+              modo={modoResumo}
+              data={fluxoData}
+              notasSalvas={resumoPertinente?.notas ?? null}
+              titulo={modoResumo === "auditor" ? "Resumo da nota do aprovador" : "Resumo da nota do executor/avaliado"}
+            />
+            <FluxoPerguntasResumo data={fluxoData} />
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">Não foi possível carregar os dados de execução desta tarefa.</p>
+        )}
+      </div>
     </div>
   );
+}
+
+function FluxoPerguntasResumo({ data }: { data: TarefaFluxoData }) {
+  const perguntasComDados = data.perguntas.filter(
+    (pergunta) =>
+      pergunta.respostaOriginalExecutor ||
+      pergunta.planosAprovador.length > 0 ||
+      pergunta.planosAuditor.length > 0,
+  );
+
+  if (perguntasComDados.length === 0) {
+    return <p className="text-xs text-muted-foreground">Nenhuma resposta ou plano de ação encontrado para esta tarefa.</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Perguntas e planos vinculados</p>
+      {perguntasComDados.map((pergunta) => (
+        <div key={pergunta.fieldId} className="rounded-md border bg-muted/20 p-3 space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+            <p className="text-sm font-semibold text-foreground break-words">{pergunta.label}</p>
+            <Badge variant="outline">{pergunta.obrigatorio ? "Obrigatória" : "Opcional"}</Badge>
+          </div>
+          {pergunta.respostaOriginalExecutor ? (
+            <p className="text-xs text-muted-foreground">
+              Executor: <strong className="text-foreground">{resumoRespostaOriginal(pergunta.respostaOriginalExecutor)}</strong>
+              {pergunta.respostaOriginalExecutor.respondido_em ? ` · ${format(new Date(pergunta.respostaOriginalExecutor.respondido_em), "dd/MM/yyyy HH:mm")}` : ""}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">Sem resposta original registrada.</p>
+          )}
+          <PlanosResumo titulo="Planos do aprovador para o executor" planos={pergunta.planosAprovador} />
+          <PlanosResumo titulo="Planos do auditor para o aprovador" planos={pergunta.planosAuditor} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PlanosResumo({ titulo, planos }: { titulo: string; planos: any[] }) {
+  if (!planos.length) return null;
+  return (
+    <div className="space-y-1">
+      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{titulo}</p>
+      {planos.map((plano) => (
+        <div key={plano.id} className="rounded border bg-card p-2 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+            <p className="font-medium text-foreground break-words">
+              R{plano.rodada || 1} · {plano.instrucao || resumoItensPlano(plano.itens_plano) || "Plano sem instrução"}
+            </p>
+            <Badge className={plano.respondido ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-amber-100 text-amber-700 hover:bg-amber-100"}>
+              {plano.respondido ? "Respondido" : "Pendente"}
+            </Badge>
+          </div>
+          <p className="text-muted-foreground">
+            Prazo: {plano.prazo_resolucao ? format(new Date(plano.prazo_resolucao), "dd/MM/yyyy HH:mm") : "sem prazo"}
+            {plano.respondido_em ? ` · respondido em ${format(new Date(plano.respondido_em), "dd/MM/yyyy HH:mm")}` : ""}
+          </p>
+          {plano.respondido && (
+            <p className="text-muted-foreground">Resposta: {resumoRespostaPlano(plano.resposta_valor_json)}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function resumoRespostaOriginal(resposta: any) {
+  if (resposta.valor_booleano !== null && resposta.valor_booleano !== undefined) return resposta.valor_booleano ? "Sim" : "Não";
+  if (resposta.valor_texto) return resposta.valor_texto;
+  if (resposta.valor_numero !== null && resposta.valor_numero !== undefined) return String(resposta.valor_numero);
+  if (resposta.valor_json) return resumoJsonCurto(resposta.valor_json);
+  return resposta.evidencia_url ? "Evidência anexada" : "Sem valor textual";
+}
+
+function resumoRespostaPlano(valor: any) {
+  if (!valor || typeof valor !== "object") return "Sem resposta detalhada";
+  const itens = Object.values(valor as Record<string, any>);
+  if (itens.length === 0) return "Sem resposta detalhada";
+  return itens
+    .map((item: any) => item?.valor_texto || item?.evidencia_url || item?.evidencia_anexo_id || item?.tipo)
+    .filter(Boolean)
+    .join(" · ") || "Resposta registrada";
+}
+
+function resumoItensPlano(itens: any) {
+  if (!Array.isArray(itens)) return "";
+  return itens
+    .map((item: any) => item?.titulo || item?.label || item?.descricao || item?.tipo)
+    .filter(Boolean)
+    .join(", ");
+}
+
+function resumoJsonCurto(valor: any) {
+  if (typeof valor === "string") return valor;
+  try {
+    return JSON.stringify(valor).slice(0, 140);
+  } catch {
+    return "Valor estruturado";
+  }
 }
