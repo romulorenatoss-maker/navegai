@@ -59,26 +59,70 @@ export default function DesempenhoOperacionalPage() {
 
   // Lista de colaboradores que têm tarefas associadas (apenas para admin)
   const { data: colaboradoresComTarefas = [] } = useQuery({
-    queryKey: ["desempenho_colaboradores_com_tarefas"],
+    queryKey: ["desempenho_colaboradores_com_tarefas", startDate.toISOString(), endDate.toISOString()],
     enabled: !!isAdmin,
     queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("operational_assignments")
-        .select("responsavel_id, avaliado_id, aprovador_id, auditor_id, profiles_resp:responsavel_id(id, nome), profiles_aval:avaliado_id(id, nome), profiles_aprov:aprovador_id(id, nome), profiles_audit:auditor_id(id, nome)")
-        .not("status", "in", "(cancelada,arquivada)")
-        .limit(500);
+      const [assignmentsResult, scoreLogsResult] = await Promise.all([
+        (supabase as any)
+          .from("operational_assignments")
+          .select("responsavel_id, avaliado_id, aprovador_id, setor_executor_id, setor_avaliado_id, setor_aprovador_id")
+          .gte("data_prevista", startOfDay(startDate).toISOString().slice(0, 10))
+          .lte("data_prevista", endOfDay(endDate).toISOString().slice(0, 10))
+          .not("status", "in", "(cancelada,arquivada)")
+          .limit(1000),
+        (supabase as any)
+          .from("operational_score_logs")
+          .select("target_profile_id, profile_id, target_setor_id, tipo_score")
+          .in("tipo_score", ["executor", "avaliado", "aprovador"])
+          .gte("created_at", startOfDay(startDate).toISOString())
+          .lte("created_at", endOfDay(endDate).toISOString())
+          .limit(2000),
+      ]);
 
-      if (!data) return [];
+      if (assignmentsResult.error) throw assignmentsResult.error;
+      if (scoreLogsResult.error) throw scoreLogsResult.error;
 
-      const map = new Map<string, string>();
-      for (const a of data) {
-        if (a.profiles_resp?.id) map.set(a.profiles_resp.id, a.profiles_resp.nome);
-        if (a.profiles_aval?.id) map.set(a.profiles_aval.id, a.profiles_aval.nome);
-        if (a.profiles_aprov?.id) map.set(a.profiles_aprov.id, a.profiles_aprov.nome);
-        if (a.profiles_audit?.id) map.set(a.profiles_audit.id, a.profiles_audit.nome);
+      const profileIds = new Set<string>();
+      const setorIds = new Set<string>();
+
+      if (profile?.id) profileIds.add(profile.id);
+
+      for (const log of scoreLogsResult.data || []) {
+        if (log.target_profile_id) profileIds.add(log.target_profile_id);
+        if (!log.target_profile_id && !log.target_setor_id && log.profile_id) profileIds.add(log.profile_id);
+        if (log.target_setor_id) setorIds.add(log.target_setor_id);
       }
 
-      return Array.from(map, ([id, nome]) => ({ id, nome }))
+      for (const a of assignmentsResult.data || []) {
+        if (a.responsavel_id) profileIds.add(a.responsavel_id);
+        if (a.avaliado_id) profileIds.add(a.avaliado_id);
+        if (a.aprovador_id) profileIds.add(a.aprovador_id);
+        if (a.setor_executor_id) setorIds.add(a.setor_executor_id);
+        if (a.setor_avaliado_id) setorIds.add(a.setor_avaliado_id);
+        if (a.setor_aprovador_id) setorIds.add(a.setor_aprovador_id);
+      }
+
+      if (setorIds.size > 0) {
+        const { data: membrosSetor, error: membrosError } = await (supabase as any)
+          .from("colaborador_setores")
+          .select("profile_id")
+          .in("setor_id", Array.from(setorIds));
+        if (membrosError) throw membrosError;
+        (membrosSetor || []).forEach((row: any) => {
+          if (row.profile_id) profileIds.add(row.profile_id);
+        });
+      }
+
+      if (profileIds.size === 0) return [];
+
+      const { data: perfis, error: perfisError } = await supabase
+        .from("profiles")
+        .select("id, nome")
+        .in("id", Array.from(profileIds));
+      if (perfisError) throw perfisError;
+
+      return (perfis || [])
+        .map((p) => ({ id: p.id, nome: p.nome || p.id }))
         .sort((a, b) => a.nome.localeCompare(b.nome));
     },
   });
