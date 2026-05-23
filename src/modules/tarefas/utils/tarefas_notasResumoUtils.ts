@@ -16,6 +16,8 @@ export interface TarefasResumoNotaExtraida {
 }
 
 const numberOrNull = (value: unknown): number | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 };

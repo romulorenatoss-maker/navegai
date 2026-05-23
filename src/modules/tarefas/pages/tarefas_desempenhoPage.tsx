@@ -394,7 +394,7 @@ export default function DesempenhoOperacionalPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <SummaryCard icon={<Target className="w-5 h-5" />} label="Média Executor" value={avgExecutor} />
         <SummaryCard icon={<User className="w-5 h-5" />} label="Média Avaliado" value={avgAvaliado} />
-        <SummaryCard icon={<BarChart3 className="w-5 h-5" />} label="Média Avaliador" value={avgAvaliador} />
+        <SummaryCard icon={<BarChart3 className="w-5 h-5" />} label="Média Aprovador" value={avgAvaliador} />
         <SummaryCard icon={<TrendingUp className="w-5 h-5" />} label="Nota Global" value={avgGlobal} suffix="geral" />
         <SummaryCard icon={<Trophy className="w-5 h-5" />} label="Posição Ranking" value={myRankPosition || null} suffix={`/ ${rankings.length}`} plain />
       </div>
