@@ -2,14 +2,16 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { format, startOfMonth, endOfMonth, startOfDay, endOfDay, subMonths } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion } from "framer-motion";
 import {
-  Trophy, TrendingUp, Target, AlertCircle, ChevronDown, ChevronUp,
-  CalendarIcon, BarChart3, User, Users
+  Trophy, TrendingUp, Target, ChevronDown, ChevronUp,
+  CalendarIcon, BarChart3, User, Users, Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,11 +26,6 @@ const scoreColor = (v: number) => {
   if (v >= 70) return "text-amber-600";
   return "text-red-600";
 };
-const scoreBg = (v: number) => {
-  if (v >= 90) return "bg-emerald-500";
-  if (v >= 70) return "bg-amber-500";
-  return "bg-red-500";
-};
 
 export default function DesempenhoOperacionalPage() {
   const { profile, isAdmin } = useAuth();
@@ -36,6 +33,7 @@ export default function DesempenhoOperacionalPage() {
   const [startDate, setStartDate] = useState<Date>(startOfMonth(now));
   const [endDate, setEndDate] = useState<Date>(endOfMonth(now));
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedNotaLog, setSelectedNotaLog] = useState<any | null>(null);
 
   // Admin pode visualizar o desempenho de qualquer colaborador
   const [viewAsProfileId, setViewAsProfileId] = useState<string>(profile?.id || "");
@@ -208,21 +206,39 @@ export default function DesempenhoOperacionalPage() {
 
   // ── Computed stats ──
   // ── Computed stats (with weighted average using multiplicador) ──
-  const scoreLogKeys = useMemo(
-    () => new Set(scoreLogs.map((s: any) => `${s.assignment_id}:${s.tipo_score}`)),
-    [scoreLogs],
-  );
   const isSetorDoPerfil = (setorId?: string | null) => !!setorId && perfilSetorIds.includes(setorId);
-  const isScoreLogDoPerfil = (log: any) =>
-    log.profile_id === profileId ||
-    log.target_profile_id === profileId ||
-    isSetorDoPerfil(log.target_setor_id);
+  const isScoreLogDoPerfil = (log: any) => {
+    const temDestinoExplicito = !!log.target_profile_id || !!log.target_setor_id;
+    return (
+      log.target_profile_id === profileId ||
+      isSetorDoPerfil(log.target_setor_id) ||
+      (!temDestinoExplicito && log.profile_id === profileId)
+    );
+  };
+  const scoreLogKeys = useMemo(
+    () =>
+      new Set(
+        scoreLogs
+          .filter((s: any) => isScoreLogDoPerfil(s))
+          .map((s: any) => `${s.assignment_id}:${s.tipo_score}`),
+      ),
+    [scoreLogs, profileId, perfilSetorIds],
+  );
   const makeFallbackLog = (assignment: any, tipo: "executor" | "avaliado" | "aprovador", score: number) => ({
     id: `fallback-${assignment.id}-${tipo}`,
     assignment_id: assignment.id,
     tipo_score: tipo,
-    profile_id: tipo === "executor" ? profileId : assignment.responsavel_id,
-    target_profile_id: tipo === "executor" ? assignment.responsavel_id : profileId,
+    profile_id: assignment.responsavel_id ?? profileId,
+    target_profile_id: tipo === "executor"
+      ? assignment.responsavel_id
+      : tipo === "aprovador"
+        ? (assignment.aprovador_id ?? assignment.avaliador_id ?? null)
+        : assignment.avaliado_id,
+    target_setor_id: tipo === "executor"
+      ? assignment.setor_executor_id
+      : tipo === "aprovador"
+        ? assignment.setor_aprovador_id
+        : assignment.setor_avaliado_id,
     score_final: score,
     detalhe_calculo: {
       formula: "Nota recuperada de operational_assignments/operational_audit_trail",
@@ -265,6 +281,31 @@ export default function DesempenhoOperacionalPage() {
     ...scoreLogs.filter((s: any) => s.tipo_score === "aprovador" && isScoreLogDoPerfil(s)),
     ...fallbackAprovadorLogs,
   ];
+  const tipoNotaLabel = (tipo: string) => {
+    if (tipo === "executor") return "Executor";
+    if (tipo === "avaliado") return "Avaliado";
+    if (tipo === "aprovador") return "Aprovador";
+    if (tipo === "auditor") return "Auditor";
+    return tipo || "Nota";
+  };
+  const origemNotaLabel = (log: any) => {
+    if (log?.target_profile_id === profileId) return "Individual";
+    if (log?.target_setor_id && isSetorDoPerfil(log.target_setor_id)) return "Setor";
+    if (!log?.target_profile_id && !log?.target_setor_id && log?.profile_id === profileId) return "Individual";
+    return "Vinculada";
+  };
+  const minhasNotasLogs = useMemo(() => {
+    const map = new Map<string, any>();
+    [...myExecutorLogs, ...myAvaliadoLogs, ...myAprovadorLogs].forEach((log: any) => {
+      if (!log) return;
+      map.set(log.id, log);
+    });
+    return Array.from(map.values()).sort((a: any, b: any) => {
+      const da = new Date(a.created_at ?? a.operational_assignments?.data_prevista ?? 0).getTime();
+      const db = new Date(b.created_at ?? b.operational_assignments?.data_prevista ?? 0).getTime();
+      return db - da;
+    });
+  }, [myExecutorLogs, myAvaliadoLogs, myAprovadorLogs]);
 
   const weightedAvg = (logs: any[]) => {
     if (logs.length === 0) return null;
@@ -359,12 +400,58 @@ export default function DesempenhoOperacionalPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="execucoes" className="space-y-4">
+      <Tabs defaultValue="notas" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="notas">Minhas Notas</TabsTrigger>
           <TabsTrigger value="execucoes">Por Execução</TabsTrigger>
           <TabsTrigger value="avaliado">Como Avaliado</TabsTrigger>
           <TabsTrigger value="ranking">Ranking</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="notas">
+          <div className="bg-card border border-border rounded-lg shadow-card">
+            {isLoading || isLoadingSetores ? (
+              <div className="p-8 text-center text-muted-foreground">Carregando notas...</div>
+            ) : minhasNotasLogs.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">Nenhuma nota recebida no período.</div>
+            ) : (
+              <div className="divide-y divide-border">
+                {minhasNotasLogs.map((log: any) => {
+                  const assignment = log.operational_assignments;
+                  const template = assignment?.operational_templates;
+                  const origem = origemNotaLabel(log);
+                  return (
+                    <div key={log.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-foreground break-words">
+                            {template?.nome || assignment?.nome || "Tarefa"}
+                          </p>
+                          <Badge variant="outline">{tipoNotaLabel(String(log.tipo_score))}</Badge>
+                          <Badge className={origem === "Setor" ? "bg-blue-100 text-blue-800 hover:bg-blue-100" : "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"}>
+                            {origem}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {assignment?.data_prevista ? format(new Date(assignment.data_prevista), "dd/MM/yyyy") : "Sem data"} · {template?.tipo_execucao || "tarefa"}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between sm:justify-end gap-3">
+                        <span className={cn("text-xl font-bold font-tabular", scoreColor(Number(log.score_final ?? 0)))}>
+                          {log.score_final ?? "—"}
+                        </span>
+                        <Button type="button" variant="outline" size="sm" onClick={() => setSelectedNotaLog(log)}>
+                          <Eye className="w-4 h-4 mr-2" />
+                          Ver nota
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </TabsContent>
 
         {/* ── Por Execução ── */}
         <TabsContent value="execucoes">
@@ -528,6 +615,23 @@ export default function DesempenhoOperacionalPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={!!selectedNotaLog} onOpenChange={(open) => !open && setSelectedNotaLog(null)}>
+        <DialogContent className="w-[calc(100vw-24px)] max-w-3xl max-h-[90vh] p-0 overflow-hidden flex flex-col">
+          <DialogHeader className="px-5 py-4 border-b shrink-0">
+            <DialogTitle className="text-base">Resumo da nota recebida</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto p-5">
+            {selectedNotaLog && (
+              <DetalheNotaRecebida
+                log={selectedNotaLog}
+                tipoLabel={tipoNotaLabel(String(selectedNotaLog.tipo_score))}
+                origemLabel={origemNotaLabel(selectedNotaLog)}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -551,6 +655,81 @@ function ScoreBar({ label, value }: { label: string; value?: number }) {
       <span className="text-caption text-muted-foreground w-40 shrink-0">{label}</span>
       <Progress value={v} className="h-2 flex-1" />
       <span className={cn("text-caption font-bold font-tabular w-10 text-right", scoreColor(v))}>{Math.round(v)}</span>
+    </div>
+  );
+}
+
+function DetalheNotaRecebida({ log, tipoLabel, origemLabel }: { log: any; tipoLabel: string; origemLabel: string }) {
+  const det = log?.detalhe_calculo || {};
+  const assignment = log?.operational_assignments;
+  const template = assignment?.operational_templates;
+  const itens = Array.isArray(det.itens) ? det.itens : [];
+  const nota = Number(log?.score_final ?? 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg border bg-blue-50/60 border-blue-200 p-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <p className="text-sm font-semibold text-blue-950 break-words">
+              {template?.nome || assignment?.nome || "Tarefa"}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline">{tipoLabel}</Badge>
+              <Badge className={origemLabel === "Setor" ? "bg-blue-100 text-blue-800 hover:bg-blue-100" : "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"}>
+                Nota {origemLabel.toLowerCase()}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {assignment?.data_prevista ? format(new Date(assignment.data_prevista), "dd/MM/yyyy", { locale: ptBR }) : "Sem data"}
+            </p>
+          </div>
+          <p className={cn("text-4xl font-bold font-tabular", scoreColor(nota))}>{log?.score_final ?? "—"}</p>
+        </div>
+      </div>
+
+      {itens.length > 0 ? (
+        <div className="space-y-2">
+          {itens.map((item: any, index: number) => {
+            const conforme = item.conforme;
+            const notaObtida = Number(item.nota_obtida ?? 0);
+            const maximo = Number(item.nota_maxima ?? item.peso ?? 0);
+            const perdeu = conforme === false || notaObtida < maximo;
+            return (
+              <div
+                key={`${item.pergunta ?? item.nome ?? index}`}
+                className={cn(
+                  "rounded-lg border p-3 space-y-2",
+                  perdeu ? "border-red-200 bg-red-50" : "border-emerald-200 bg-emerald-50",
+                )}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <p className="text-sm font-semibold text-foreground break-words">
+                    {item.pergunta || item.nome || `Critério ${index + 1}`}
+                  </p>
+                  <Badge className={perdeu ? "bg-red-100 text-red-700 hover:bg-red-100" : "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"}>
+                    {perdeu ? "Perdeu ponto" : "OK"}
+                  </Badge>
+                </div>
+                <p className={cn("text-xs font-semibold", perdeu ? "text-red-700" : "text-emerald-700")}>
+                  Nota: {notaObtida}/{maximo} pts
+                  {perdeu ? ` · desconto ${Math.max(0, maximo - notaObtida)} pts` : ""}
+                </p>
+                {item.mensagem || item.observacao ? (
+                  <p className="text-xs text-muted-foreground break-words">{item.mensagem || item.observacao}</p>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="rounded-lg border bg-muted/20 p-4 space-y-2">
+          <p className="text-sm font-semibold text-foreground">Detalhe da nota</p>
+          <p className="text-xs text-muted-foreground break-words">
+            {det.formula || "Detalhamento por pergunta não veio em detalhe_calculo para esta nota."}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
