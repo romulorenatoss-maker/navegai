@@ -100,20 +100,20 @@ export const getNotaResumoAssignment = (
 
   if (tipo === "avaliado") {
     return (
+      resumos.aprovador?.notaFinal ??
+      scoreLog("avaliado") ??
       numberOrNull(assignment?.score_avaliado) ??
       numberOrNull(assignment?.score_final_ajustado) ??
       numberOrNull(assignment?.pontuacao_obtida) ??
-      scoreLog("avaliado") ??
-      resumos.aprovador?.notaFinal ??
       null
     );
   }
 
   if (tipo === "aprovador") {
     return (
-      numberOrNull(assignment?.score_aprovador) ??
-      scoreLog("aprovador") ??
       resumos.auditor?.notaFinal ??
+      scoreLog("aprovador") ??
+      numberOrNull(assignment?.score_aprovador) ??
       null
     );
   }
@@ -123,11 +123,11 @@ export const getNotaResumoAssignment = (
   }
 
   return (
+    resumos.aprovador?.notaFinal ??
+    resumos.auditor?.notaFinal ??
     numberOrNull(assignment?.score_final_ajustado) ??
     numberOrNull(assignment?.pontuacao_obtida) ??
     numberOrNull(assignment?.score_avaliado) ??
-    resumos.aprovador?.notaFinal ??
-    resumos.auditor?.notaFinal ??
     scoreLog("avaliado") ??
     scoreLog("executor")
   );

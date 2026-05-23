@@ -37,6 +37,37 @@ const numberOrNull = (value: unknown): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
+const getNotaSalvaParaTipo = (log: any): number | null => {
+  const auditTrail =
+    log?.operational_assignments?.audit_trail ??
+    log?.audit_trail ??
+    [];
+  const resumos = extrairResumosNotas(Array.isArray(auditTrail) ? auditTrail : []);
+  const tipo = String(log?.tipo_score ?? "");
+
+  if (tipo === "avaliado") return resumos.aprovador?.notaFinal ?? null;
+  if (tipo === "aprovador") return resumos.auditor?.notaFinal ?? null;
+  return null;
+};
+
+const aplicarNotaSalvaAoLog = (log: any) => {
+  const notaSalva = getNotaSalvaParaTipo(log);
+  if (notaSalva == null) return log;
+
+  const notaOriginal = numberOrNull(log?.score_final);
+  return {
+    ...log,
+    score_final: notaSalva,
+    score_final_original: notaOriginal,
+    detalhe_calculo: {
+      ...(log?.detalhe_calculo ?? {}),
+      nota_salva_audit_trail: notaSalva,
+      score_log_original: notaOriginal,
+      origem_score_exibido: "operational_audit_trail.dados_novos.notas",
+    },
+  };
+};
+
 export default function DesempenhoOperacionalPage() {
   const { profile, isAdmin } = useAuth();
   const now = new Date();
@@ -160,7 +191,34 @@ export default function DesempenhoOperacionalPage() {
         .lte("created_at", endOfDay(endDate).toISOString())
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+
+      const rows = data || [];
+      const assignmentIds = [...new Set(rows.map((row: any) => row.assignment_id).filter(Boolean))];
+      if (assignmentIds.length === 0) return rows;
+
+      const { data: auditTrail, error: auditError } = await (supabase as any)
+        .from("operational_audit_trail")
+        .select("*")
+        .in("assignment_id", assignmentIds)
+        .order("created_at", { ascending: true });
+      if (auditError) throw auditError;
+
+      const auditByAssignment = new Map<string, any[]>();
+      (auditTrail || []).forEach((log: any) => {
+        const list = auditByAssignment.get(log.assignment_id) || [];
+        list.push(log);
+        auditByAssignment.set(log.assignment_id, list);
+      });
+
+      return rows.map((row: any) =>
+        aplicarNotaSalvaAoLog({
+          ...row,
+          operational_assignments: {
+            ...(row.operational_assignments ?? {}),
+            audit_trail: auditByAssignment.get(row.assignment_id) || [],
+          },
+        }),
+      );
     },
   });
 
@@ -238,12 +296,36 @@ export default function DesempenhoOperacionalPage() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("operational_score_logs")
-        .select("target_profile_id, score_final, tipo_score, target_setor_id")
+        .select("assignment_id, target_profile_id, score_final, tipo_score, target_setor_id")
         .gte("created_at", startOfDay(startDate).toISOString())
         .lte("created_at", endOfDay(endDate).toISOString())
         .not("target_profile_id", "is", null);
       if (error) throw error;
-      return data || [];
+
+      const rows = data || [];
+      const assignmentIds = [...new Set(rows.map((row: any) => row.assignment_id).filter(Boolean))];
+      if (assignmentIds.length === 0) return rows;
+
+      const { data: auditTrail, error: auditError } = await (supabase as any)
+        .from("operational_audit_trail")
+        .select("*")
+        .in("assignment_id", assignmentIds)
+        .order("created_at", { ascending: true });
+      if (auditError) throw auditError;
+
+      const auditByAssignment = new Map<string, any[]>();
+      (auditTrail || []).forEach((log: any) => {
+        const list = auditByAssignment.get(log.assignment_id) || [];
+        list.push(log);
+        auditByAssignment.set(log.assignment_id, list);
+      });
+
+      return rows.map((row: any) =>
+        aplicarNotaSalvaAoLog({
+          ...row,
+          audit_trail: auditByAssignment.get(row.assignment_id) || [],
+        }),
+      );
     },
   });
 
