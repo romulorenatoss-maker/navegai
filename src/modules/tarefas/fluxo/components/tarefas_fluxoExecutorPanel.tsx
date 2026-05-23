@@ -20,6 +20,7 @@ import { useFluxoPermissoes } from "../hooks/tarefas_useFluxoPermissoes";
 import { ExecutorPlanoAprovadorCard } from "@/modules/tarefas/components/tarefas_executorPlanoAprovadorCard";
 import { DynamicFieldRenderer } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import { FluxoPlanoAprovadorCard } from "./tarefas_fluxoPlanoAprovadorCard";
+import { tarefasExtrairSlaResponsabilidades } from "@/modules/tarefas/utils/tarefas_slaPrazoUtils";
 import type { ExecutorRespostaInput } from "../services/tarefas_fluxoRpcService";
 
 interface Props {
@@ -44,6 +45,7 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
   }
 
   const a = data.assignment;
+  const sla = tarefasExtrairSlaResponsabilidades(a);
 
   const updateRascunho = (fieldId: string, patch: Partial<ExecutorRespostaInput>) => {
     setRascunho((prev) => ({
@@ -121,6 +123,8 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
                       plano={plano}
                       papel="executor"
                       podeResponder={false}
+                      slaPadraoHoras={sla.executorPlanoAprovadorHoras}
+                      excluirFimSemanaSla={sla.excluirFimSemana}
                     />
                 ))}
                 {planosPendentes.map((plano) => (
@@ -132,6 +136,8 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
                       tipoTarefa={(a.origem ?? "rotina") as string}
                       codigoTarefa={`#${String(a.numero_tarefa ?? "").padStart(4, "0")}`}
                       nomeTarefa={a.nome ?? "tarefa"}
+                      slaPadraoHoras={sla.executorPlanoAprovadorHoras}
+                      excluirFimSemanaSla={sla.excluirFimSemana}
                       isResponding={actions.responderPlanoAprovador.isPending}
                       onResponder={async (input) => {
                         await actions.responderPlanoAprovador.mutateAsync(input);

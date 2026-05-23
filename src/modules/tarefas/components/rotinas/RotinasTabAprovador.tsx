@@ -185,24 +185,24 @@ export function RotinasTabAprovador({ aprovadorConfigurado, form, setForm, items
       {/* SLA do Aprovador */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label className="text-xs">SLA do Aprovador (horas)</Label>
+          <Label className="text-xs">SLA para aprovar envio do executor (horas)</Label>
           <Input
             type="number" min={1}
-            value={form.sla_horas || 24}
-            onChange={(e) => setForm("sla_horas", +e.target.value || 24)}
+            value={form.sla_aprovador_aprovar_horas || 6}
+            onChange={(e) => setForm("sla_aprovador_aprovar_horas", +e.target.value || 6)}
             className="h-8 text-xs"
           />
-          <p className="text-[10px] text-muted-foreground">Tempo máximo para o aprovador responder após a tarefa chegar a ele. Se expirar → notifica auditor automaticamente.</p>
+          <p className="text-[10px] text-muted-foreground">Padrao: 6h apos o executor enviar as respostas.</p>
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">SLA do Plano de Ação (horas)</Label>
+          <Label className="text-xs">SLA para responder plano do auditor (horas)</Label>
           <Input
             type="number" min={1}
-            value={form.prazo_sla_correcao_horas || 24}
-            onChange={(e) => setForm("prazo_sla_correcao_horas", +e.target.value || 24)}
+            value={form.sla_aprovador_plano_auditor_horas || 6}
+            onChange={(e) => setForm("sla_aprovador_plano_auditor_horas", +e.target.value || 6)}
             className="h-8 text-xs"
           />
-          <p className="text-[10px] text-muted-foreground">1º prazo para o executor resolver o plano de ação. Se estourar → habilita o aprovador dar 2º prazo (desconta ponto).</p>
+          <p className="text-[10px] text-muted-foreground">Padrao: 6h para devolver satisfacao ao auditor.</p>
         </div>
       </div>
 

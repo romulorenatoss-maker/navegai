@@ -153,16 +153,12 @@ export function RotinasTabAuditor({ auditorConfigurado, form, setForm, items, se
         </div>
       </div>
 
-      {/* SLA do Auditor */}
-      <div className="space-y-1.5">
-        <Label className="text-xs">SLA do Auditor (horas)</Label>
-        <Input
-          type="number" min={1}
-          value={form.prazo_sla_correcao_horas || 48}
-          onChange={(e) => setForm("prazo_sla_correcao_horas", +e.target.value || 48)}
-          className="h-8 text-xs w-40"
-        />
-        <p className="text-[10px] text-muted-foreground">Tempo máximo para o auditor responder após o aprovador concluir.</p>
+      {/* Auditor nao e pontuado por SLA */}
+      <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-900">
+        <p className="font-semibold">Auditor nao recebe nota de SLA nesta rotina.</p>
+        <p className="mt-1">
+          Esta aba configura perguntas que o auditor usa para avaliar o aprovador. Os prazos pontuados do aprovador ficam na aba Aprovador.
+        </p>
       </div>
 
       {/* Contador */}

@@ -151,7 +151,7 @@ export function useResumoNotas(data: TarefaFluxoData | null, modo: ResumoNotasMo
           origem: "automatica",
           tipo: String(p.tipo ?? "sim_nao"),
           peso,
-          descontoAplicado: calculo.calculavel ? (calculo.tiraPonto ? peso : 0) : null,
+          descontoAplicado: calculo.calculavel ? (calculo.tiraPonto ? peso * (calculo.quantidadePenalidades ?? 1) : 0) : null,
           pontoDevolvidoNa: peso,
           valorExibido: calculo.label,
           permiteNa: p.permite_na !== false,

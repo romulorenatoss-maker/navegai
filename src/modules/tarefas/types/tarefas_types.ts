@@ -107,6 +107,10 @@ export interface TemplateForm {
   horario_limite_execucao: string;
   tolerancia_minutos: number;
   sla_horas: number;
+  sla_executor_tarefa_horas: number;
+  sla_executor_plano_aprovador_horas: number;
+  sla_aprovador_aprovar_horas: number;
+  sla_aprovador_plano_auditor_horas: number;
   gerar_contingencia_automatica: boolean;
   prazo_sla_correcao_horas: number;
   requer_aprovacao_gestor: boolean;
@@ -170,8 +174,12 @@ export const defaultTemplate: TemplateForm = {
   recorrencia_tipo: "unica", dias_da_semana: [], intervalo_dias: 1, pular_semanas: 0,
   dia_fixo_mes: null, data_inicio: getLocalToday(), data_fim: "", repetir_sempre: false,
   horario_inicio_previsto: "08:00", horario_limite_execucao: "18:00", tolerancia_minutos: 0,
-  sla_horas: 24,
-  gerar_contingencia_automatica: false, prazo_sla_correcao_horas: 24,
+  sla_horas: 12,
+  sla_executor_tarefa_horas: 12,
+  sla_executor_plano_aprovador_horas: 12,
+  sla_aprovador_aprovar_horas: 6,
+  sla_aprovador_plano_auditor_horas: 6,
+  gerar_contingencia_automatica: false, prazo_sla_correcao_horas: 12,
   requer_aprovacao_gestor: false, bloquear_fechamento_com_contingencia: false,
   permite_devolucao_parcial: false,
   executor_profile_id: "", executor_setor_id: "",
@@ -180,7 +188,7 @@ export const defaultTemplate: TemplateForm = {
   auditor_profile_id: "", auditor_setor_id: "",
   modo_pontuacao: "pontuar_avaliado", destino_score: "individual",
   peso_recorrencia: 2.0,
-  exceto_fds: false,
+  exceto_fds: true,
   tipo_atribuicao_avaliado: "individual",
   penalidade_contingencia: 10,
   penalidade_sla_contingencia: 15,

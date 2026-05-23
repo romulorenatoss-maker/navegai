@@ -40,10 +40,10 @@ export const METRICA_LABEL: Record<RotinaMetricaCalculo, string> = {
   executor_evidencias_anexadas: "Evidências obrigatórias anexadas",
   executor_teve_devolucao: "Execução foi devolvida/reaberta",
   plano_acao_foi_criado: "Foi criado plano de ação",
-  plano_acao_sla_estourado: "Plano de ação venceu o SLA",
-  plano_acao_prazo_prorrogado: "Aprovador prorrogou prazo do plano",
-  plano_acao_prazo_prorrogado_2x: "Aprovador prorrogou mais de uma vez",
-  aprovador_respondeu_no_sla: "Aprovador avaliou fora do SLA",
+  plano_acao_sla_estourado: "Plano respondido fora do SLA",
+  plano_acao_prazo_prorrogado: "Plano ficou acima do SLA padrao",
+  plano_acao_prazo_prorrogado_2x: "Plano teve reincidencia R2+",
+  aprovador_respondeu_no_sla: "Aprovador agiu dentro do SLA",
   aprovador_reabriu_tarefa: "Aprovador devolveu/reabriu a tarefa",
   aprovador_aprovou_com_pendencia: "Aprovador aprovou com pendência ativa",
   manual: "Avaliação manual",
@@ -91,11 +91,11 @@ export const PERGUNTAS_PADRAO_APROVADOR: RotinaCheckItem[] = [
 ];
 
 export const PERGUNTAS_PADRAO_AUDITOR: RotinaCheckItem[] = [
-  mk({ pergunta: "Aprovador avaliou fora do SLA?", tipo: "sim_nao", peso: 20, ativo: true, origem: "automatica_sistema", metrica_calculo: "aprovador_respondeu_no_sla", camada_alvo: "aprovador", permite_na: true, exige_justificativa_na: true }),
+  mk({ pergunta: "Aprovador enviou para auditoria dentro do SLA?", tipo: "sim_nao", peso: 20, ativo: true, origem: "automatica_sistema", metrica_calculo: "aprovador_respondeu_no_sla", camada_alvo: "aprovador", permite_na: true, exige_justificativa_na: true }),
   mk({ pergunta: "Aprovador aprovou com alerta automático pendente?", tipo: "sim_nao", peso: 15, ativo: true, origem: "automatica_sistema", metrica_calculo: "aprovador_aprovou_com_pendencia", camada_alvo: "aprovador", permite_na: true, exige_justificativa_na: true }),
   mk({ pergunta: "Aprovador devolveu/reabriu a tarefa?", tipo: "sim_nao", peso: 10, ativo: true, origem: "automatica_sistema", metrica_calculo: "aprovador_reabriu_tarefa", camada_alvo: "aprovador", permite_na: true, exige_justificativa_na: true }),
-  mk({ pergunta: "Plano de ação aberto venceu o SLA?", tipo: "sim_nao", peso: 10, ativo: true, origem: "automatica_sistema", metrica_calculo: "plano_acao_sla_estourado", camada_alvo: "plano_acao", permite_na: true, exige_justificativa_na: true }),
-  mk({ pergunta: "Aprovador prorrogou prazo do plano de ação?", tipo: "sim_nao", peso: 10, ativo: true, origem: "automatica_sistema", metrica_calculo: "plano_acao_prazo_prorrogado", camada_alvo: "plano_acao", permite_na: true, exige_justificativa_na: true }),
-  mk({ pergunta: "Aprovador prorrogou prazo mais de uma vez?", tipo: "sim_nao", peso: 10, ativo: true, origem: "automatica_sistema", metrica_calculo: "plano_acao_prazo_prorrogado_2x", camada_alvo: "plano_acao", permite_na: true, exige_justificativa_na: true }),
+  mk({ pergunta: "Aprovador respondeu plano do auditor dentro do SLA?", tipo: "sim_nao", peso: 10, ativo: true, origem: "automatica_sistema", metrica_calculo: "plano_acao_sla_estourado", camada_alvo: "plano_acao", permite_na: true, exige_justificativa_na: true }),
+  mk({ pergunta: "Plano para o aprovador ficou acima do SLA padrao?", tipo: "sim_nao", peso: 10, ativo: true, origem: "automatica_sistema", metrica_calculo: "plano_acao_prazo_prorrogado", camada_alvo: "plano_acao", permite_na: true, exige_justificativa_na: true }),
+  mk({ pergunta: "Aprovador teve reincidencia de plano do auditor?", tipo: "sim_nao", peso: 10, ativo: true, origem: "automatica_sistema", metrica_calculo: "plano_acao_prazo_prorrogado_2x", camada_alvo: "plano_acao", permite_na: true, exige_justificativa_na: true }),
   mk({ pergunta: "Justificativa do aprovador é plausível?", tipo: "conforme_nao_conforme", peso: 25, ativo: true, origem: "manual", metrica_calculo: "manual", camada_alvo: "aprovador", permite_na: false, exige_justificativa_na: false }),
 ];

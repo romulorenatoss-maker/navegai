@@ -20,12 +20,23 @@ interface Props {
   papel: "executor" | "aprovador" | "auditor" | "criador" | "admin" | "spectator";
   podeResponder?: boolean;
   onResponder?: () => void;
+  slaPadraoHoras?: number | null;
+  excluirFimSemanaSla?: boolean;
 }
 
-export function FluxoPlanoAuditorCard({ plano, podeResponder, onResponder }: Props) {
+export function FluxoPlanoAuditorCard({
+  plano,
+  podeResponder,
+  onResponder,
+  slaPadraoHoras,
+  excluirFimSemanaSla,
+}: Props) {
   const itens = Array.isArray(plano.itens_plano) ? plano.itens_plano : [];
   const resp = plano.resposta_valor_json ?? {};
-  const prazoPlano = tarefasCalcularPrazoPlanoPadraoStatus(plano);
+  const prazoPlano = tarefasCalcularPrazoPlanoPadraoStatus(plano, {
+    horas: slaPadraoHoras,
+    excluirFimSemana: excluirFimSemanaSla,
+  });
   const prazoResposta = tarefasCalcularPrazoStatus({
     prazo: plano.prazo_resolucao,
     referencia: plano.respondido_em,

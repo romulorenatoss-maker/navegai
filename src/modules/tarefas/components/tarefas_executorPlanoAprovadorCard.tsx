@@ -63,11 +63,24 @@ interface Props {
   codigoTarefa: string;
   /** Nome da tarefa (do template). Vira slug na pasta do Drive. */
   nomeTarefa: string;
+  slaPadraoHoras?: number | null;
+  excluirFimSemanaSla?: boolean;
   onResponder: (input: { planoId: string; respostaValorJson: any }) => Promise<unknown>;
   isResponding?: boolean;
 }
 
-export function ExecutorPlanoAprovadorCard({ plano, fieldLabel, assignmentId, tipoTarefa, codigoTarefa, nomeTarefa, onResponder, isResponding }: Props) {
+export function ExecutorPlanoAprovadorCard({
+  plano,
+  fieldLabel,
+  assignmentId,
+  tipoTarefa,
+  codigoTarefa,
+  nomeTarefa,
+  slaPadraoHoras,
+  excluirFimSemanaSla,
+  onResponder,
+  isResponding,
+}: Props) {
   const [respostas, setRespostas] = useState<PlanoAcaoRespostaPayload>({});
   const [uploadingTipo, setUploadingTipo] = useState<string | null>(null);
   const [progress, setProgress] = useState<Record<string, number>>({});
@@ -160,7 +173,10 @@ export function ExecutorPlanoAprovadorCard({ plano, fieldLabel, assignmentId, ti
     referencia: null,
     semReferenciaUsaAgora: true,
   });
-  const prazoPlano = tarefasCalcularPrazoPlanoPadraoStatus(plano);
+  const prazoPlano = tarefasCalcularPrazoPlanoPadraoStatus(plano, {
+    horas: slaPadraoHoras,
+    excluirFimSemana: excluirFimSemanaSla,
+  });
   const prazoCls = prazoStatus.status === "fora_prazo" ? "text-red-700 font-bold" : "text-emerald-700 font-semibold";
   const prazoPlanoCls = prazoPlano.status === "fora_prazo" ? "text-red-700 font-bold" : "text-emerald-700 font-semibold";
 

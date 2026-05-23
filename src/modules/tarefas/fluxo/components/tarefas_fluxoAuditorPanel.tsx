@@ -25,6 +25,10 @@ import { ItensPlanoBuilder, type ItemPlano } from "@/modules/tarefas/components/
 import { FluxoPerguntaHistoricoCard } from "./tarefas_fluxoPerguntaHistoricoCard";
 import { FluxoBotaoConformeNaoConforme } from "./tarefas_fluxoBotaoConformeNaoConforme";
 import { ResumoNotasModal } from "./tarefas_resumoNotasModal";
+import {
+  tarefasAdicionarHorasUteis,
+  tarefasExtrairSlaResponsabilidades,
+} from "@/modules/tarefas/utils/tarefas_slaPrazoUtils";
 
 interface Props {
   assignmentId: string;
@@ -38,9 +42,19 @@ interface PlanoDraft {
   criticidade: "baixa" | "media" | "alta";
 }
 
-function defaultPlano(): PlanoDraft {
-  const prazo = new Date(Date.now() + 24 * 3600 * 1000);
-  const prazoIso = prazo.toISOString().slice(0, 16);
+function defaultPlano({
+  horas,
+  excluirFimSemana,
+}: {
+  horas: number;
+  excluirFimSemana: boolean;
+}): PlanoDraft {
+  const prazo = tarefasAdicionarHorasUteis({
+    inicio: new Date(),
+    horas,
+    excluirFimSemana,
+  }) ?? new Date(Date.now() + horas * 3600 * 1000).toISOString();
+  const prazoIso = prazo.slice(0, 16);
   return {
     instrucao: "",
     itens: [],
@@ -81,6 +95,12 @@ export function FluxoAuditorPanel({ assignmentId }: Props) {
   }
 
   const a = data.assignment;
+  const sla = tarefasExtrairSlaResponsabilidades(a);
+  const criarPlanoDefault = () =>
+    defaultPlano({
+      horas: sla.aprovadorPlanoAuditorHoras,
+      excluirFimSemana: sla.excluirFimSemana,
+    });
 
   const handleCriarPlano = async (fieldId: string) => {
     const d = planosDraft[fieldId];
@@ -94,7 +114,7 @@ export function FluxoAuditorPanel({ assignmentId }: Props) {
         fieldId,
         instrucao: d.instrucao,
         itensPlano: d.itens,
-        prazoResolucao: d.prazoIso ? new Date(d.prazoIso).toISOString() : new Date(Date.now() + 86400000).toISOString(),
+        prazoResolucao: d.prazoIso ? new Date(d.prazoIso).toISOString() : new Date(d.prazoPadraoIso).toISOString(),
         criticidade: d.criticidade,
       });
       setPlanosDraft((prev) => { const n = { ...prev }; delete n[fieldId]; return n; });
@@ -136,6 +156,9 @@ export function FluxoAuditorPanel({ assignmentId }: Props) {
           papel="auditor"
           acoesAtivas={false}
           prazoExecucao={a.prazo_execucao}
+          slaPlanoAprovadorHoras={sla.executorPlanoAprovadorHoras}
+          slaPlanoAuditorHoras={sla.aprovadorPlanoAuditorHoras}
+          excluirFimSemanaSla={sla.excluirFimSemana}
           rodape={
             <div className="space-y-2 mt-2 border-t pt-2">
               {perms.podeAuditorCriarPlanoAprovador && (
@@ -148,7 +171,7 @@ export function FluxoAuditorPanel({ assignmentId }: Props) {
                     setAvaliacao((prev) => ({ ...prev, [p.fieldId]: "nao_conforme" }));
                     setPlanosDraft((prev) => ({
                       ...prev,
-                      [p.fieldId]: prev[p.fieldId] ?? defaultPlano(),
+                      [p.fieldId]: prev[p.fieldId] ?? criarPlanoDefault(),
                     }));
                   }}
                   disabled={actions.isSubmitting}
@@ -171,7 +194,7 @@ export function FluxoAuditorPanel({ assignmentId }: Props) {
                         onChange={(e) =>
                           setPlanosDraft((prev) => ({
                             ...prev,
-                            [p.fieldId]: { ...(prev[p.fieldId] ?? defaultPlano()), instrucao: e.target.value },
+                            [p.fieldId]: { ...(prev[p.fieldId] ?? criarPlanoDefault()), instrucao: e.target.value },
                           }))
                         }
                         className="text-xs min-h-[44px]"
@@ -183,7 +206,7 @@ export function FluxoAuditorPanel({ assignmentId }: Props) {
                       onChange={(itens) =>
                         setPlanosDraft((prev) => ({
                           ...prev,
-                          [p.fieldId]: { ...(prev[p.fieldId] ?? defaultPlano()), itens },
+                          [p.fieldId]: { ...(prev[p.fieldId] ?? criarPlanoDefault()), itens },
                         }))
                       }
                       compact
@@ -197,7 +220,7 @@ export function FluxoAuditorPanel({ assignmentId }: Props) {
                         onChange={(e) =>
                           setPlanosDraft((prev) => ({
                             ...prev,
-                            [p.fieldId]: { ...(prev[p.fieldId] ?? defaultPlano()), prazoIso: e.target.value },
+                            [p.fieldId]: { ...(prev[p.fieldId] ?? criarPlanoDefault()), prazoIso: e.target.value },
                           }))
                         }
                         className="h-8 text-xs"

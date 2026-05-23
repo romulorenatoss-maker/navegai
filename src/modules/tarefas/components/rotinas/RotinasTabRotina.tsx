@@ -364,11 +364,34 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
       )}
 
       {/* SLA do executor */}
-      <div className="grid grid-cols-2 gap-4 border-t border-border pt-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-border pt-4">
         <div className="space-y-1.5">
           <Label>SLA do Executor (horas)</Label>
-          <Input type="number" min={1} value={form.sla_horas || 24} onChange={(e) => set("sla_horas", +e.target.value || 24)} />
-          <p className="text-[10px] text-muted-foreground">Tempo máximo para o executor concluir.</p>
+          <Input
+            type="number"
+            min={1}
+            value={form.sla_executor_tarefa_horas || 12}
+            onChange={(e) => {
+              const valor = +e.target.value || 12;
+              set("sla_executor_tarefa_horas", valor);
+              set("sla_horas", valor);
+            }}
+          />
+          <p className="text-[10px] text-muted-foreground">Padrao: 12h para concluir a tarefa.</p>
+        </div>
+        <div className="space-y-1.5">
+          <Label>SLA do plano para executor (horas)</Label>
+          <Input
+            type="number"
+            min={1}
+            value={form.sla_executor_plano_aprovador_horas || 12}
+            onChange={(e) => {
+              const valor = +e.target.value || 12;
+              set("sla_executor_plano_aprovador_horas", valor);
+              set("prazo_sla_correcao_horas", valor);
+            }}
+          />
+          <p className="text-[10px] text-muted-foreground">Padrao: 12h para responder plano do aprovador.</p>
         </div>
         <div className="space-y-1.5">
           <Label>Tolerância de Atraso (minutos)</Label>
@@ -489,7 +512,7 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
         <div className="space-y-0.5">
           <p className="text-sm font-medium">Exceto Sábado e Domingo</p>
           <p className="text-xs text-muted-foreground">
-            Se o dia agendado cair em sáb/dom, a tarefa será gerada na segunda-feira seguinte.
+            Se o dia agendado cair em sab/dom, a tarefa sera gerada na segunda-feira e a contagem de SLA pausa no fim de semana.
           </p>
         </div>
         <Switch checked={form.exceto_fds ?? false} onCheckedChange={(v) => set("exceto_fds", v)} />

@@ -35,6 +35,9 @@ interface Props {
   mostrarPlanosAprovador?: boolean;
   mostrarPlanosAuditor?: boolean;
   prazoExecucao?: string | null;
+  slaPlanoAprovadorHoras?: number | null;
+  slaPlanoAuditorHoras?: number | null;
+  excluirFimSemanaSla?: boolean;
   /** Conteúdo extra a renderizar no rodapé do card (ex: botão criar plano). */
   rodape?: React.ReactNode;
 }
@@ -75,6 +78,9 @@ export function FluxoPerguntaHistoricoCard({
   mostrarPlanosAprovador = true,
   mostrarPlanosAuditor = true,
   prazoExecucao,
+  slaPlanoAprovadorHoras,
+  slaPlanoAuditorHoras,
+  excluirFimSemanaSla,
   rodape,
 }: Props) {
   const r0 = pergunta.respostaOriginalExecutor;
@@ -147,6 +153,8 @@ export function FluxoPerguntaHistoricoCard({
               !plano.respondido
             }
             onResponder={() => onExecutorResponderPlano?.(plano.id)}
+            slaPadraoHoras={slaPlanoAprovadorHoras}
+            excluirFimSemanaSla={excluirFimSemanaSla}
           />
         ))}
 
@@ -165,6 +173,8 @@ export function FluxoPerguntaHistoricoCard({
               !plano.respondido
             }
             onResponder={() => onAprovadorResponderPlanoAuditor?.(plano.id)}
+            slaPadraoHoras={slaPlanoAuditorHoras}
+            excluirFimSemanaSla={excluirFimSemanaSla}
           />
         ))}
 

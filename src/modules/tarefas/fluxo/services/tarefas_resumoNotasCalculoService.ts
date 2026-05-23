@@ -1,6 +1,9 @@
 import type { TarefaFluxoData, TarefaFluxoPergunta } from "../types/tarefas_fluxoTypes";
 import {
-  tarefasCalcularPrazoPlanoPadraoStatus,
+  tarefasAdicionarHorasUteis,
+  tarefasCalcularPrazoHorasUteisStatus,
+  tarefasCalcularPrazoStatus,
+  tarefasExtrairSlaResponsabilidades,
   tarefasFormatarDataHora,
 } from "@/modules/tarefas/utils/tarefas_slaPrazoUtils";
 
@@ -13,6 +16,7 @@ export interface ResultadoCalculoAutomatico {
   calculavel: boolean;
   fonte: string;
   ocorrencias?: ResultadoCalculoOcorrencia[];
+  quantidadePenalidades?: number;
 }
 
 export interface ResultadoCalculoOcorrencia {
@@ -42,13 +46,20 @@ const ok = (resposta: "sim" | "nao", label: string, fonte: string, ocorrencias: 
   ocorrencias,
 });
 
-const falha = (resposta: "sim" | "nao", label: string, fonte: string, ocorrencias: ResultadoCalculoOcorrencia[] = []): ResultadoCalculoAutomatico => ({
+const falha = (
+  resposta: "sim" | "nao",
+  label: string,
+  fonte: string,
+  ocorrencias: ResultadoCalculoOcorrencia[] = [],
+  quantidadePenalidades = 1,
+): ResultadoCalculoAutomatico => ({
   resposta,
   label,
   tiraPonto: true,
   calculavel: true,
   fonte,
   ocorrencias,
+  quantidadePenalidades: Math.max(1, quantidadePenalidades),
 });
 
 const normalizarMetrica = (metrica: string) => {
@@ -76,13 +87,32 @@ const normalizarMetrica = (metrica: string) => {
   return mapa[metrica] ?? metrica;
 };
 
-const PLANO_ACAO_SLA_PADRAO_MS = 24 * 3600 * 1000;
-const MINUTO_MS = 60 * 1000;
-
 const dataMs = (value: unknown) => {
   if (!value) return null;
   const ms = new Date(String(value)).getTime();
   return Number.isFinite(ms) ? ms : null;
+};
+
+const maxDataIso = (values: unknown[]) => {
+  const ms = values.map(dataMs).filter((v): v is number => v !== null);
+  if (ms.length === 0) return null;
+  return new Date(Math.max(...ms)).toISOString();
+};
+
+const eventosPorTipo = (data: TarefaFluxoData, tipos: string[]) =>
+  data.auditTrail
+    .filter((evento) => tipos.includes(String(evento.tipo_evento)))
+    .map((evento) => evento.created_at)
+    .filter(Boolean);
+
+const primeiraDataDepois = (values: unknown[], inicio: unknown) => {
+  const inicioMs = dataMs(inicio);
+  if (!inicioMs) return null;
+  const posterior = values
+    .map(dataMs)
+    .filter((ms): ms is number => ms !== null && ms >= inicioMs)
+    .sort((a, b) => a - b)[0];
+  return posterior ? new Date(posterior).toISOString() : null;
 };
 
 const respostaPreenchida = (p: TarefaFluxoPergunta) => {
@@ -129,57 +159,80 @@ const itemObrigatorioSemResposta = (plano: any) => {
   });
 };
 
-const planosAtrasados = (data: TarefaFluxoData) => {
-  const contingenciasAtrasadas = data.contingencias.filter((c: any) => {
-    if (c.dentro_prazo === false) return true;
-    const prazo = dataMs(c.prazo_resolucao ?? c.prazo_sla);
-    if (!prazo) return false;
-    const ref = dataMs(c.resolvida_em ?? c.resolvido_em) ?? Date.now();
-    return ref > prazo;
-  });
-
-  const planos = data.perguntas.flatMap((p) => [...p.planosAprovador, ...p.planosAuditor]);
-  const planosOficiaisAtrasados = planos.filter((p: any) => {
-    const prazo = dataMs(p.prazo_resolucao);
-    if (!prazo) return false;
-    const ref = dataMs(p.respondido_em) ?? Date.now();
-    return ref > prazo;
-  });
-
-  return [...contingenciasAtrasadas, ...planosOficiaisAtrasados];
-};
-
 const todosPlanosAprovador = (data: TarefaFluxoData) =>
   data.perguntas.flatMap((p) => p.planosAprovador).filter((p) => !p.deleted_at);
-
-const todosPlanosAuditor = (data: TarefaFluxoData) =>
-  data.perguntas.flatMap((p) => p.planosAuditor).filter((p) => !p.deleted_at);
-
-const planosComPergunta = (data: TarefaFluxoData) =>
-  data.perguntas.flatMap((pergunta) => [
-    ...pergunta.planosAprovador.map((plano) => ({ plano, perguntaLabel: pergunta.label, origem: "Plano do aprovador" })),
-    ...pergunta.planosAuditor.map((plano) => ({ plano, perguntaLabel: pergunta.label, origem: "Plano do auditor" })),
-  ]).filter(({ plano }) => !plano.deleted_at);
 
 const planosAprovadorComPergunta = (data: TarefaFluxoData) =>
   data.perguntas.flatMap((pergunta) =>
     pergunta.planosAprovador.map((plano) => ({ plano, perguntaLabel: pergunta.label, origem: "Plano do aprovador" })),
   ).filter(({ plano }) => !plano.deleted_at);
 
-const prazoPlanoAcimaDoPadrao = (plano: any) => {
-  if (plano?.prazo_alterado === true || plano?.prazo_prorrogado === true) return true;
-  const criado = dataMs(plano?.criado_em);
-  const prazo = dataMs(plano?.prazo_resolucao);
-  if (!criado || !prazo) return false;
+const planosAuditorComPergunta = (data: TarefaFluxoData) =>
+  data.perguntas.flatMap((pergunta) =>
+    pergunta.planosAuditor.map((plano) => ({ plano, perguntaLabel: pergunta.label, origem: "Plano do auditor" })),
+  ).filter(({ plano }) => !plano.deleted_at);
 
-  const prazoPadrao = criado + PLANO_ACAO_SLA_PADRAO_MS;
-  return Math.floor(prazo / MINUTO_MS) > Math.floor(prazoPadrao / MINUTO_MS);
+const planosComPerguntaPorModo = (data: TarefaFluxoData, modo: ResumoNotasCalculoModo) =>
+  modo === "auditor" ? planosAuditorComPergunta(data) : planosAprovadorComPergunta(data);
+
+const prazoPlanoAcimaDoPadrao = (plano: any, horas: number, excluirFimSemana: boolean) => {
+  if (plano?.prazo_alterado === true || plano?.prazo_prorrogado === true) return true;
+  const prazoPadrao = tarefasAdicionarHorasUteis({
+    inicio: plano?.criado_em,
+    horas,
+    excluirFimSemana,
+  });
+  const prazo = dataMs(plano?.prazo_resolucao);
+  const padrao = dataMs(prazoPadrao);
+  if (!padrao || !prazo) return false;
+
+  return Math.floor(prazo / 60000) > Math.floor(padrao / 60000);
 };
 
-const planosComPrazoAcimaDoPadrao = (planos: any[]) =>
-  planos.filter((plano) => prazoPlanoAcimaDoPadrao(plano));
+const obterSlaPlanoModo = (data: TarefaFluxoData, modo: ResumoNotasCalculoModo) => {
+  const sla = tarefasExtrairSlaResponsabilidades(data.assignment);
+  return {
+    horas: modo === "auditor" ? sla.aprovadorPlanoAuditorHoras : sla.executorPlanoAprovadorHoras,
+    excluirFimSemana: sla.excluirFimSemana,
+  };
+};
 
 const ocorrenciaPrazoPlanoPadrao = ({
+  plano,
+  perguntaLabel,
+  origem,
+  horas,
+  excluirFimSemana,
+}: {
+  plano: any;
+  perguntaLabel: string;
+  origem: string;
+  horas: number;
+  excluirFimSemana: boolean;
+}): ResultadoCalculoOcorrencia => {
+  const prazoPadrao = tarefasAdicionarHorasUteis({
+    inicio: plano.criado_em,
+    horas,
+    excluirFimSemana,
+  });
+  const status = tarefasCalcularPrazoStatus({
+    prazo: prazoPadrao,
+    referencia: plano.prazo_resolucao,
+  });
+  const foraPadrao = plano?.prazo_alterado === true || plano?.prazo_prorrogado === true || status.status === "fora_prazo";
+  return {
+    titulo: `${origem} R${plano.rodada ?? "-"} - ${perguntaLabel}`,
+    status: foraPadrao ? "fora_prazo" : "no_prazo",
+    prazoPrevistoLabel: tarefasFormatarDataHora(prazoPadrao),
+    prazoRealLabel: tarefasFormatarDataHora(plano.prazo_resolucao),
+    diferencaLabel: status.diferencaLabel,
+    detalhe: foraPadrao
+      ? `prazo definido acima do SLA padrao em ${status.diferencaLabel || "tempo nao calculado"}`
+      : "prazo definido dentro do SLA padrao",
+  };
+};
+
+const ocorrenciaRespostaPlano = ({
   plano,
   perguntaLabel,
   origem,
@@ -187,16 +240,104 @@ const ocorrenciaPrazoPlanoPadrao = ({
   plano: any;
   perguntaLabel: string;
   origem: string;
-}): ResultadoCalculoOcorrencia => {
-  const status = tarefasCalcularPrazoPlanoPadraoStatus(plano);
+}): ResultadoCalculoOcorrencia | null => {
+  const status = tarefasCalcularPrazoStatus({
+    prazo: plano.prazo_resolucao,
+    referencia: plano.respondido_em,
+    semReferenciaUsaAgora: !plano.respondido,
+  });
+  if (status.status === "sem_prazo") return null;
   return {
     titulo: `${origem} R${plano.rodada ?? "-"} - ${perguntaLabel}`,
     status: status.status === "fora_prazo" ? "fora_prazo" : "no_prazo",
-    prazoPrevistoLabel: status.prazoPadraoLabel,
-    prazoRealLabel: status.prazoDefinidoLabel ?? tarefasFormatarDataHora(plano.prazo_resolucao),
+    prazoPrevistoLabel: status.prazoLabel,
+    prazoRealLabel: status.referenciaLabel,
     diferencaLabel: status.diferencaLabel,
     detalhe: status.detalheLabel,
   };
+};
+
+const calcularOcorrenciasRespostaPlanos = (data: TarefaFluxoData, modo: ResumoNotasCalculoModo) =>
+  planosComPerguntaPorModo(data, modo)
+    .map(ocorrenciaRespostaPlano)
+    .filter((item): item is ResultadoCalculoOcorrencia => !!item);
+
+const calcularOcorrenciasPrazoAcimaPadrao = (data: TarefaFluxoData, modo: ResumoNotasCalculoModo) => {
+  const { horas, excluirFimSemana } = obterSlaPlanoModo(data, modo);
+  return planosComPerguntaPorModo(data, modo)
+    .filter(({ plano }) => prazoPlanoAcimaDoPadrao(plano, horas, excluirFimSemana))
+    .map((item) => ocorrenciaPrazoPlanoPadrao({ ...item, horas, excluirFimSemana }));
+};
+
+const calcularOcorrenciasAprovadorAprovacao = (data: TarefaFluxoData) => {
+  const sla = tarefasExtrairSlaResponsabilidades(data.assignment);
+  const aprovacoes = eventosPorTipo(data, ["aprovador_aprovou_para_auditoria"]);
+  const planosAprovador = planosAprovadorComPergunta(data);
+  const acoesAprovador = [
+    ...aprovacoes,
+    ...planosAprovador.map(({ plano }) => plano.criado_em),
+  ].filter(Boolean);
+
+  const inicioR0 =
+    eventosPorTipo(data, ["executor_enviou_respostas"])[0] ??
+    maxDataIso(data.perguntas.map((p) => p.respostaOriginalExecutor?.respondido_em));
+  const inicios = [
+    ...(inicioR0 ? [{ titulo: "Resposta original do executor", inicio: inicioR0 }] : []),
+    ...planosAprovador
+      .filter(({ plano }) => !!plano.respondido_em)
+      .map(({ plano, perguntaLabel }) => ({
+        titulo: `Resposta do executor ao plano R${plano.rodada ?? "-"} - ${perguntaLabel}`,
+        inicio: plano.respondido_em,
+      })),
+  ];
+
+  return inicios
+    .map(({ titulo, inicio }) => {
+      const fim = primeiraDataDepois(acoesAprovador, inicio);
+      const status = tarefasCalcularPrazoHorasUteisStatus({
+        inicio,
+        horas: sla.aprovadorAprovarHoras,
+        referencia: fim,
+        excluirFimSemana: sla.excluirFimSemana,
+        semReferenciaUsaAgora: false,
+      });
+      if (status.status === "sem_prazo") return null;
+      return {
+        titulo,
+        status: status.status === "fora_prazo" ? "fora_prazo" : "no_prazo",
+        prazoPrevistoLabel: status.prazoLabel,
+        prazoRealLabel: status.referenciaLabel,
+        diferencaLabel: status.diferencaLabel,
+        detalhe: status.detalheLabel,
+      } satisfies ResultadoCalculoOcorrencia;
+    })
+    .filter((item): item is ResultadoCalculoOcorrencia => !!item);
+};
+
+const calcularOcorrenciasAtrasoExecucao = (data: TarefaFluxoData) => {
+  const a: any = data.assignment;
+  const ocorrencias: ResultadoCalculoOcorrencia[] = [];
+  const entrega = tarefasCalcularPrazoStatus({
+    prazo: a.prazo_execucao,
+    referencia:
+      eventosPorTipo(data, ["executor_enviou_respostas"])[0] ??
+      maxDataIso(data.perguntas.map((p) => p.respostaOriginalExecutor?.respondido_em)) ??
+      a.fim_em,
+  });
+  if (entrega.status !== "sem_prazo") {
+    ocorrencias.push({
+      titulo: "Entrega da tarefa pelo executor",
+      status: entrega.status === "fora_prazo" ? "fora_prazo" : "no_prazo",
+      prazoPrevistoLabel: entrega.prazoLabel,
+      prazoRealLabel: entrega.referenciaLabel,
+      diferencaLabel: entrega.diferencaLabel,
+      detalhe: entrega.detalheLabel,
+    });
+  }
+  return [
+    ...ocorrencias,
+    ...calcularOcorrenciasRespostaPlanos(data, "aprovador"),
+  ];
 };
 
 export function calcularRespostaAutomatica(
@@ -208,29 +349,23 @@ export function calcularRespostaAutomatica(
   const a: any = data.assignment;
   const metrica = normalizarMetrica(metricaOriginal);
   const planosAprovador = todosPlanosAprovador(data);
-  const planosAuditor = todosPlanosAuditor(data);
-  const atrasados = planosAtrasados(data);
-  const prorrogacoes = [...planosAprovador, ...planosAuditor, ...data.contingencias].filter(
-    (x: any) => x?.prazo_alterado === true || x?.prazo_prorrogado === true,
-  );
-  const planosComPrazoAlterado = planosComPrazoAcimaDoPadrao([...planosAprovador, ...planosAuditor]);
-  const planosComPerguntaLista = planosComPergunta(data);
+  const ocorrenciasAtrasoExecucao = calcularOcorrenciasAtrasoExecucao(data);
 
   switch (metrica) {
     case "executor_entregou_no_prazo": {
-      const fim = dataMs(a.fim_em);
-      const prazo = dataMs(a.prazo_execucao);
-      const atrasou = !!a.flag_sla_estourado || (!!fim && !!prazo && fim > prazo);
+      const entrega = ocorrenciasAtrasoExecucao.find((o) => o.titulo === "Entrega da tarefa pelo executor");
+      const atrasou = !!a.flag_sla_estourado || entrega?.status === "fora_prazo";
       return atrasou
-        ? falha("sim", "Sim - entregou fora do prazo", "assignment.fim_em/prazo_execucao + flag_sla_estourado")
-        : ok("nao", "Nao - entregou no prazo", "assignment.fim_em/prazo_execucao + flag_sla_estourado");
+        ? falha("sim", "Fora do prazo - executor entregou depois do limite", "assignment.prazo_execucao + resposta executor", entrega ? [entrega] : [])
+        : ok("nao", "No prazo - executor entregou dentro do limite", "assignment.prazo_execucao + resposta executor", entrega ? [entrega] : []);
     }
 
     case "executor_teve_atraso_etapa": {
-      const qtd = atrasados.length || (a.flag_sla_etapa_estourado || a.flag_atraso_plano_acao ? 1 : 0);
+      const atrasos = ocorrenciasAtrasoExecucao.filter((o) => o.status === "fora_prazo");
+      const qtd = atrasos.length || (a.flag_sla_etapa_estourado || a.flag_atraso_plano_acao ? 1 : 0);
       return qtd > 0
-        ? falha("sim", `Sim - ${qtd} etapa(s) com atraso`, "planos/contingencias + flags SLA")
-        : ok("nao", "Nao - todas etapas no prazo", "planos/contingencias + flags SLA");
+        ? falha("sim", `${qtd} etapa(s) fora do prazo`, "prazo_execucao + planos do aprovador", atrasos, qtd)
+        : ok("nao", "Todas as etapas no prazo", "prazo_execucao + planos do aprovador", ocorrenciasAtrasoExecucao);
     }
 
     case "executor_obrigatorias_respondidas": {
@@ -253,62 +388,75 @@ export function calcularRespostaAutomatica(
 
     case "executor_teve_devolucao":
       return planosAprovador.length > 0
-        ? falha("sim", `Sim - ${planosAprovador.length} devolucao(oes)/plano(s)`, "tarefas_planos_acao_aprovador")
+        ? falha("sim", `Sim - ${planosAprovador.length} devolucao(oes)/plano(s)`, "tarefas_planos_acao_aprovador", [], planosAprovador.length)
         : ok("nao", "Nao - sem devolucoes", "tarefas_planos_acao_aprovador");
 
     case "executor_teve_nao_conforme":
     case "plano_acao_foi_criado":
       return planosAprovador.length > 0
-        ? falha("sim", `Sim - ${planosAprovador.length} plano(s)/nao conformidade(s)`, "tarefas_planos_acao_aprovador")
+        ? falha("sim", `Sim - ${planosAprovador.length} plano(s)/nao conformidade(s)`, "tarefas_planos_acao_aprovador", [], planosAprovador.length)
         : ok("nao", "Nao - todos conformes", "tarefas_planos_acao_aprovador");
 
     case "plano_acao_sla_estourado":
-    case "executor_plano_atrasado":
-      return a.flag_atraso_plano_acao || atrasados.length > 0
-        ? falha("sim", "Sim - plano entregue com atraso", "planos/contingencias + flag_atraso_plano_acao")
-        : ok("nao", "Nao - dentro do prazo", "planos/contingencias + flag_atraso_plano_acao");
+    case "executor_plano_atrasado": {
+      const ocorrencias = calcularOcorrenciasRespostaPlanos(data, modo);
+      const atrasos = ocorrencias.filter((o) => o.status === "fora_prazo");
+      return atrasos.length > 0
+        ? falha("sim", `${atrasos.length} plano(s) respondido(s) fora do SLA`, "planos.prazo_resolucao/respondido_em por responsabilidade", atrasos, atrasos.length)
+        : ok("nao", "Planos respondidos dentro do prazo", "planos.prazo_resolucao/respondido_em por responsabilidade", ocorrencias);
+    }
 
-    case "executor_reincidencia":
-      return a.flag_reincidencia_atraso || atrasados.length >= 2
-        ? falha("sim", "Sim - reincidencia de atraso", "planos/contingencias + flag_reincidencia_atraso")
-        : ok("nao", "Nao", "planos/contingencias + flag_reincidencia_atraso");
+    case "executor_reincidencia": {
+      const planosRecorrentes = planosAprovador.filter((plano) => Number(plano.rodada ?? 1) > 1);
+      const qtd = planosRecorrentes.length || (a.flag_reincidencia_atraso ? 1 : 0);
+      return qtd > 0
+        ? falha("sim", `${qtd} reincidencia(s) de plano do executor`, "tarefas_planos_acao_aprovador.rodada > 1", [], qtd)
+        : ok("nao", "Sem reincidencia", "tarefas_planos_acao_aprovador.rodada > 1");
+    }
 
     case "executor_prazo_prorrogado":
     case "plano_acao_prazo_prorrogado": {
-      const ocorrencias = planosComPerguntaLista
-        .filter(({ plano }) => prazoPlanoAcimaDoPadrao(plano))
-        .map(ocorrenciaPrazoPlanoPadrao);
-      return prorrogacoes.length > 0 || planosComPrazoAlterado.length > 0 || !!a.flag_atraso_plano_acao
-        ? falha("sim", "Sim - prazo foi prorrogado", "planos.prazo_resolucao vs criado_em + SLA padrao", ocorrencias)
-        : ok("nao", "Nao", "planos.prazo_resolucao vs criado_em + SLA padrao");
+      const ocorrencias = calcularOcorrenciasPrazoAcimaPadrao(data, modo);
+      return ocorrencias.length > 0
+        ? falha("sim", `${ocorrencias.length} plano(s) com prazo acima do SLA padrao`, "planos.prazo_resolucao vs criado_em + SLA configurado", ocorrencias, ocorrencias.length)
+        : ok("nao", "SLA padrao mantido nos planos", "planos.prazo_resolucao vs criado_em + SLA configurado");
     }
 
     case "plano_acao_prazo_prorrogado_2x": {
-      const ocorrencias = planosComPerguntaLista
-        .filter(({ plano }) => prazoPlanoAcimaDoPadrao(plano))
-        .map(ocorrenciaPrazoPlanoPadrao);
-      return prorrogacoes.length >= 2 || planosComPrazoAlterado.length >= 2 || !!a.flag_reincidencia_atraso
-        ? falha("sim", "Sim - prorrogado 2x ou mais", "planos.prazo_resolucao vs criado_em + SLA padrao", ocorrencias)
-        : ok("nao", "Nao", "planos.prazo_resolucao vs criado_em + SLA padrao");
+      const planosRecorrentes = planosComPerguntaPorModo(data, modo)
+        .filter(({ plano }) => Number(plano.rodada ?? 1) > 1);
+      const { horas, excluirFimSemana } = obterSlaPlanoModo(data, modo);
+      const ocorrencias = planosRecorrentes.map((item) =>
+        ocorrenciaPrazoPlanoPadrao({ ...item, horas, excluirFimSemana }),
+      );
+      return planosRecorrentes.length > 0
+        ? falha("sim", `${planosRecorrentes.length} reincidencia(s) de plano`, "planos.rodada > 1 por responsabilidade", ocorrencias, planosRecorrentes.length)
+        : ok("nao", "Sem reincidencia de plano", "planos.rodada > 1 por responsabilidade");
     }
 
     case "aprovador_manteve_sla_padrao": {
-      const planosDoAprovadorAlterados = planosAprovadorComPergunta(data)
-        .filter(({ plano }) => prazoPlanoAcimaDoPadrao(plano));
-      const ocorrencias = planosDoAprovadorAlterados.map(ocorrenciaPrazoPlanoPadrao);
+      const { horas, excluirFimSemana } = obterSlaPlanoModo(data, "auditor");
+      const planosDoAprovadorAlterados = planosAuditorComPergunta(data)
+        .filter(({ plano }) => prazoPlanoAcimaDoPadrao(plano, horas, excluirFimSemana));
+      const ocorrencias = planosDoAprovadorAlterados.map((item) =>
+        ocorrenciaPrazoPlanoPadrao({ ...item, horas, excluirFimSemana }),
+      );
       return planosDoAprovadorAlterados.length > 0
-        ? falha("nao", `Nao - ${planosDoAprovadorAlterados.length} plano(s) acima do SLA padrao`, "tarefas_planos_acao_aprovador.prazo_resolucao vs criado_em + SLA padrao", ocorrencias)
-        : ok("sim", "Sim - manteve SLA padrao", "tarefas_planos_acao_aprovador.prazo_resolucao vs criado_em + SLA padrao");
+        ? falha("nao", `${planosDoAprovadorAlterados.length} plano(s) do auditor acima do SLA padrao`, "tarefas_planos_acao_auditor.prazo_resolucao vs criado_em + SLA do aprovador", ocorrencias, planosDoAprovadorAlterados.length)
+        : ok("sim", "SLA padrao mantido nos planos do auditor", "tarefas_planos_acao_auditor.prazo_resolucao vs criado_em + SLA do aprovador");
     }
 
-    case "aprovador_respondeu_no_sla":
-      return a.flag_sla_etapa_estourado
-        ? falha("sim", "Sim - avaliou fora do SLA", "flag_sla_etapa_estourado")
-        : ok("nao", "Nao - avaliou no prazo", "flag_sla_etapa_estourado");
+    case "aprovador_respondeu_no_sla": {
+      const ocorrencias = calcularOcorrenciasAprovadorAprovacao(data);
+      const atrasos = ocorrencias.filter((o) => o.status === "fora_prazo");
+      return atrasos.length > 0
+        ? falha("sim", `${atrasos.length} acao(oes) do aprovador fora do SLA`, "executor_enviou/respondeu_plano -> aprovador criou plano/enviou auditoria", atrasos, atrasos.length)
+        : ok("nao", "Aprovador respondeu dentro do SLA", "executor_enviou/respondeu_plano -> aprovador criou plano/enviou auditoria", ocorrencias);
+    }
 
     case "aprovador_reabriu_tarefa":
       return (a.rodada_atual ?? 1) > 1 || planosAprovador.length > 0
-        ? falha("sim", "Sim - devolveu/reabriu", "rodada_atual + tarefas_planos_acao_aprovador")
+        ? falha("sim", `Sim - ${planosAprovador.length || 1} devolucao(oes)/plano(s)`, "rodada_atual + tarefas_planos_acao_aprovador", [], planosAprovador.length || 1)
         : ok("nao", "Nao", "rodada_atual + tarefas_planos_acao_aprovador");
 
     case "aprovador_aprovou_com_pendencia": {

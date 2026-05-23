@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useFluxoTarefa } from "../hooks/tarefas_useFluxoTarefa";
 import { statusLabel } from "../services/tarefas_fluxoStatusMachine";
 import { extrairResumosNotas } from "@/modules/tarefas/utils/tarefas_notasResumoUtils";
+import { tarefasExtrairSlaResponsabilidades } from "@/modules/tarefas/utils/tarefas_slaPrazoUtils";
 import { FluxoPerguntaHistoricoCard } from "./tarefas_fluxoPerguntaHistoricoCard";
 import { ResumoNotasReadonly } from "./tarefas_resumoNotasReadonly";
 
@@ -33,6 +34,8 @@ export function FluxoHistoricoFinalPanel({ assignmentId }: Props) {
   }
 
   const a = data.assignment;
+  const sla = tarefasExtrairSlaResponsabilidades(a);
+  const assignmentScores = a as unknown as Record<string, unknown>;
   const resumos = extrairResumosNotas(data.auditTrail);
   const profileId = profile?.id ?? null;
   const profileSetorId = (profile as any)?.setor_id ?? null;
@@ -41,12 +44,12 @@ export function FluxoHistoricoFinalPanel({ assignmentId }: Props) {
   const notaExecutor =
     resumos.aprovador?.notaFinal ??
     scoreLog(["avaliado", "executor"]) ??
-    numberOrNull(a.score_avaliado) ??
-    numberOrNull(a.score_executor);
+    numberOrNull(assignmentScores.score_avaliado) ??
+    numberOrNull(assignmentScores.score_executor);
   const notaAprovador =
     resumos.auditor?.notaFinal ??
     scoreLog(["aprovador"]) ??
-    numberOrNull(a.score_aprovador);
+    numberOrNull(assignmentScores.score_aprovador);
   const notasParaMedia = [notaExecutor, notaAprovador].filter((v): v is number => v != null);
   const notaMedia = notasParaMedia.length > 0
     ? Math.round((notasParaMedia.reduce((sum, v) => sum + v, 0) / notasParaMedia.length) * 100) / 100
@@ -79,6 +82,9 @@ export function FluxoHistoricoFinalPanel({ assignmentId }: Props) {
           papel="spectator"
           acoesAtivas={false}
           prazoExecucao={a.prazo_execucao}
+          slaPlanoAprovadorHoras={sla.executorPlanoAprovadorHoras}
+          slaPlanoAuditorHoras={sla.aprovadorPlanoAuditorHoras}
+          excluirFimSemanaSla={sla.excluirFimSemana}
           mostrarPlanosAprovador={opts.mostrarPlanosAprovador}
           mostrarPlanosAuditor={opts.mostrarPlanosAuditor}
         />

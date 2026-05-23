@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TemplateForm, SectionForm, FieldForm, defaultTemplate, defaultSection } from "@/modules/tarefas/types/tarefas_types";
+import { TAREFAS_SLA_RESPONSABILIDADE_DEFAULTS } from "@/modules/tarefas/utils/tarefas_slaPrazoUtils";
 import {
   RotinaCheckItem,
   PERGUNTAS_PADRAO_APROVADOR,
@@ -66,10 +67,24 @@ function buildRotinaPayload(form: TemplateForm) {
     horario_inicio_previsto: form.horario_inicio_previsto || null,
     horario_limite_execucao: form.horario_limite_execucao || null,
     tolerancia_minutos: form.tolerancia_minutos,
-    sla_horas: form.sla_horas,
-    prazo_sla_correcao_horas: form.prazo_sla_correcao_horas,
+    sla_horas: form.sla_executor_tarefa_horas || form.sla_horas,
+    prazo_sla_correcao_horas: form.sla_executor_plano_aprovador_horas || form.prazo_sla_correcao_horas,
     peso_recorrencia: form.peso_recorrencia,
     exceto_fds: form.exceto_fds ?? false,
+  };
+}
+
+function buildSlaResponsabilidadesSnapshot(form: TemplateForm) {
+  return {
+    executor_tarefa_horas:
+      form.sla_executor_tarefa_horas || TAREFAS_SLA_RESPONSABILIDADE_DEFAULTS.executorTarefaHoras,
+    executor_plano_aprovador_horas:
+      form.sla_executor_plano_aprovador_horas || TAREFAS_SLA_RESPONSABILIDADE_DEFAULTS.executorPlanoAprovadorHoras,
+    aprovador_aprovar_horas:
+      form.sla_aprovador_aprovar_horas || TAREFAS_SLA_RESPONSABILIDADE_DEFAULTS.aprovadorAprovarHoras,
+    aprovador_plano_auditor_horas:
+      form.sla_aprovador_plano_auditor_horas || TAREFAS_SLA_RESPONSABILIDADE_DEFAULTS.aprovadorPlanoAuditorHoras,
+    excluir_fim_semana: form.exceto_fds ?? TAREFAS_SLA_RESPONSABILIDADE_DEFAULTS.excluirFimSemana,
   };
 }
 
@@ -241,6 +256,22 @@ async function saveChecklistToDb(
   }).eq("id", templateId);
 }
 
+async function saveSlaResponsabilidadesToDb(templateId: string, form: TemplateForm) {
+  const { data: tmpl } = await (supabase as any)
+    .from("operational_templates")
+    .select("ada_config_snapshot")
+    .eq("id", templateId)
+    .single();
+  const snapAtual = tmpl?.ada_config_snapshot ?? {};
+
+  await (supabase as any).from("operational_templates").update({
+    ada_config_snapshot: {
+      ...snapAtual,
+      sla_responsabilidades: buildSlaResponsabilidadesSnapshot(form),
+    },
+  }).eq("id", templateId);
+}
+
 // ─── Carregamento ──────────────────────────────────────────────────────────
 
 async function loadTemplate(templateId: string) {
@@ -263,9 +294,12 @@ async function loadTemplate(templateId: string) {
   const aprovadorItems: RotinaCheckItem[] = Array.isArray(snap.checklists?.aprovador)
     ? snap.checklists.aprovador
     : PERGUNTAS_PADRAO_APROVADOR.map((p) => ({ ...p, tempId: crypto.randomUUID() }));
-  const auditorItems: RotinaCheckItem[] = Array.isArray(snap.checklists?.auditor)
+  const auditorItems: RotinaCheckItem[] = Array.isArray(snap.checklists?.validador)
     ? snap.checklists.validador
+    : Array.isArray(snap.checklists?.auditor)
+    ? snap.checklists.auditor
     : PERGUNTAS_PADRAO_AUDITOR.map((p) => ({ ...p, tempId: crypto.randomUUID() }));
+  const slaResp = snap.sla_responsabilidades ?? {};
 
   const loadedSections: SectionForm[] = (secs || []).map((s: any) => ({
     id: s.id, tempId: s.id, nome: s.nome, descricao: s.descricao || "",
@@ -299,9 +333,17 @@ async function loadTemplate(templateId: string) {
     data_fim: tmpl.data_fim || "", repetir_sempre: !tmpl.data_fim && tmpl.recorrencia_tipo !== "unica",
     horario_inicio_previsto: tmpl.horario_inicio_previsto || "08:00",
     horario_limite_execucao: tmpl.horario_limite_execucao || "18:00",
-    tolerancia_minutos: tmpl.tolerancia_minutos || 0, sla_horas: tmpl.sla_horas || 24,
+    tolerancia_minutos: tmpl.tolerancia_minutos || 0, sla_horas: tmpl.sla_horas || 12,
+    sla_executor_tarefa_horas:
+      slaResp.executor_tarefa_horas ?? TAREFAS_SLA_RESPONSABILIDADE_DEFAULTS.executorTarefaHoras,
+    sla_executor_plano_aprovador_horas:
+      slaResp.executor_plano_aprovador_horas ?? TAREFAS_SLA_RESPONSABILIDADE_DEFAULTS.executorPlanoAprovadorHoras,
+    sla_aprovador_aprovar_horas:
+      slaResp.aprovador_aprovar_horas ?? TAREFAS_SLA_RESPONSABILIDADE_DEFAULTS.aprovadorAprovarHoras,
+    sla_aprovador_plano_auditor_horas:
+      slaResp.aprovador_plano_auditor_horas ?? TAREFAS_SLA_RESPONSABILIDADE_DEFAULTS.aprovadorPlanoAuditorHoras,
     gerar_contingencia_automatica: tmpl.gerar_contingencia_automatica || false,
-    prazo_sla_correcao_horas: tmpl.prazo_sla_correcao_horas || 24,
+    prazo_sla_correcao_horas: tmpl.prazo_sla_correcao_horas || TAREFAS_SLA_RESPONSABILIDADE_DEFAULTS.executorPlanoAprovadorHoras,
     requer_aprovacao_gestor: tmpl.requer_aprovacao_gestor || false,
     bloquear_fechamento_com_contingencia: tmpl.bloquear_fechamento_com_contingencia || false,
     permite_devolucao_parcial: tmpl.permite_devolucao_parcial || false,
@@ -321,7 +363,7 @@ async function loadTemplate(templateId: string) {
     penalidade_sla_contingencia: tmpl.penalidade_sla_contingencia ?? 15,
     penalidade_fora_prazo: tmpl.penalidade_fora_prazo ?? 20,
     habilitar_perguntas_automaticas: tmpl.habilitar_perguntas_automaticas ?? true,
-    exceto_fds: tmpl.exceto_fds ?? false,
+    exceto_fds: slaResp.excluir_fim_semana ?? tmpl.exceto_fds ?? TAREFAS_SLA_RESPONSABILIDADE_DEFAULTS.excluirFimSemana,
   };
 
   return { form, sections: loadedSections, fields: loadedFields, aprovadorItems, auditorItems };
@@ -465,9 +507,10 @@ export function RotinasModal({ open, onClose, templateId, setores, colaboradores
     try {
       await saveChecklistToDb(currentId, "aprovador", aprovadorItems, {
         requer_aprovacao_gestor: form.requer_aprovacao_gestor,
-        sla_horas: form.sla_horas,
-        prazo_sla_correcao_horas: form.prazo_sla_correcao_horas,
+        sla_horas: form.sla_executor_tarefa_horas || form.sla_horas,
+        prazo_sla_correcao_horas: form.sla_executor_plano_aprovador_horas || form.prazo_sla_correcao_horas,
       });
+      await saveSlaResponsabilidadesToDb(currentId, form);
       invalidate();
       toast.success("Aprovador salvo.");
     } catch (e: any) {
@@ -485,6 +528,7 @@ export function RotinasModal({ open, onClose, templateId, setores, colaboradores
       await saveChecklistToDb(currentId, "auditor", auditorItems, {
         bloquear_fechamento_com_contingencia: form.bloquear_fechamento_com_contingencia,
       });
+      await saveSlaResponsabilidadesToDb(currentId, form);
       invalidate();
       toast.success("Auditor salvo.");
     } catch (e: any) {
@@ -500,6 +544,7 @@ export function RotinasModal({ open, onClose, templateId, setores, colaboradores
     setSaving1("rotina", true);
     try {
       await upsertTemplate(currentId, buildRotinaPayload(form));
+      await saveSlaResponsabilidadesToDb(currentId, form);
       invalidate();
       toast.success("Rotina salva.");
     } catch (e: any) {

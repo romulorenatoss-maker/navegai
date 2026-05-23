@@ -30,6 +30,10 @@ import { FluxoBannerPendenciaAuditor } from "./tarefas_fluxoBannerPendenciaAudit
 import { FluxoPerguntaHistoricoCard } from "./tarefas_fluxoPerguntaHistoricoCard";
 import { FluxoBotaoConformeNaoConforme } from "./tarefas_fluxoBotaoConformeNaoConforme";
 import { ResumoNotasModal } from "./tarefas_resumoNotasModal";
+import {
+  tarefasAdicionarHorasUteis,
+  tarefasExtrairSlaResponsabilidades,
+} from "@/modules/tarefas/utils/tarefas_slaPrazoUtils";
 import type { RespostaPlanoValorJson } from "../types/tarefas_fluxoTypes";
 
 interface Props {
@@ -44,9 +48,19 @@ interface PlanoDraft {
   criticidade: "baixa" | "media" | "alta";
 }
 
-function defaultPlano(): PlanoDraft {
-  const prazo = new Date(Date.now() + 24 * 3600 * 1000);
-  const prazoIso = prazo.toISOString().slice(0, 16);
+function defaultPlano({
+  horas,
+  excluirFimSemana,
+}: {
+  horas: number;
+  excluirFimSemana: boolean;
+}): PlanoDraft {
+  const prazo = tarefasAdicionarHorasUteis({
+    inicio: new Date(),
+    horas,
+    excluirFimSemana,
+  }) ?? new Date(Date.now() + horas * 3600 * 1000).toISOString();
+  const prazoIso = prazo.slice(0, 16);
   return {
     instrucao: "",
     itens: [],
@@ -90,6 +104,12 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
   }
 
   const a = data.assignment;
+  const sla = tarefasExtrairSlaResponsabilidades(a);
+  const criarPlanoDefault = () =>
+    defaultPlano({
+      horas: sla.executorPlanoAprovadorHoras,
+      excluirFimSemana: sla.excluirFimSemana,
+    });
 
   const handleCriarPlano = async (fieldId: string) => {
     const d = planosDraft[fieldId];
@@ -103,7 +123,7 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
         fieldId,
         instrucao: d.instrucao,
         itensPlano: d.itens,
-        prazoResolucao: d.prazoIso ? new Date(d.prazoIso).toISOString() : new Date(Date.now() + 86400000).toISOString(),
+        prazoResolucao: d.prazoIso ? new Date(d.prazoIso).toISOString() : new Date(d.prazoPadraoIso).toISOString(),
         criticidade: d.criticidade,
       });
       setPlanosDraft((prev) => { const n = { ...prev }; delete n[fieldId]; return n; });
@@ -163,6 +183,9 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
           papel="aprovador"
           acoesAtivas={true}
           prazoExecucao={a.prazo_execucao}
+          slaPlanoAprovadorHoras={sla.executorPlanoAprovadorHoras}
+          slaPlanoAuditorHoras={sla.aprovadorPlanoAuditorHoras}
+          excluirFimSemanaSla={sla.excluirFimSemana}
           onAprovadorResponderPlanoAuditor={(planoId) => handleResponderPlanoAuditor(planoId)}
           entrePlanosAprovadorEAuditor={
             perms.podeAprovadorCriarPlanoExecutorParaField(p.fieldId) ? (
@@ -176,7 +199,7 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
                     setAvaliacao((prev) => ({ ...prev, [p.fieldId]: "nao_conforme" }));
                     setPlanosDraft((prev) => ({
                       ...prev,
-                      [p.fieldId]: prev[p.fieldId] ?? defaultPlano(),
+                      [p.fieldId]: prev[p.fieldId] ?? criarPlanoDefault(),
                     }));
                   }}
                   disabled={actions.isSubmitting || existePlanoExecutorPendente}
@@ -189,7 +212,7 @@ export function FluxoAprovadorPanel({ assignmentId }: Props) {
                     onChange={(patch) =>
                       setPlanosDraft((prev) => ({
                         ...prev,
-                        [p.fieldId]: { ...(prev[p.fieldId] ?? defaultPlano()), ...patch },
+                        [p.fieldId]: { ...(prev[p.fieldId] ?? criarPlanoDefault()), ...patch },
                       }))
                     }
                     onSubmit={() => handleCriarPlano(p.fieldId)}
