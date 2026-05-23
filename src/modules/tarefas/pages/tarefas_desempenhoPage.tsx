@@ -27,6 +27,13 @@ const scoreColor = (v: number) => {
   return "text-red-600";
 };
 
+const numberOrNull = (value: unknown): number | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+};
+
 export default function DesempenhoOperacionalPage() {
   const { profile, isAdmin } = useAuth();
   const now = new Date();
@@ -332,17 +339,43 @@ export default function DesempenhoOperacionalPage() {
     if (tipo === "auditor") return "Auditor";
     return tipo || "Nota";
   };
+  const isNotaSetorial = (log: any) => {
+    if (!log?.target_setor_id || !isSetorDoPerfil(log.target_setor_id)) return false;
+    return log?.detalhe_calculo?.fanout_setor === true || !log?.target_profile_id || String(log?.id ?? "").startsWith("fallback-");
+  };
   const origemNotaLabel = (log: any) => {
+    if (isNotaSetorial(log)) return "Setor";
     if (log?.target_profile_id === profileId) return "Individual";
-    if (log?.target_setor_id && isSetorDoPerfil(log.target_setor_id)) return "Setor";
     if (!log?.target_profile_id && !log?.target_setor_id && log?.profile_id === profileId) return "Individual";
     return "Vinculada";
+  };
+  const prioridadeNota = (log: any) => {
+    const origemPeso = isNotaSetorial(log) ? 30 : origemNotaLabel(log) === "Individual" ? 20 : 10;
+    const tipoPeso = log?.tipo_score === "aprovador" ? 3 : log?.tipo_score === "avaliado" ? 2 : 1;
+    return origemPeso + tipoPeso;
+  };
+  const escolherNotaPrincipal = (atual: any | undefined, candidata: any) => {
+    if (!atual) return candidata;
+    const prioridadeAtual = prioridadeNota(atual);
+    const prioridadeCandidata = prioridadeNota(candidata);
+    if (prioridadeCandidata !== prioridadeAtual) {
+      return prioridadeCandidata > prioridadeAtual ? candidata : atual;
+    }
+    const scoreAtual = numberOrNull(atual.score_final) ?? -1;
+    const scoreCandidata = numberOrNull(candidata.score_final) ?? -1;
+    if (scoreCandidata !== scoreAtual) {
+      return scoreCandidata > scoreAtual ? candidata : atual;
+    }
+    const dataAtual = new Date(atual.created_at ?? atual.operational_assignments?.data_prevista ?? 0).getTime();
+    const dataCandidata = new Date(candidata.created_at ?? candidata.operational_assignments?.data_prevista ?? 0).getTime();
+    return dataCandidata > dataAtual ? candidata : atual;
   };
   const minhasNotasLogs = useMemo(() => {
     const map = new Map<string, any>();
     [...myExecutorLogs, ...myAvaliadoLogs, ...myAprovadorLogs].forEach((log: any) => {
       if (!log) return;
-      map.set(log.id, log);
+      const key = log.assignment_id ?? log.id;
+      map.set(key, escolherNotaPrincipal(map.get(key), log));
     });
     return Array.from(map.values()).sort((a: any, b: any) => {
       const da = new Date(a.created_at ?? a.operational_assignments?.data_prevista ?? 0).getTime();
@@ -365,10 +398,7 @@ export default function DesempenhoOperacionalPage() {
   const avgExecutor = weightedAvg(myExecutorLogs);
   const avgAvaliado = weightedAvg(myAvaliadoLogs);
   const avgAvaliador = weightedAvg(myAprovadorLogs);
-  const notasGerais = [avgExecutor, avgAvaliado, avgAvaliador].filter((v): v is number => v != null);
-  const avgGlobal = notasGerais.length > 0
-    ? Math.round(notasGerais.reduce((sum, v) => sum + v, 0) / notasGerais.length)
-    : null;
+  const avgGlobal = weightedAvg(minhasNotasLogs);
 
   // ── Rankings ──
   const rankings = useMemo(() => {
@@ -709,6 +739,28 @@ function DetalheNotaRecebida({ log, tipoLabel, origemLabel }: { log: any; tipoLa
   const template = assignment?.operational_templates;
   const itens = Array.isArray(det.itens) ? det.itens : [];
   const nota = Number(log?.score_final ?? 0);
+  const componenteNotas = [
+    {
+      label: "Pontualidade",
+      value: numberOrNull(det.pontualidade ?? log?.pontualidade),
+      hint: "Prazo de execucao registrado no log da nota.",
+    },
+    {
+      label: "Resposta / conformidade",
+      value: numberOrNull(det.score_bruto ?? det.conformidade ?? log?.conformidade),
+      hint: "Resultado das respostas avaliadas para esta etapa.",
+    },
+    {
+      label: "Evidencia",
+      value: numberOrNull(det.evidencia ?? det.qualidade_evidencia ?? log?.qualidade_evidencia),
+      hint: "Qualidade ou presenca dos anexos obrigatorios.",
+    },
+    {
+      label: "SLA de correcoes",
+      value: numberOrNull(det.sla_correcoes ?? log?.sla_correcoes),
+      hint: "Planos de acao e correcoes dentro do prazo esperado.",
+    },
+  ].filter((item) => item.value != null);
 
   return (
     <div className="space-y-4">
@@ -767,11 +819,31 @@ function DetalheNotaRecebida({ log, tipoLabel, origemLabel }: { log: any; tipoLa
           })}
         </div>
       ) : (
-        <div className="rounded-lg border bg-muted/20 p-4 space-y-2">
+        <div className="rounded-lg border bg-muted/20 p-4 space-y-3">
           <p className="text-sm font-semibold text-foreground">Detalhe da nota</p>
-          <p className="text-xs text-muted-foreground break-words">
-            {det.formula || "Detalhamento por pergunta não veio em detalhe_calculo para esta nota."}
-          </p>
+          {componenteNotas.length > 0 ? (
+            <div className="space-y-3">
+              {componenteNotas.map((item) => (
+                <div key={item.label} className="space-y-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-medium text-foreground">{item.label}</p>
+                    <p className={cn("text-xs font-bold font-tabular", scoreColor(item.value ?? 0))}>
+                      {Math.round(item.value ?? 0)}
+                    </p>
+                  </div>
+                  <Progress value={item.value ?? 0} className="h-2" />
+                  <p className="text-[11px] text-muted-foreground break-words">{item.hint}</p>
+                </div>
+              ))}
+              {det.formula ? (
+                <p className="pt-1 text-xs text-muted-foreground break-words">Formula: {det.formula}</p>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground break-words">
+              {det.formula || "Detalhamento por pergunta não veio em detalhe_calculo para esta nota."}
+            </p>
+          )}
         </div>
       )}
     </div>
