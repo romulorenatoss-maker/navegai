@@ -95,17 +95,113 @@ export default function TarefasDashboardPage() {
     },
   });
 
-  const { data: contingencies = [] } = useQuery({
-    queryKey: ["operational_gestao_contingencies", periodoInicio, periodoFim],
+  const assignmentIds = useMemo(
+    () => assignments.map((a: any) => a.id).filter(Boolean),
+    [assignments],
+  );
+
+  const { data: planosAcao = [] } = useQuery({
+    queryKey: ["operational_gestao_planos_acao", periodoInicio, periodoFim, assignmentIds.join("|")],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("operational_contingencies")
-        .select("*, operational_assignments(data_prevista, operational_templates(nome)), profiles!operational_contingencies_responsavel_id_fkey(nome)")
-        .gte("created_at", periodoInicio)
-        .lte("created_at", periodoFim + "T23:59:59")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
+      const assignmentById = new Map(assignments.map((a: any) => [a.id, a]));
+      const [legacyResult, aprovadorResult, auditorResult] = await Promise.all([
+        (supabase as any)
+          .from("operational_contingencies")
+          .select("*, operational_assignments(data_prevista, operational_templates(nome)), profiles!operational_contingencies_responsavel_id_fkey(nome)")
+          .gte("created_at", periodoInicio)
+          .lte("created_at", periodoFim + "T23:59:59")
+          .order("created_at", { ascending: false }),
+        assignmentIds.length > 0
+          ? (supabase as any)
+            .from("tarefas_planos_acao_aprovador")
+            .select("*")
+            .in("assignment_id", assignmentIds)
+            .is("deleted_at", null)
+            .order("criado_em", { ascending: false })
+          : Promise.resolve({ data: [], error: null }),
+        assignmentIds.length > 0
+          ? (supabase as any)
+            .from("tarefas_planos_acao_auditor")
+            .select("*")
+            .in("assignment_id", assignmentIds)
+            .is("deleted_at", null)
+            .order("criado_em", { ascending: false })
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (legacyResult.error) throw legacyResult.error;
+      if (aprovadorResult.error) throw aprovadorResult.error;
+      if (auditorResult.error) throw auditorResult.error;
+
+      const planosOficiais = [
+        ...(aprovadorResult.data || []),
+        ...(auditorResult.data || []),
+      ];
+      const fieldIds = Array.from(new Set(planosOficiais.map((p: any) => p.field_id).filter(Boolean)));
+      const fieldById = new Map<string, any>();
+      if (fieldIds.length > 0) {
+        const { data: fields, error: fieldsError } = await (supabase as any)
+          .from("operational_template_fields")
+          .select("id, label")
+          .in("id", fieldIds);
+        if (fieldsError) throw fieldsError;
+        (fields || []).forEach((field: any) => fieldById.set(field.id, field));
+      }
+
+      const resumoItens = (itens: any) => {
+        if (!Array.isArray(itens) || itens.length === 0) return "";
+        return itens
+          .map((item: any) => item?.titulo || item?.label || item?.descricao)
+          .filter(Boolean)
+          .join(", ");
+      };
+      const statusPlano = (plano: any) => {
+        if (plano.respondido) return "respondido";
+        if (plano.prazo_resolucao && new Date(plano.prazo_resolucao) < new Date()) return "vencido";
+        return "pendente";
+      };
+      const mapPlanoOficial = (plano: any, tipo: "aprovador" | "auditor") => {
+        const assignment: any = assignmentById.get(plano.assignment_id);
+        const pergunta = fieldById.get(plano.field_id)?.label;
+        const alvo = tipo === "aprovador" ? assignment?.profiles?.nome : assignment?.aprovador_profile?.nome;
+        const descricaoBase = tipo === "aprovador" ? "Plano do aprovador" : "Plano do auditor";
+        return {
+          id: `${tipo}-${plano.id}`,
+          origem: tipo,
+          assignment_id: plano.assignment_id,
+          descricao: `${descricaoBase} R${plano.rodada || 1}${pergunta ? ` - ${pergunta}` : ""}`,
+          detalhe: plano.instrucao || resumoItens(plano.itens_plano) || "Sem instrucao informada",
+          rotina: assignment?.operational_templates?.nome || "-",
+          responsavel: alvo || "-",
+          prazo_sla: plano.prazo_resolucao,
+          status: statusPlano(plano),
+          raw: plano,
+        };
+      };
+
+      const planosLegados = (legacyResult.data || []).map((c: any) => ({
+        id: `legado-${c.id}`,
+        origem: "legado",
+        assignment_id: c.assignment_id,
+        descricao: c.descricao,
+        detalhe: null,
+        rotina: c.operational_assignments?.operational_templates?.nome || "-",
+        responsavel: c.profiles?.nome || "-",
+        prazo_sla: c.prazo_sla,
+        status: c.status,
+        raw: c,
+      }));
+
+      return [
+        ...planosLegados,
+        ...(aprovadorResult.data || []).map((p: any) => mapPlanoOficial(p, "aprovador")),
+        ...(auditorResult.data || []).map((p: any) => mapPlanoOficial(p, "auditor")),
+      ].sort((a: any, b: any) => {
+        const dateA = a.raw?.criado_em || a.raw?.created_at || "";
+        const dateB = b.raw?.criado_em || b.raw?.created_at || "";
+        return dateB.localeCompare(dateA);
+      });
     },
+    enabled: assignments.length > 0,
   });
 
   const { data: auditLogs = [] } = useQuery({
@@ -226,6 +322,15 @@ export default function TarefasDashboardPage() {
     });
   }, [assignments, filtroSetor, filtroColaborador, filtroStatus]);
 
+  const filteredAssignmentIds = useMemo(
+    () => new Set(filtered.map((a: any) => a.id).filter(Boolean)),
+    [filtered],
+  );
+
+  const filteredPlanosAcao = useMemo(() => {
+    return planosAcao.filter((plano: any) => !plano.assignment_id || filteredAssignmentIds.has(plano.assignment_id));
+  }, [planosAcao, filteredAssignmentIds]);
+
   const awaitingApproval = useMemo(() => assignments.filter((a: any) => a.status === "aguardando_aprovacao"), [assignments]);
   const scoreFor = (assignment: any, tipo: "executor" | "avaliado" | "aprovador" | "auditor" | "final") =>
     getNotaResumoAssignment(assignment, tipo);
@@ -236,11 +341,11 @@ export default function TarefasDashboardPage() {
     const concluidas = filtered.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).length;
     const atrasadas = filtered.filter((a: any) => a.status === "atrasada" || (a.data_prevista < new Date().toISOString().slice(0, 10) && !["concluida", "aprovada", "nao_executada"].includes(a.status))).length;
     const pendentesAprovacao = filtered.filter((a: any) => a.status === "aguardando_aprovacao").length;
-    const contingenciasAbertas = contingencies.filter((c: any) => ["aberta", "em_andamento"].includes(c.status)).length;
-    const contingenciasVencidas = contingencies.filter((c: any) => c.status === "aberta" && c.prazo_sla && new Date(c.prazo_sla) < new Date()).length;
+    const planosAbertos = filteredPlanosAcao.filter((c: any) => ["pendente", "aberta", "em_andamento"].includes(c.status)).length;
+    const planosVencidos = filteredPlanosAcao.filter((c: any) => c.status === "vencido").length;
     const taxaConclusao = total > 0 ? Math.round((concluidas / total) * 100) : 0;
-    return { total, concluidas, atrasadas, pendentesAprovacao, contingenciasAbertas, contingenciasVencidas, taxaConclusao };
-  }, [filtered, contingencies]);
+    return { total, concluidas, atrasadas, pendentesAprovacao, planosAbertos, planosVencidos, taxaConclusao };
+  }, [filtered, filteredPlanosAcao]);
 
   // Rankings with triple score support
   const rankings = useMemo(() => {
@@ -318,6 +423,17 @@ export default function TarefasDashboardPage() {
     </div>
   );
 
+  const planoStatusConfig = (plano: any) => {
+    if (plano.origem === "legado") {
+      const sc = CONTINGENCY_STATUS[plano.status] || CONTINGENCY_STATUS.aberta;
+      const vencida = plano.prazo_sla && new Date(plano.prazo_sla) < new Date() && plano.status === "aberta";
+      return vencida ? CONTINGENCY_STATUS.vencida : sc;
+    }
+    if (plano.status === "respondido") return { label: "Respondido", class: "bg-emerald-100 text-emerald-800 border-emerald-200" };
+    if (plano.status === "vencido") return { label: "Vencido", class: "bg-red-100 text-red-800 border-red-200" };
+    return { label: "Pendente", class: "bg-amber-100 text-amber-800 border-amber-200" };
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
@@ -375,7 +491,7 @@ export default function TarefasDashboardPage() {
         <MetricCard icon={CheckCircle2} label="Concluídas" value={metrics.concluidas} color="text-green-600" />
         <MetricCard icon={Clock} label="Em Atraso" value={metrics.atrasadas} color="text-orange-600" />
         <MetricCard icon={Shield} label="Aguard. Aprovação" value={metrics.pendentesAprovacao} color="text-purple-600" />
-        <MetricCard icon={AlertTriangle} label="Planos de Ação" value={metrics.contingenciasAbertas} sub={`${metrics.contingenciasVencidas} vencidas`} color="text-red-600" />
+        <MetricCard icon={AlertTriangle} label="Planos de Ação" value={metrics.planosAbertos} sub={`${metrics.planosVencidos} vencidas`} color="text-red-600" />
       </div>
 
       <Tabs defaultValue={awaitingApproval.length > 0 ? "aprovacoes" : "ranking"}>
@@ -562,26 +678,33 @@ export default function TarefasDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {contingencies.length === 0 ? (
+                {filteredPlanosAcao.length === 0 ? (
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Sem planos de ação no período.</td></tr>
-                ) : contingencies.map((c: any) => {
-                  const sc = CONTINGENCY_STATUS[c.status] || CONTINGENCY_STATUS.aberta;
-                  const isVencida = c.prazo_sla && new Date(c.prazo_sla) < new Date() && c.status === "aberta";
+                ) : filteredPlanosAcao.map((c: any) => {
+                  const sc = planoStatusConfig(c);
                   return (
                     <tr key={c.id} className="hover:bg-muted/50">
-                      <td className="px-4 py-3 text-body text-foreground max-w-[200px] truncate">{c.descricao}</td>
-                      <td className="px-4 py-3 text-body text-muted-foreground">{c.operational_assignments?.operational_templates?.nome || "—"}</td>
-                      <td className="px-4 py-3 text-body text-muted-foreground">{c.profiles?.nome || "—"}</td>
+                      <td className="px-4 py-3 text-body text-foreground max-w-[260px]">
+                        <p className="font-medium truncate">{c.descricao}</p>
+                        {c.detalhe && <p className="text-caption text-muted-foreground truncate">{c.detalhe}</p>}
+                      </td>
+                      <td className="px-4 py-3 text-body text-muted-foreground">{c.rotina || "—"}</td>
+                      <td className="px-4 py-3 text-body text-muted-foreground">{c.responsavel || "—"}</td>
                       <td className="px-4 py-3 text-center text-caption">{c.prazo_sla ? new Date(c.prazo_sla).toLocaleDateString("pt-BR") : "—"}</td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${isVencida ? CONTINGENCY_STATUS.vencida.class : sc.class}`}>
-                          {isVencida ? "Vencida" : sc.label}
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${sc.class}`}>
+                          {sc.label}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {c.status === "resolvida" && (
-                          <Button size="sm" variant="outline" onClick={() => contingencyMgmt.validateResolution.mutate({ contingencyId: c.id, approved: true, observacao: "Validado via gestão" })}>
+                        {c.origem === "legado" && c.status === "resolvida" && (
+                          <Button size="sm" variant="outline" onClick={() => contingencyMgmt.validateResolution.mutate({ contingencyId: c.raw.id, approved: true, observacao: "Validado via gestão" })}>
                             <CheckCircle2 className="w-3 h-3 mr-1" />Validar
+                          </Button>
+                        )}
+                        {c.origem !== "legado" && c.assignment_id && (
+                          <Button size="sm" variant="ghost" title="Trilha de Auditoria" onClick={() => setAuditDialog({ open: true, assignmentId: c.assignment_id })}>
+                            <History className="w-3 h-3" />
                           </Button>
                         )}
                       </td>
