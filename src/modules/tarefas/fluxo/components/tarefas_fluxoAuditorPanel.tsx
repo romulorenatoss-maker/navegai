@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Loader2, Send, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { useFluxoTarefa } from "../hooks/tarefas_useFluxoTarefa";
@@ -34,18 +34,34 @@ interface PlanoDraft {
   instrucao: string;
   itens: ItemPlano[];
   prazoIso: string;
+  prazoPadraoIso: string;
   criticidade: "baixa" | "media" | "alta";
 }
 
 function defaultPlano(): PlanoDraft {
   const prazo = new Date(Date.now() + 24 * 3600 * 1000);
+  const prazoIso = prazo.toISOString().slice(0, 16);
   return {
     instrucao: "",
     itens: [],
-    prazoIso: prazo.toISOString().slice(0, 16),
+    prazoIso,
+    prazoPadraoIso: prazoIso,
     criticidade: "media",
   };
 }
+
+const formatarPrazoPlano = (value: string) => {
+  const [data, hora] = value.split("T");
+  const [ano, mes, dia] = (data ?? "").split("-");
+  return dia && mes && ano && hora ? `${dia}/${mes}/${ano} ${hora}` : value;
+};
+
+const prazoAcimaDoSlaPadrao = (draft: PlanoDraft) => {
+  const prazoPadrao = new Date(draft.prazoPadraoIso).getTime();
+  const prazoAtual = new Date(draft.prazoIso).getTime();
+  if (!Number.isFinite(prazoPadrao) || !Number.isFinite(prazoAtual)) return false;
+  return prazoAtual > prazoPadrao;
+};
 
 export function FluxoAuditorPanel({ assignmentId }: Props) {
   const { data, isLoading, invalidate } = useFluxoTarefa(assignmentId);
@@ -185,6 +201,14 @@ export function FluxoAuditorPanel({ assignmentId }: Props) {
                         }
                         className="h-8 text-xs"
                       />
+                      {prazoAcimaDoSlaPadrao(planosDraft[p.fieldId]) && (
+                        <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-900">
+                          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                          <span>
+                            Prazo acima do SLA padrao ({formatarPrazoPlano(planosDraft[p.fieldId].prazoPadraoIso)}). Sera penalizado na nota.
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <Button

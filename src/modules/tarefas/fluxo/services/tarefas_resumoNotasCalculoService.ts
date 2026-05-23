@@ -53,9 +53,14 @@ const normalizarMetrica = (metrica: string) => {
     aprovador_fora_sla: "aprovador_respondeu_no_sla",
     aprovou_com_alerta_pendente: "aprovador_aprovou_com_pendencia",
     aprovador_reabriu_ou_devolveu: "aprovador_reabriu_tarefa",
+    aprovador_prorrogou_sla: "aprovador_manteve_sla_padrao",
+    aprovador_manteve_sla: "aprovador_manteve_sla_padrao",
   };
   return mapa[metrica] ?? metrica;
 };
+
+const PLANO_ACAO_SLA_PADRAO_MS = 24 * 3600 * 1000;
+const MINUTO_MS = 60 * 1000;
 
 const dataMs = (value: unknown) => {
   if (!value) return null;
@@ -133,6 +138,19 @@ const todosPlanosAprovador = (data: TarefaFluxoData) =>
 const todosPlanosAuditor = (data: TarefaFluxoData) =>
   data.perguntas.flatMap((p) => p.planosAuditor).filter((p) => !p.deleted_at);
 
+const prazoPlanoAcimaDoPadrao = (plano: any) => {
+  if (plano?.prazo_alterado === true || plano?.prazo_prorrogado === true) return true;
+  const criado = dataMs(plano?.criado_em);
+  const prazo = dataMs(plano?.prazo_resolucao);
+  if (!criado || !prazo) return false;
+
+  const prazoPadrao = criado + PLANO_ACAO_SLA_PADRAO_MS;
+  return Math.floor(prazo / MINUTO_MS) > Math.floor(prazoPadrao / MINUTO_MS);
+};
+
+const planosComPrazoAcimaDoPadrao = (planos: any[]) =>
+  planos.filter((plano) => prazoPlanoAcimaDoPadrao(plano));
+
 export function calcularRespostaAutomatica(
   data: TarefaFluxoData | null,
   modo: ResumoNotasCalculoModo,
@@ -147,6 +165,7 @@ export function calcularRespostaAutomatica(
   const prorrogacoes = [...planosAprovador, ...planosAuditor, ...data.contingencias].filter(
     (x: any) => x?.prazo_alterado === true || x?.prazo_prorrogado === true,
   );
+  const planosComPrazoAlterado = planosComPrazoAcimaDoPadrao([...planosAprovador, ...planosAuditor]);
 
   switch (metrica) {
     case "executor_entregou_no_prazo": {
@@ -207,14 +226,21 @@ export function calcularRespostaAutomatica(
 
     case "executor_prazo_prorrogado":
     case "plano_acao_prazo_prorrogado":
-      return prorrogacoes.length > 0 || !!a.flag_atraso_plano_acao
-        ? falha("sim", "Sim - prazo foi prorrogado", "planos/contingencias.prazo_alterado")
-        : ok("nao", "Nao", "planos/contingencias.prazo_alterado");
+      return prorrogacoes.length > 0 || planosComPrazoAlterado.length > 0 || !!a.flag_atraso_plano_acao
+        ? falha("sim", "Sim - prazo foi prorrogado", "planos.prazo_resolucao vs criado_em + SLA padrao")
+        : ok("nao", "Nao", "planos.prazo_resolucao vs criado_em + SLA padrao");
 
     case "plano_acao_prazo_prorrogado_2x":
-      return prorrogacoes.length >= 2 || !!a.flag_reincidencia_atraso
-        ? falha("sim", "Sim - prorrogado 2x ou mais", "planos/contingencias.prazo_alterado")
-        : ok("nao", "Nao", "planos/contingencias.prazo_alterado");
+      return prorrogacoes.length >= 2 || planosComPrazoAlterado.length >= 2 || !!a.flag_reincidencia_atraso
+        ? falha("sim", "Sim - prorrogado 2x ou mais", "planos.prazo_resolucao vs criado_em + SLA padrao")
+        : ok("nao", "Nao", "planos.prazo_resolucao vs criado_em + SLA padrao");
+
+    case "aprovador_manteve_sla_padrao": {
+      const planosDoAprovadorAlterados = planosComPrazoAcimaDoPadrao(planosAprovador);
+      return planosDoAprovadorAlterados.length > 0
+        ? falha("nao", `Nao - ${planosDoAprovadorAlterados.length} plano(s) acima do SLA padrao`, "tarefas_planos_acao_aprovador.prazo_resolucao vs criado_em + SLA padrao")
+        : ok("sim", "Sim - manteve SLA padrao", "tarefas_planos_acao_aprovador.prazo_resolucao vs criado_em + SLA padrao");
+    }
 
     case "aprovador_respondeu_no_sla":
       return a.flag_sla_etapa_estourado
