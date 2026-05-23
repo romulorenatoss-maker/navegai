@@ -86,7 +86,6 @@ const mk = (p: Omit<RotinaCheckItem, "tempId">): RotinaCheckItem => ({
 export const PERGUNTAS_PADRAO_APROVADOR: RotinaCheckItem[] = [
   mk({ pergunta: "Executor entregou a tarefa dentro do prazo global?", tipo: "sim_nao", peso: 25, ativo: true, origem: "automatica_sistema", metrica_calculo: "executor_entregou_no_prazo", camada_alvo: "executor", permite_na: true, exige_justificativa_na: true }),
   mk({ pergunta: "Houve atraso em alguma etapa da execução?", tipo: "sim_nao", peso: 20, ativo: true, origem: "automatica_sistema", metrica_calculo: "executor_teve_atraso_etapa", camada_alvo: "executor", permite_na: true, exige_justificativa_na: true }),
-  mk({ pergunta: "Todas as perguntas obrigatórias foram respondidas?", tipo: "sim_nao", peso: 20, ativo: true, origem: "automatica_sistema", metrica_calculo: "executor_obrigatorias_respondidas", camada_alvo: "executor", permite_na: true, exige_justificativa_na: true }),
   mk({ pergunta: "As evidências obrigatórias foram anexadas corretamente?", tipo: "sim_nao", peso: 20, ativo: true, origem: "automatica_sistema", metrica_calculo: "executor_evidencias_anexadas", camada_alvo: "executor", permite_na: true, exige_justificativa_na: true }),
   mk({ pergunta: "A execução precisou ser devolvida ou reaberta?", tipo: "sim_nao", peso: 15, ativo: true, origem: "automatica_sistema", metrica_calculo: "executor_teve_devolucao", camada_alvo: "executor", permite_na: true, exige_justificativa_na: true }),
 ];

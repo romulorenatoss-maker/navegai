@@ -118,9 +118,8 @@ export interface AprovadorPerguntaPadrao {
 export const APROVADOR_PACOTE_PADRAO_DEFAULT: AprovadorPerguntaPadrao[] = [
   { id: "apr-prazo-global", ordem: 1, pergunta: "Executor entregou a tarefa dentro do prazo global?", tipo: "sim_nao", peso: 25, ativo: true, metrica_calculo: "prazo_global", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
   { id: "apr-atraso-etapa", ordem: 2, pergunta: "Houve atraso em alguma etapa da execução?", tipo: "sim_nao", peso: 20, ativo: true, metrica_calculo: "atraso_etapa", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
-  { id: "apr-obrigatorias", ordem: 3, pergunta: "Todas as perguntas obrigatórias foram respondidas?", tipo: "sim_nao", peso: 20, ativo: true, metrica_calculo: "obrigatorias_respondidas", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
-  { id: "apr-evidencias", ordem: 4, pergunta: "As evidências obrigatórias foram anexadas corretamente?", tipo: "sim_nao", peso: 20, ativo: true, metrica_calculo: "evidencias_anexadas", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
-  { id: "apr-devolucao", ordem: 5, pergunta: "A execução precisou ser devolvida ou reaberta?", tipo: "sim_nao", peso: 15, ativo: true, metrica_calculo: "devolucao", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
+  { id: "apr-evidencias", ordem: 3, pergunta: "As evidências obrigatórias foram anexadas corretamente?", tipo: "sim_nao", peso: 20, ativo: true, metrica_calculo: "evidencias_anexadas", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
+  { id: "apr-devolucao", ordem: 4, pergunta: "A execução precisou ser devolvida ou reaberta?", tipo: "sim_nao", peso: 15, ativo: true, metrica_calculo: "devolucao", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
 ];
 
 /**
