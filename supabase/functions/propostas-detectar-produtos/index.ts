@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { requirePropostasAccess } from "../_shared/propostas_auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -44,6 +45,8 @@ function parseLocal(texto: string): ProdutoDetectado[] {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const __auth = await requirePropostasAccess(req, corsHeaders);
+  if (__auth instanceof Response) return __auth;
 
   try {
     const { texto } = await req.json();

@@ -4,6 +4,7 @@
 // Retorna: { pdf_path, signed_url }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requirePropostasAccess } from "../_shared/propostas_auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,6 +36,8 @@ function uint8ToBase64(bytes: Uint8Array): string {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __auth = await requirePropostasAccess(req, corsHeaders);
+  if (__auth instanceof Response) return __auth;
   if (req.method !== "POST") return jerr(405, "Method not allowed");
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
