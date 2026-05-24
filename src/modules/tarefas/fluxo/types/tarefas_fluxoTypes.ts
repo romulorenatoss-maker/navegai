@@ -106,6 +106,11 @@ export interface PerguntaSnapshot {
   obrigatorio: boolean;
   ordem: number;
   section_id?: string;
+  section_label?: string;
+  horario_inicio?: string | null;
+  horario_fim?: string | null;
+  horario_inicio_previsto?: string | null;
+  horario_limite?: string | null;
   exige_evidencia?: boolean;
   tipo_evidencia?: string;
   opcoes?: string[];

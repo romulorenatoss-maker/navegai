@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Upload, X, AlertTriangle, RotateCcw, Camera, Eye, Clock, Loader2 } from "lucide-react";
+import { Upload, X, AlertTriangle, RotateCcw, Camera, Eye, Clock, Loader2, Check, Minus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AnexoViewer } from "@/modules/tarefas/components/anexos/AnexoViewer";
 import { tarefas_storage_service } from "@/modules/tarefas/services/tarefas_storage_service";
@@ -457,6 +457,12 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
   })();
 
   const renderInput = () => {
+    const renderChoiceIcon = (label: string, val?: boolean | null, valorTexto?: string | null) => {
+      if (valorTexto === "na" || /^(n\/a|na)$/i.test(label.trim())) return <Minus className="w-3.5 h-3.5 shrink-0" />;
+      if (val === true || /^(conforme|sim)$/i.test(label.trim())) return <Check className="w-3.5 h-3.5 shrink-0" />;
+      return <AlertTriangle className="w-3.5 h-3.5 shrink-0" />;
+    };
+
     switch (field.tipo) {
       case "conforme": {
         // Suporta opcoes_regras customizadas (Conforme/Não Conforme/N/A) ou padrão
@@ -472,10 +478,11 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
           : [
               { label: "Conforme", val: true, valorTexto: null, cls: "bg-green-100 text-green-800 border-green-300" },
               { label: "Não Conforme", val: false, valorTexto: null, cls: "bg-red-100 text-red-800 border-red-300" },
+              { label: "N/A", val: null, valorTexto: "na", cls: "bg-muted text-muted-foreground border-border" },
             ];
         const isNaSelected = val.valor_texto === "na" && val.valor_booleano == null;
         return (
-          <div className={`grid ${opts.length >= 3 ? "grid-cols-3" : "grid-cols-2"} gap-2 w-full`}>
+          <div className={`grid ${opts.length >= 3 ? "grid-cols-3" : "grid-cols-2"} gap-1.5 w-full`}>
             {opts.map(opt => {
               const selected = opt.valorTexto === "na"
                 ? isNaSelected
@@ -486,8 +493,9 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                     ? update({ valor_booleano: null, valor_texto: "na" })
                     : update({ valor_booleano: opt.val, valor_texto: null })
                   }
-                  className={`w-full min-h-10 px-3 py-2 rounded-md border text-sm font-medium transition-colors whitespace-normal break-words ${selected ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditableEfetivo ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
-                  {opt.label}
+                  className={`w-full min-h-8 px-2 py-1.5 rounded-md border text-xs sm:text-sm font-medium transition-colors whitespace-normal break-words flex items-center justify-center gap-1.5 ${selected ? opt.cls + " ring-1 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditableEfetivo ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
+                  {renderChoiceIcon(opt.label, opt.val, opt.valorTexto)}
+                  <span className="leading-tight">{opt.label}</span>
                 </button>
               );
             })}
@@ -508,10 +516,11 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
           : [
               { label: "Sim", val: true, valorTexto: null, cls: "bg-green-100 text-green-800 border-green-300" },
               { label: "Não", val: false, valorTexto: null, cls: "bg-red-100 text-red-800 border-red-300" },
+              { label: "N/A", val: null, valorTexto: "na", cls: "bg-muted text-muted-foreground border-border" },
             ];
         const isNaSelectedSN = val.valor_texto === "na" && val.valor_booleano == null;
         return (
-          <div className={`grid ${optsSimNao.length >= 3 ? "grid-cols-3" : "grid-cols-2"} gap-2 w-full`}>
+          <div className={`grid ${optsSimNao.length >= 3 ? "grid-cols-3" : "grid-cols-2"} gap-1.5 w-full`}>
             {optsSimNao.map(opt => {
               const selected = opt.valorTexto === "na"
                 ? isNaSelectedSN
@@ -522,8 +531,9 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                     ? update({ valor_booleano: null, valor_texto: "na" })
                     : update({ valor_booleano: opt.val, valor_texto: null })
                   }
-                  className={`w-full min-h-10 px-3 py-2 rounded-md border text-sm font-medium transition-colors whitespace-normal break-words ${selected ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditableEfetivo ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
-                  {opt.label}
+                  className={`w-full min-h-8 px-2 py-1.5 rounded-md border text-xs sm:text-sm font-medium transition-colors whitespace-normal break-words flex items-center justify-center gap-1.5 ${selected ? opt.cls + " ring-1 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditableEfetivo ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
+                  {renderChoiceIcon(opt.label, opt.val, opt.valorTexto)}
+                  <span className="leading-tight">{opt.label}</span>
                 </button>
               );
             })}
