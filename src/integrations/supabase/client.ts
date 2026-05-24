@@ -8,9 +8,34 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// Safe storage wrapper: falls back to in-memory storage when localStorage
+// is unavailable (Safari/iOS private mode, blocked cookies, WebView, etc.).
+// Without this, accessing localStorage throws SecurityError before React
+// mounts, producing a blank screen on mobile/published builds.
+function createSafeStorage(): Storage {
+  const memory = new Map<string, string>();
+  const memoryStorage: Storage = {
+    get length() { return memory.size; },
+    clear: () => memory.clear(),
+    getItem: (k) => (memory.has(k) ? memory.get(k)! : null),
+    key: (i) => Array.from(memory.keys())[i] ?? null,
+    removeItem: (k) => { memory.delete(k); },
+    setItem: (k, v) => { memory.set(k, String(v)); },
+  };
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return memoryStorage;
+    const testKey = '__sb_storage_test__';
+    window.localStorage.setItem(testKey, '1');
+    window.localStorage.removeItem(testKey);
+    return window.localStorage;
+  } catch {
+    return memoryStorage;
+  }
+}
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
+    storage: createSafeStorage(),
     persistSession: true,
     autoRefreshToken: true,
   }
