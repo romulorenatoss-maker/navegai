@@ -1433,6 +1433,97 @@ export type Database = {
           },
         ]
       }
+      operational_assignment_stage_runs: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          duration_seconds: number | null
+          fim_atrasado: boolean
+          fim_atraso_minutos: number
+          finalizado_no_prazo: boolean | null
+          finished_at: string | null
+          finished_by: string | null
+          horario_fim_previsto: string | null
+          horario_inicio_previsto: string | null
+          id: string
+          inicio_atrasado: boolean
+          inicio_atraso_minutos: number
+          stage_id: string
+          stage_label: string
+          stage_order: number
+          started_at: string
+          started_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          duration_seconds?: number | null
+          fim_atrasado?: boolean
+          fim_atraso_minutos?: number
+          finalizado_no_prazo?: boolean | null
+          finished_at?: string | null
+          finished_by?: string | null
+          horario_fim_previsto?: string | null
+          horario_inicio_previsto?: string | null
+          id?: string
+          inicio_atrasado?: boolean
+          inicio_atraso_minutos?: number
+          stage_id: string
+          stage_label: string
+          stage_order?: number
+          started_at?: string
+          started_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          duration_seconds?: number | null
+          fim_atrasado?: boolean
+          fim_atraso_minutos?: number
+          finalizado_no_prazo?: boolean | null
+          finished_at?: string | null
+          finished_by?: string | null
+          horario_fim_previsto?: string | null
+          horario_inicio_previsto?: string | null
+          id?: string
+          inicio_atrasado?: boolean
+          inicio_atraso_minutos?: number
+          stage_id?: string
+          stage_label?: string
+          stage_order?: number
+          started_at?: string
+          started_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_assignment_stage_runs_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_assignment_stage_runs_finished_by_fkey"
+            columns: ["finished_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_assignment_stage_runs_started_by_fkey"
+            columns: ["started_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operational_assignments: {
         Row: {
           aprovado_em: string | null
@@ -5926,6 +6017,10 @@ export type Database = {
         Args: { _cargo: string; _user_id: string }
         Returns: undefined
       }
+      tarefas_fn_expected_stage_at: {
+        Args: { p_data: string; p_horario: string }
+        Returns: string
+      }
       tarefas_rpc_aprovador_aprovar_para_auditoria: {
         Args: { p_assignment_id: string; p_notas?: Json }
         Returns: {
@@ -6098,6 +6193,13 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      tarefas_rpc_executor_autosalvar_respostas: {
+        Args: { p_assignment_id: string; p_respostas: Json }
+        Returns: {
+          assignment_id: string
+          respostas_salvas: number
+        }[]
+      }
       tarefas_rpc_executor_enviar_respostas: {
         Args: { p_assignment_id: string; p_respostas: Json }
         Returns: {
@@ -6105,6 +6207,75 @@ export type Database = {
           novo_status: string
           respostas_salvas: number
         }[]
+      }
+      tarefas_rpc_executor_finalizar_etapa: {
+        Args: { p_assignment_id: string; p_stage_id: string }
+        Returns: {
+          assignment_id: string
+          created_at: string
+          duration_seconds: number | null
+          fim_atrasado: boolean
+          fim_atraso_minutos: number
+          finalizado_no_prazo: boolean | null
+          finished_at: string | null
+          finished_by: string | null
+          horario_fim_previsto: string | null
+          horario_inicio_previsto: string | null
+          id: string
+          inicio_atrasado: boolean
+          inicio_atraso_minutos: number
+          stage_id: string
+          stage_label: string
+          stage_order: number
+          started_at: string
+          started_by: string | null
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "operational_assignment_stage_runs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      tarefas_rpc_executor_iniciar_etapa: {
+        Args: {
+          p_assignment_id: string
+          p_horario_fim_previsto?: string
+          p_horario_inicio_previsto?: string
+          p_stage_id: string
+          p_stage_label: string
+          p_stage_order?: number
+        }
+        Returns: {
+          assignment_id: string
+          created_at: string
+          duration_seconds: number | null
+          fim_atrasado: boolean
+          fim_atraso_minutos: number
+          finalizado_no_prazo: boolean | null
+          finished_at: string | null
+          finished_by: string | null
+          horario_fim_previsto: string | null
+          horario_inicio_previsto: string | null
+          id: string
+          inicio_atrasado: boolean
+          inicio_atraso_minutos: number
+          stage_id: string
+          stage_label: string
+          stage_order: number
+          started_at: string
+          started_by: string | null
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "operational_assignment_stage_runs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       tarefas_rpc_executor_responder_plano_aprovador: {
         Args: { p_plano_id: string; p_resposta_valor_json: Json }
