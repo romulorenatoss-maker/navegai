@@ -1,5 +1,12 @@
 # Navegai - Changelog Tecnico
 
+## 2026-05-24 - Hotfix ambiguidade RPC autosave executor
+
+- Incidente reportado: ao marcar `Conforme`, RPC retornou `column reference "assignment_id" is ambiguous`.
+- Causa: `RETURNS TABLE (assignment_id...)` junto com SQL interno usando `assignment_id` em conflito/UPSERT.
+- Correcao: migration `20260524173000_fix_rpc_executor_respostas_ambiguas.sql` recria `tarefas_rpc_executor_autosalvar_respostas` e `tarefas_rpc_executor_enviar_respostas` com aliases explicitos e fluxo `UPDATE` + `INSERT` sem `ON CONFLICT (assignment_id...)`.
+- Regra futura: RPC PL/pgSQL com parametros/retornos homonimos deve qualificar todas as colunas ou usar nomes de retorno sem colisao.
+
 ## 2026-05-24 - Storage seguro mobile
 
 - Incidente prevenido: Safari/iOS/WebView pode lancar `SecurityError` ao acessar `localStorage`/`sessionStorage`, causando tela branca antes do React montar.
