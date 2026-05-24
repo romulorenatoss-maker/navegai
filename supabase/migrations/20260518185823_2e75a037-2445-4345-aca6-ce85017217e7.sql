@@ -1,1 +1,0 @@
-ALTER TABLE public.operational_field_reviews ADD COLUMN IF NOT EXISTS respondido BOOLEAN DEFAULT false;

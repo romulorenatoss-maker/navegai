@@ -1,1 +1,0 @@
-ALTER TABLE public.leads ADD COLUMN convertido_registrado_por uuid REFERENCES public.profiles(id) DEFAULT NULL;

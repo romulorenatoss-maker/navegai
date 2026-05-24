@@ -1,1 +1,0 @@
-ALTER TABLE public.avaliacoes ADD COLUMN concluida_em TIMESTAMP WITH TIME ZONE DEFAULT NULL;
