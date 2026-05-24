@@ -1,6 +1,17 @@
 import { useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+// Safe sessionStorage helpers (Safari private mode / blocked cookies throw)
+const safeSessionGet = (k: string): string | null => {
+  try { return typeof window !== 'undefined' ? window.sessionStorage.getItem(k) : null; } catch { return null; }
+};
+const safeSessionSet = (k: string, v: string) => {
+  try { if (typeof window !== 'undefined') window.sessionStorage.setItem(k, v); } catch {}
+};
+const safeSessionRemove = (k: string) => {
+  try { if (typeof window !== 'undefined') window.sessionStorage.removeItem(k); } catch {}
+};
+
 /**
  * Tracks user session: inserts a row on login, updates on logout/idle.
  * Uses a ref + localStorage to prevent duplicate session rows on re-renders.
