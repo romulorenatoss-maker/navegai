@@ -290,7 +290,7 @@ export default function TarefasExecucaoPage() {
       const ids = (data || []).map((a: any) => a.id);
       if (ids.length === 0) return data;
       // Anexa contagens de respostas para o cálculo da barra de "Etapa".
-      const [{ data: fa }, { data: ap }, { data: stageRuns }] = await Promise.all([
+      const [{ data: fa }, { data: ap }, stageRunsRes] = await Promise.all([
         (supabase as any).from("operational_field_answers").select("assignment_id, field_id").in("assignment_id", ids),
         (supabase as any).from("operational_approval_answers").select("assignment_id, field_id").in("assignment_id", ids),
         (supabase as any)
@@ -300,6 +300,7 @@ export default function TarefasExecucaoPage() {
           .order("stage_order", { ascending: true })
           .order("started_at", { ascending: true }),
       ]);
+      const stageRuns = stageRunsRes?.error ? [] : (stageRunsRes?.data ?? []);
       const faMap = new Map<string, Set<string>>();
       (fa || []).forEach((r: any) => {
         if (!faMap.has(r.assignment_id)) faMap.set(r.assignment_id, new Set());
@@ -311,7 +312,7 @@ export default function TarefasExecucaoPage() {
         apMap.get(r.assignment_id)!.add(r.field_id);
       });
       const stageRunMap = new Map<string, any[]>();
-      (stageRuns || []).forEach((run: any) => {
+      stageRuns.forEach((run: any) => {
         if (!stageRunMap.has(run.assignment_id)) stageRunMap.set(run.assignment_id, []);
         stageRunMap.get(run.assignment_id)!.push(run);
       });

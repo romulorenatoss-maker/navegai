@@ -174,7 +174,10 @@ export function useFluxoTarefa(assignmentId: string | null): UseFluxoTarefaResul
         .eq("assignment_id", assignmentId)
         .order("stage_order", { ascending: true })
         .order("started_at", { ascending: true });
-      if (error) throw error;
+      if (error) {
+        console.warn("[tarefas] etapas persistentes indisponiveis; usando fallback sem etapa persistida", error);
+        return [];
+      }
       return (data ?? []) as TarefaFluxoEtapaRun[];
     },
     enabled: !!assignmentId,
@@ -199,8 +202,7 @@ export function useFluxoTarefa(assignmentId: string | null): UseFluxoTarefaResul
     planosAuditQ.error ??
     contingenciasQ.error ??
     auditTrailQ.error ??
-    scoreLogsQ.error ??
-    etapasRunsQ.error;
+    scoreLogsQ.error;
 
   const assignment = assignmentQ.data ?? null;
 
