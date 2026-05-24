@@ -221,9 +221,33 @@ export interface TarefaFluxoScoreLog {
 // ============================================================================
 // Estrutura ÚNICA retornada pelo hook useFluxoTarefa
 // ============================================================================
+export interface TarefaFluxoEtapaRun {
+  id: string;
+  assignment_id: string;
+  stage_id: string;
+  stage_label: string;
+  stage_order: number;
+  horario_inicio_previsto: string | null;
+  horario_fim_previsto: string | null;
+  status: "em_andamento" | "concluida" | string;
+  started_at: string;
+  finished_at: string | null;
+  duration_seconds: number | null;
+  inicio_atrasado: boolean;
+  inicio_atraso_minutos: number;
+  fim_atrasado: boolean;
+  fim_atraso_minutos: number;
+  finalizado_no_prazo: boolean | null;
+  started_by: string | null;
+  finished_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface TarefaFluxoData {
   assignment: TarefaFluxoAssignment;
   perguntas: TarefaFluxoPergunta[];
+  etapasRuns: TarefaFluxoEtapaRun[];
   contingencias: TarefaFluxoContingencia[];
   auditTrail: TarefaFluxoAuditTrail[];
   scoreLogs: TarefaFluxoScoreLog[];

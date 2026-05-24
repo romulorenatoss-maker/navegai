@@ -13,6 +13,7 @@ import type {
   PlanoAprovador,
   PlanoAuditor,
   RespostaPlanoValorJson,
+  TarefaFluxoEtapaRun,
 } from "../types/tarefas_fluxoTypes";
 
 // ============================================================================
@@ -29,6 +30,15 @@ export interface ExecutorRespostaInput {
   evidencia_anexo_id?: string | null;
   evidencia_mime_type?: string | null;
   observacao?: string | null;
+}
+
+export interface ExecutorIniciarEtapaInput {
+  assignmentId: string;
+  etapaId: string;
+  etapaLabel: string;
+  etapaOrdem: number;
+  horarioInicioPrevisto?: string | null;
+  horarioFimPrevisto?: string | null;
 }
 
 async function executorEnviarRespostas(input: {
@@ -48,6 +58,22 @@ async function executorEnviarRespostas(input: {
   return row;
 }
 
+async function executorAutosalvarRespostas(input: {
+  assignmentId: string;
+  respostas: ExecutorRespostaInput[];
+}): Promise<{ assignment_id: string; respostas_salvas: number }> {
+  const { data, error } = await (supabase as any).rpc(
+    "tarefas_rpc_executor_autosalvar_respostas",
+    {
+      p_assignment_id: input.assignmentId,
+      p_respostas: input.respostas,
+    },
+  );
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return row;
+}
+
 async function executorResponderPlanoAprovador(input: {
   planoId: string;
   respostaValorJson: RespostaPlanoValorJson;
@@ -61,6 +87,37 @@ async function executorResponderPlanoAprovador(input: {
   );
   if (error) throw error;
   return data as PlanoAprovador;
+}
+
+async function executorIniciarEtapa(input: ExecutorIniciarEtapaInput): Promise<TarefaFluxoEtapaRun> {
+  const { data, error } = await (supabase as any).rpc(
+    "tarefas_rpc_executor_iniciar_etapa",
+    {
+      p_assignment_id: input.assignmentId,
+      p_stage_id: input.etapaId,
+      p_stage_label: input.etapaLabel,
+      p_stage_order: input.etapaOrdem,
+      p_horario_inicio_previsto: input.horarioInicioPrevisto ?? null,
+      p_horario_fim_previsto: input.horarioFimPrevisto ?? null,
+    },
+  );
+  if (error) throw error;
+  return data as TarefaFluxoEtapaRun;
+}
+
+async function executorFinalizarEtapa(input: {
+  assignmentId: string;
+  etapaId: string;
+}): Promise<TarefaFluxoEtapaRun> {
+  const { data, error } = await (supabase as any).rpc(
+    "tarefas_rpc_executor_finalizar_etapa",
+    {
+      p_assignment_id: input.assignmentId,
+      p_stage_id: input.etapaId,
+    },
+  );
+  if (error) throw error;
+  return data as TarefaFluxoEtapaRun;
 }
 
 // ============================================================================
@@ -168,7 +225,10 @@ async function auditorAprovarAuditoria(input: {
 // ============================================================================
 export const tarefasFluxoRpcService = {
   executorEnviarRespostas,
+  executorAutosalvarRespostas,
   executorResponderPlanoAprovador,
+  executorIniciarEtapa,
+  executorFinalizarEtapa,
   aprovadorCriarPlanoExecutor,
   aprovadorAprovarParaAuditoria,
   aprovadorResponderPlanoAuditor,

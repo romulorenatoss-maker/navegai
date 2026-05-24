@@ -6,13 +6,15 @@
 2. Assignment gerado em `operational_assignments`.
 3. Executor abre `/tarefas/execucao`.
 4. Drawer executor carrega perguntas e respostas.
-5. Executor responde campos e anexa evidencias quando exigidas.
-6. Executor envia respostas via `tarefas_rpc_executor_enviar_respostas`.
-7. Aprovador avalia, aprova ou cria plano.
-8. Auditor finaliza auditoria ou devolve plano.
-9. Historico/dashboard refletem status.
+5. Executor inicia etapa via `tarefas_rpc_executor_iniciar_etapa`; o banco grava inicio, atraso e usuario.
+6. Executor responde campos e anexa evidencias; autosave usa `tarefas_rpc_executor_autosalvar_respostas`.
+7. Executor finaliza etapa via `tarefas_rpc_executor_finalizar_etapa`; o banco grava fim, duracao e atraso.
+8. Executor envia respostas via `tarefas_rpc_executor_enviar_respostas`.
+9. Aprovador avalia, aprova ou cria plano.
+10. Auditor finaliza auditoria ou devolve plano.
+11. Historico/dashboard refletem status.
 
-Regra por etapas atual: visual/local no frontend; proxima etapa libera somente apos etapa anterior finalizada no estado local. Persistencia real de tempo por etapa NAO ENCONTRADO NO CODIGO.
+Regra por etapas atual: `operational_assignment_stage_runs` e fonte do inicio/fim/duracao. Proxima etapa libera somente quando a anterior esta `concluida` nessa tabela.
 
 ## 2. Propostas
 

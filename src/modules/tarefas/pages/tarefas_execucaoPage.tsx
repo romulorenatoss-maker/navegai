@@ -290,9 +290,15 @@ export default function TarefasExecucaoPage() {
       const ids = (data || []).map((a: any) => a.id);
       if (ids.length === 0) return data;
       // Anexa contagens de respostas para o cálculo da barra de "Etapa".
-      const [{ data: fa }, { data: ap }] = await Promise.all([
+      const [{ data: fa }, { data: ap }, { data: stageRuns }] = await Promise.all([
         (supabase as any).from("operational_field_answers").select("assignment_id, field_id").in("assignment_id", ids),
         (supabase as any).from("operational_approval_answers").select("assignment_id, field_id").in("assignment_id", ids),
+        (supabase as any)
+          .from("operational_assignment_stage_runs")
+          .select("*")
+          .in("assignment_id", ids)
+          .order("stage_order", { ascending: true })
+          .order("started_at", { ascending: true }),
       ]);
       const faMap = new Map<string, Set<string>>();
       (fa || []).forEach((r: any) => {
@@ -304,10 +310,26 @@ export default function TarefasExecucaoPage() {
         if (!apMap.has(r.assignment_id)) apMap.set(r.assignment_id, new Set());
         apMap.get(r.assignment_id)!.add(r.field_id);
       });
+      const stageRunMap = new Map<string, any[]>();
+      (stageRuns || []).forEach((run: any) => {
+        if (!stageRunMap.has(run.assignment_id)) stageRunMap.set(run.assignment_id, []);
+        stageRunMap.get(run.assignment_id)!.push(run);
+      });
       return (data || []).map((a: any) => ({
         ...a,
         field_answer_count: faMap.get(a.id)?.size ?? 0,
         approver_answer_count: apMap.get(a.id)?.size ?? 0,
+        ...(stageRunMap.get(a.id)?.find((run: any) => run.status === "em_andamento")
+          ? (() => {
+              const run = stageRunMap.get(a.id)!.find((item: any) => item.status === "em_andamento");
+              return {
+                etapa_atual_label: run.stage_label,
+                etapa_atual_started_at: run.started_at,
+                etapa_atual_inicio_atrasado: run.inicio_atrasado,
+                etapa_atual_inicio_atraso_minutos: run.inicio_atraso_minutos,
+              };
+            })()
+          : {}),
       }));
     },
     enabled: !!profile?.id,

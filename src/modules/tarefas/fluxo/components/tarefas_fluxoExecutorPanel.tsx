@@ -8,7 +8,7 @@
  * - Depois do envio, R0 fica read-only.
  * - Planos R1/R2/R3 do aprovador aparecem abaixo da pergunta vinculada.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Send, Loader2, Clock, Play, CheckCircle2, Lock, Circle, Timer } from "lucide-react";
 import { toast } from "sonner";
@@ -21,7 +21,7 @@ import { ExecutorPlanoAprovadorCard } from "@/modules/tarefas/components/tarefas
 import { DynamicFieldRenderer } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import { FluxoPlanoAprovadorCard } from "./tarefas_fluxoPlanoAprovadorCard";
 import { tarefasExtrairSlaResponsabilidades } from "@/modules/tarefas/utils/tarefas_slaPrazoUtils";
-import type { ExecutorRespostaInput } from "../services/tarefas_fluxoRpcService";
+import { tarefasFluxoRpcService, type ExecutorRespostaInput } from "../services/tarefas_fluxoRpcService";
 import type { TarefaFluxoPergunta } from "../types/tarefas_fluxoTypes";
 
 interface Props {
@@ -37,16 +37,22 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
 
   const [rascunho, setRascunho] = useState<Record<string, ExecutorRespostaInput>>({});
   const [etapaSelecionadaId, setEtapaSelecionadaId] = useState<string | null>(null);
-  const [etapaEmAndamentoId, setEtapaEmAndamentoId] = useState<string | null>(null);
-  const [etapaIniciadaEm, setEtapaIniciadaEm] = useState<number | null>(null);
-  const [etapasConcluidas, setEtapasConcluidas] = useState<Record<string, boolean>>({});
+  const [etapaAcaoPendenteId, setEtapaAcaoPendenteId] = useState<string | null>(null);
+  const autosaveTimersRef = useRef<Record<string, number>>({});
   const [, setTick] = useState(0);
 
   useEffect(() => {
-    if (!etapaEmAndamentoId) return;
+    const temEtapaRodando = data?.etapasRuns?.some((run) => run.status === "em_andamento");
+    if (!temEtapaRodando) return;
     const timer = window.setInterval(() => setTick((prev) => prev + 1), 1000);
     return () => window.clearInterval(timer);
-  }, [etapaEmAndamentoId]);
+  }, [data?.etapasRuns]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(autosaveTimersRef.current).forEach((timerId) => window.clearTimeout(timerId));
+    };
+  }, []);
 
   if (isLoading || !data) {
     return (
@@ -75,21 +81,55 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
     return map;
   })();
 
-  const updateRascunho = (fieldId: string, patch: Partial<ExecutorRespostaInput>) => {
+  const respostaAtual = (pergunta: TarefaFluxoPergunta) =>
+    (rascunho[pergunta.fieldId] as any) ?? (pergunta.respostaOriginalExecutor as any) ?? null;
+
+  const agendarAutosaveResposta = (resposta: ExecutorRespostaInput) => {
+    if (!perms.podeEditarOriginal) return;
+    if (autosaveTimersRef.current[resposta.field_id]) {
+      window.clearTimeout(autosaveTimersRef.current[resposta.field_id]);
+    }
+
+    autosaveTimersRef.current[resposta.field_id] = window.setTimeout(async () => {
+      try {
+        await tarefasFluxoRpcService.executorAutosalvarRespostas({
+          assignmentId: a.id,
+          respostas: [resposta],
+        });
+        invalidate();
+      } catch (err: any) {
+        toast.error(err?.message || "Nao foi possivel autosalvar a resposta.");
+      }
+    }, 700);
+  };
+
+  const updateRascunho = (
+    fieldId: string,
+    patch: Partial<ExecutorRespostaInput>,
+    base?: ExecutorRespostaInput | null,
+  ) => {
     setRascunho((prev) => ({
       ...prev,
-      [fieldId]: { field_id: fieldId, ...(prev[fieldId] ?? { field_id: fieldId }), ...patch },
+      [fieldId]: (() => {
+        const resposta = { field_id: fieldId, ...(base ?? {}), ...(prev[fieldId] ?? {}), ...patch };
+        agendarAutosaveResposta(resposta);
+        return resposta;
+      })(),
     }));
   };
 
   const handleEnviar = async () => {
-    const respostas = Object.values(rascunho);
+    const respostas = data.perguntas
+      .map((pergunta) => respostaAtual(pergunta))
+      .filter(Boolean) as ExecutorRespostaInput[];
     if (respostas.length === 0) {
       toast.error("Preencha pelo menos uma resposta antes de enviar.");
       return;
     }
 
     try {
+      Object.values(autosaveTimersRef.current).forEach((timerId) => window.clearTimeout(timerId));
+      autosaveTimersRef.current = {};
       await actions.enviarRespostas.mutateAsync({ assignmentId, respostas });
       setRascunho({});
       invalidate();
@@ -110,9 +150,6 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
     if (inicioFormatado && fimFormatado) return `${inicioFormatado} - ${fimFormatado}`;
     return inicioFormatado || null;
   };
-
-  const respostaAtual = (pergunta: TarefaFluxoPergunta) =>
-    (rascunho[pergunta.fieldId] as any) ?? (pergunta.respostaOriginalExecutor as any) ?? null;
 
   const respostaTemValor = (resposta: any) => !!resposta && (
     (resposta.valor_texto != null && resposta.valor_texto !== "") ||
@@ -152,6 +189,8 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
       id: string;
       label: string;
       horario?: string | null;
+      horarioInicioRaw?: string | null;
+      horarioFimRaw?: string | null;
       ordem: number;
       perguntas: TarefaFluxoPergunta[];
     }>();
@@ -171,6 +210,8 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
           id: fallbackKey,
           label,
           horario: formatHorarioEtapa(horarioInicio, horarioFim),
+          horarioInicioRaw: horarioInicio ? String(horarioInicio) : null,
+          horarioFimRaw: horarioFim ? String(horarioFim) : null,
           ordem,
           perguntas: [],
         });
@@ -189,45 +230,83 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
   })();
 
   const etapaPreenchida = (etapa: (typeof etapas)[number]) => etapa.perguntas.every(perguntaCompleta);
-  const todasEtapasConcluidas = etapas.every((etapa) => !!etapasConcluidas[etapa.id]);
-  const etapaAtualIndexRaw = etapas.findIndex((etapa) => !etapasConcluidas[etapa.id]);
+  const etapaRunById = (() => {
+    const map = new Map<string, (typeof data.etapasRuns)[number]>();
+    data.etapasRuns.forEach((run) => map.set(run.stage_id, run));
+    return map;
+  })();
+  const etapaConcluida = (etapaId: string) => etapaRunById.get(etapaId)?.status === "concluida";
+  const etapaEmAndamento = (etapaId: string) => etapaRunById.get(etapaId)?.status === "em_andamento";
+  const todasEtapasConcluidas = etapas.every((etapa) => etapaConcluida(etapa.id));
+  const etapaAtualIndexRaw = etapas.findIndex((etapa) => !etapaConcluida(etapa.id));
   const etapaAtualIndex = etapaAtualIndexRaw === -1 ? Math.max(0, etapas.length - 1) : etapaAtualIndexRaw;
   const activeEtapaId = etapaSelecionadaId ?? etapas[etapaAtualIndex]?.id ?? etapas[0]?.id ?? null;
   const fluxoPorEtapas = etapas.length > 1 || data.perguntas.some((pergunta) => !!pergunta.snapshot.section_id);
 
   const getEtapaStatus = (etapa: (typeof etapas)[number], index: number) => {
-    if (etapasConcluidas[etapa.id]) return "concluida";
-    if (etapaEmAndamentoId === etapa.id) return "em_andamento";
-    if (index === 0 || etapas.slice(0, index).every((etapaAnterior) => !!etapasConcluidas[etapaAnterior.id])) return "liberada";
+    if (etapaConcluida(etapa.id)) return "concluida";
+    if (etapaEmAndamento(etapa.id)) return "em_andamento";
+    if (index === 0 || etapas.slice(0, index).every((etapaAnterior) => etapaConcluida(etapaAnterior.id))) return "liberada";
     return "bloqueada";
   };
 
-  const formatElapsed = () => {
-    if (!etapaIniciadaEm) return "00:00";
-    const elapsed = Math.max(0, Math.floor((Date.now() - etapaIniciadaEm) / 1000));
+  const formatElapsed = (startedAt?: string | null, finishedAt?: string | null, fixedSeconds?: number | null) => {
+    if (fixedSeconds != null) {
+      const fixedMinutes = Math.floor(fixedSeconds / 60);
+      const fixedRemainingSeconds = fixedSeconds % 60;
+      return `${String(fixedMinutes).padStart(2, "0")}:${String(fixedRemainingSeconds).padStart(2, "0")}`;
+    }
+    if (!startedAt) return "00:00";
+    const end = finishedAt ? new Date(finishedAt).getTime() : Date.now();
+    const elapsed = Math.max(0, Math.floor((end - new Date(startedAt).getTime()) / 1000));
     const minutes = Math.floor(elapsed / 60);
     const seconds = elapsed % 60;
     return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   };
 
-  const iniciarEtapa = (etapaId: string) => {
-    setEtapaSelecionadaId(etapaId);
-    setEtapaEmAndamentoId(etapaId);
-    setEtapaIniciadaEm(Date.now());
+  const iniciarEtapa = async (etapa: (typeof etapas)[number]) => {
+    const etapaIndex = etapas.findIndex((item) => item.id === etapa.id);
+    if (getEtapaStatus(etapa, etapaIndex) === "bloqueada") return;
+
+    try {
+      setEtapaAcaoPendenteId(etapa.id);
+      setEtapaSelecionadaId(etapa.id);
+      await tarefasFluxoRpcService.executorIniciarEtapa({
+        assignmentId: a.id,
+        etapaId: etapa.id,
+        etapaLabel: etapa.label,
+        etapaOrdem: etapa.ordem,
+        horarioInicioPrevisto: etapa.horarioInicioRaw ?? null,
+        horarioFimPrevisto: etapa.horarioFimRaw ?? null,
+      });
+      invalidate();
+      toast.success(`${etapa.label} iniciada.`);
+    } catch (err: any) {
+      toast.error(err?.message || "Nao foi possivel iniciar a etapa.");
+    } finally {
+      setEtapaAcaoPendenteId(null);
+    }
   };
 
-  const finalizarEtapa = (etapa: (typeof etapas)[number]) => {
+  const finalizarEtapa = async (etapa: (typeof etapas)[number]) => {
     if (!etapaPreenchida(etapa)) {
       toast.error("Preencha obrigatorias e evidencias desta etapa antes de finalizar.");
       return;
     }
 
-    setEtapasConcluidas((prev) => ({ ...prev, [etapa.id]: true }));
-    if (etapaEmAndamentoId === etapa.id) {
-      setEtapaEmAndamentoId(null);
-      setEtapaIniciadaEm(null);
+    try {
+      setEtapaAcaoPendenteId(etapa.id);
+      await tarefasFluxoRpcService.executorFinalizarEtapa({
+        assignmentId: a.id,
+        etapaId: etapa.id,
+      });
+      invalidate();
+      toast.success(`${etapa.label} finalizada.`);
+    } catch (err: any) {
+      toast.error(err?.message || "Nao foi possivel finalizar a etapa.");
+    } finally {
+      setEtapaAcaoPendenteId(null);
     }
-    toast.success(`${etapa.label} finalizada.`);
   };
 
   return (
@@ -265,8 +344,11 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
 
       {etapas.map((etapa, etapaIndex) => {
         const etapaStatus = getEtapaStatus(etapa, etapaIndex);
-        const etapaEmAndamento = etapaEmAndamentoId === etapa.id;
-        const podeResponderEtapa = etapaEmAndamento && etapaStatus !== "bloqueada" && !etapasConcluidas[etapa.id];
+        const runEtapa = etapaRunById.get(etapa.id);
+        const etapaEstaEmAndamento = runEtapa?.status === "em_andamento";
+        const etapaEstaConcluida = runEtapa?.status === "concluida";
+        const acaoPendente = etapaAcaoPendenteId === etapa.id;
+        const podeResponderEtapa = etapaEstaEmAndamento && etapaStatus !== "bloqueada" && !etapaEstaConcluida;
         const perguntasPendentes = etapa.perguntas.filter((pergunta) => !perguntaCompleta(pergunta)).length;
 
         return (
@@ -283,17 +365,36 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
                     )}
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    {etapasConcluidas[etapa.id]
+                    {etapaEstaConcluida
                       ? "Etapa finalizada"
                       : etapaPreenchida(etapa)
                         ? "Etapa preenchida, pronta para finalizar"
                         : `${perguntasPendentes} pendencia(s) obrigatoria(s)/evidencia(s)`}
                   </p>
+                  {runEtapa && (
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                      {runEtapa.inicio_atrasado && (
+                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-700">
+                          Inicio atrasado {runEtapa.inicio_atraso_minutos}min
+                        </span>
+                      )}
+                      {runEtapa.fim_atrasado && (
+                        <span className="rounded bg-red-100 px-1.5 py-0.5 text-red-700">
+                          Fim atrasado {runEtapa.fim_atraso_minutos}min
+                        </span>
+                      )}
+                      {runEtapa.finalizado_no_prazo === true && (
+                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-emerald-700">
+                          Finalizada no prazo
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-1.5">
-                  {etapaEmAndamento && etapaIniciadaEm && (
+                  {runEtapa && (
                     <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-[11px] font-medium">
-                      <Timer className="h-3 w-3" /> {formatElapsed()}
+                      <Timer className="h-3 w-3" /> {formatElapsed(runEtapa.started_at, runEtapa.finished_at, runEtapa.duration_seconds)}
                     </span>
                   )}
                   <Button
@@ -301,19 +402,21 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
                     variant="outline"
                     size="sm"
                     className="h-7 px-2 text-xs"
-                    disabled={etapaStatus === "bloqueada" || etapaEmAndamento || !!etapasConcluidas[etapa.id]}
-                    onClick={() => iniciarEtapa(etapa.id)}
+                    disabled={acaoPendente || etapaStatus === "bloqueada" || !!runEtapa}
+                    onClick={() => iniciarEtapa(etapa)}
                   >
-                    <Play className="h-3 w-3 mr-1" /> Iniciar
+                    {acaoPendente && !runEtapa ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Play className="h-3 w-3 mr-1" />}
+                    Iniciar
                   </Button>
                   <Button
                     type="button"
                     size="sm"
                     className="h-7 px-2 text-xs"
-                    disabled={etapaStatus === "bloqueada" || !etapaPreenchida(etapa) || !!etapasConcluidas[etapa.id]}
+                    disabled={acaoPendente || etapaStatus === "bloqueada" || !etapaEstaEmAndamento || !etapaPreenchida(etapa) || etapaEstaConcluida}
                     onClick={() => finalizarEtapa(etapa)}
                   >
-                    <CheckCircle2 className="h-3 w-3 mr-1" /> Finalizar
+                    {acaoPendente && runEtapa ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
+                    Finalizar
                   </Button>
                 </div>
               </div>
@@ -346,7 +449,7 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
                     disabled={perguntaReadonly}
                     allAnswers={respostasPorPergunta}
                     onChange={(fieldId: string, patch: any) => {
-                      if (!perguntaReadonly) updateRascunho(fieldId, patch);
+                      if (!perguntaReadonly) updateRascunho(fieldId, patch, respostaAtual(pergunta));
                     }}
                     assignmentId={a.id}
                     numeroTarefa={a.numero_tarefa ?? 0}

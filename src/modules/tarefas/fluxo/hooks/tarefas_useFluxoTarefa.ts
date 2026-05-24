@@ -26,6 +26,7 @@ import type {
   RespostaOriginal,
   TarefaFluxoAuditTrail,
   TarefaFluxoContingencia,
+  TarefaFluxoEtapaRun,
   TarefaFluxoScoreLog,
 } from "../types/tarefas_fluxoTypes";
 
@@ -163,6 +164,24 @@ export function useFluxoTarefa(assignmentId: string | null): UseFluxoTarefaResul
     refetchOnMount: true,
   });
 
+  const etapasRunsQ = useQuery({
+    queryKey: ["tarefas_fluxo_etapas_runs", assignmentId],
+    queryFn: async () => {
+      if (!assignmentId) return [];
+      const { data, error } = await (supabase as any)
+        .from("operational_assignment_stage_runs")
+        .select("*")
+        .eq("assignment_id", assignmentId)
+        .order("stage_order", { ascending: true })
+        .order("started_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as TarefaFluxoEtapaRun[];
+    },
+    enabled: !!assignmentId,
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+
   const isLoading =
     assignmentQ.isLoading ||
     respostasQ.isLoading ||
@@ -170,7 +189,8 @@ export function useFluxoTarefa(assignmentId: string | null): UseFluxoTarefaResul
     planosAuditQ.isLoading ||
     contingenciasQ.isLoading ||
     auditTrailQ.isLoading ||
-    scoreLogsQ.isLoading;
+    scoreLogsQ.isLoading ||
+    etapasRunsQ.isLoading;
 
   const error =
     assignmentQ.error ??
@@ -179,7 +199,8 @@ export function useFluxoTarefa(assignmentId: string | null): UseFluxoTarefaResul
     planosAuditQ.error ??
     contingenciasQ.error ??
     auditTrailQ.error ??
-    scoreLogsQ.error;
+    scoreLogsQ.error ??
+    etapasRunsQ.error;
 
   const assignment = assignmentQ.data ?? null;
 
@@ -189,6 +210,7 @@ export function useFluxoTarefa(assignmentId: string | null): UseFluxoTarefaResul
         respostasOriginais: respostasQ.data ?? [],
         planosAprovador: planosAprovQ.data ?? [],
         planosAuditor: planosAuditQ.data ?? [],
+        etapasRuns: etapasRunsQ.data ?? [],
         contingencias: contingenciasQ.data ?? [],
         auditTrail: auditTrailQ.data ?? [],
         scoreLogs: scoreLogsQ.data ?? [],
@@ -205,6 +227,7 @@ export function useFluxoTarefa(assignmentId: string | null): UseFluxoTarefaResul
     qc.invalidateQueries({ queryKey: ["tarefas_fluxo_contingencias", assignmentId] });
     qc.invalidateQueries({ queryKey: ["tarefas_fluxo_audit_trail", assignmentId] });
     qc.invalidateQueries({ queryKey: ["tarefas_fluxo_score_logs", assignmentId] });
+    qc.invalidateQueries({ queryKey: ["tarefas_fluxo_etapas_runs", assignmentId] });
     qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
   };
 

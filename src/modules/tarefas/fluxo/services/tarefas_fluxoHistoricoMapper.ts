@@ -186,6 +186,7 @@ export function construirTarefaFluxoData(args: {
   respostasOriginais: RespostaOriginal[];
   planosAprovador: PlanoAprovador[];
   planosAuditor: PlanoAuditor[];
+  etapasRuns?: any[];
   contingencias?: any[];
   auditTrail?: any[];
   scoreLogs?: any[];
@@ -206,6 +207,7 @@ export function construirTarefaFluxoData(args: {
   return {
     assignment: args.assignment,
     perguntas,
+    etapasRuns: args.etapasRuns ?? [],
     contingencias: args.contingencias ?? [],
     auditTrail: args.auditTrail ?? [],
     scoreLogs: args.scoreLogs ?? [],

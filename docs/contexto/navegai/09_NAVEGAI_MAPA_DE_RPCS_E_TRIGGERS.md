@@ -11,6 +11,9 @@
 | `calcular_notas_por_setor` | Avaliacoes | Dashboard notas | Ativo |
 | `dashboard_metricas_agregadas` | Avaliacoes | Dashboard | Ativo |
 | `tarefas_rpc_executor_enviar_respostas` | Tarefas | Envio executor -> aprovador | Critico |
+| `tarefas_rpc_executor_autosalvar_respostas` | Tarefas | Autosave de respostas/anexos sem enviar ao aprovador | Critico |
+| `tarefas_rpc_executor_iniciar_etapa` | Tarefas | Persistir inicio e atraso de etapa | Critico |
+| `tarefas_rpc_executor_finalizar_etapa` | Tarefas | Persistir fim, duracao e atraso de etapa | Critico |
 | `tarefas_rpc_executor_responder_plano_aprovador` | Tarefas | Executor responde plano | Critico |
 | `tarefas_rpc_aprovador_criar_plano_acao` | Tarefas | Aprovador cria plano | Critico |
 | `tarefas_rpc_aprovador_criar_plano_executor` | Tarefas | Aprovador cria plano para executor | Critico |

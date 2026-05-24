@@ -60,6 +60,25 @@ function useCountdown(dataPrevista: string, horarioLimite: string | null) {
   return { label, isExpired, isUrgent, isWarning };
 }
 
+function useElapsedSince(startedAt?: string | null) {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!startedAt) return;
+    const interval = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(interval);
+  }, [startedAt]);
+
+  if (!startedAt) return null;
+
+  const elapsedSeconds = Math.max(0, Math.floor((now - new Date(startedAt).getTime()) / 1000));
+  const minutes = Math.floor(elapsedSeconds / 60);
+  if (minutes < 60) return `${minutes}min`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return `${hours}h${remainingMinutes > 0 ? `${remainingMinutes}m` : ""}`;
+}
+
 export function AssignmentCard({ assignment: a, onClick }: Props) {
   const { profile } = useAuth();
   const { transition } = useOperationalTransition();
@@ -106,6 +125,7 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
 
   const isActive = ["pendente", "em_andamento", "devolvida"].includes(a.status);
   const countdown = useCountdown(a.data_prevista, isActive ? a.horario_limite : null);
+  const etapaElapsed = useElapsedSince(a.etapa_atual_started_at);
 
   // Botão Iniciar: visível para o executor quando a tarefa está em status que permite iniciar.
   const isExecutorOuAdmin = !!profile?.id && (a.responsavel_id === profile.id);
@@ -242,6 +262,20 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
         {a.rodada_atual > 1 && (
           <span className="flex items-center gap-1 text-[10px] text-amber-600">
             <RotateCcw className="w-3 h-3" /> R{a.rodada_atual}
+          </span>
+        )}
+
+        {a.etapa_atual_label && etapaElapsed && (
+          <span className="flex items-center gap-1 text-[10px] text-blue-700 bg-blue-50 border border-blue-100 rounded-full px-2 py-0.5">
+            <Timer className="w-3 h-3" />
+            {a.etapa_atual_label}: {etapaElapsed}
+          </span>
+        )}
+
+        {a.etapa_atual_inicio_atrasado && (
+          <span className="flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 border border-amber-100 rounded-full px-2 py-0.5">
+            <AlertTriangle className="w-3 h-3" />
+            Inicio atrasado {a.etapa_atual_inicio_atraso_minutos}min
           </span>
         )}
 

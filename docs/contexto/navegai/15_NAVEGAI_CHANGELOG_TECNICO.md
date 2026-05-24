@@ -1,5 +1,14 @@
 # Navegai - Changelog Tecnico
 
+## 2026-05-24 - Etapas do executor persistentes
+
+- Pedido: gravar inicio/fim de etapa, tempo decorrido, atraso de inicio/fim e manter respostas/anexos ao fechar/reabrir.
+- Banco/RPC: criada migration `20260524170000_tarefas_etapas_execucao_persistente.sql`.
+- Tabela: `operational_assignment_stage_runs`.
+- RPCs: `tarefas_rpc_executor_iniciar_etapa`, `tarefas_rpc_executor_finalizar_etapa`, `tarefas_rpc_executor_autosalvar_respostas`.
+- Frontend: `tarefas_fluxoExecutorPanel.tsx` passou a usar estado de etapa vindo do banco; `tarefas_execucaoPage.tsx` e `tarefas_tarefaCard.tsx` exibem etapa em andamento e tempo decorrido na lista.
+- Regra preservada: `Enviar respostas ao aprovador` continua sendo o unico comando que muda a tarefa para `aguardando_aprovacao`.
+
 ## 2026-05-24 - Setup de memoria tecnica
 
 - Pedido: aplicar gabarito global e criar mapas para acelerar leitura/escrita.

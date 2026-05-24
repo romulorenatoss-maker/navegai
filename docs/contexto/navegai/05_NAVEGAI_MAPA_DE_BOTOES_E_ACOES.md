@@ -5,8 +5,8 @@
 | Nome visual | Action_id | Tela | Rota | Modulo | Hook/Service | API/RPC | Status |
 |---|---|---|---|---|---|---|---|
 | Enviar respostas ao aprovador | `tarefas.executor.enviar_respostas` | Tarefas Execucao | `/tarefas/execucao` | Tarefas | `tarefas_useExecutorActions` / `tarefas_fluxoRpcService` | `tarefas_rpc_executor_enviar_respostas` | Critico |
-| Iniciar etapa | `tarefas.executor.iniciar_etapa_local` | Drawer executor | `/tarefas/execucao` | Tarefas | estado local `tarefas_fluxoExecutorPanel` | NAO ENCONTRADO NO CODIGO como RPC | Visual/local |
-| Finalizar etapa | `tarefas.executor.finalizar_etapa_local` | Drawer executor | `/tarefas/execucao` | Tarefas | estado local `tarefas_fluxoExecutorPanel` | NAO ENCONTRADO NO CODIGO como RPC | Visual/local |
+| Iniciar etapa | `tarefas.executor.iniciar_etapa` | Drawer executor | `/tarefas/execucao` | Tarefas | `tarefas_fluxoRpcService` | `tarefas_rpc_executor_iniciar_etapa` | Persistente |
+| Finalizar etapa | `tarefas.executor.finalizar_etapa` | Drawer executor | `/tarefas/execucao` | Tarefas | `tarefas_fluxoRpcService` | `tarefas_rpc_executor_finalizar_etapa` | Persistente |
 | Conforme | `tarefas.executor.responder_conforme` | DynamicFieldRenderer | `/tarefas/execucao` | Tarefas | `tarefas_dynamicFieldRenderer` | grava resposta existente | Ativo |
 | Nao Conforme | `tarefas.executor.responder_nao_conforme` | DynamicFieldRenderer | `/tarefas/execucao` | Tarefas | `tarefas_dynamicFieldRenderer` | grava resposta existente | Ativo |
 | N/A | `tarefas.executor.responder_na` | DynamicFieldRenderer | `/tarefas/execucao` | Tarefas | `tarefas_dynamicFieldRenderer` | valor_texto `na` | Ativo |
@@ -35,5 +35,11 @@
 
 | Nome visual | Tela | Arquivo | Problema | Risco |
 |---|---|---|---|---|
-| Iniciar etapa | Tarefas Execucao | `tarefas_fluxoExecutorPanel.tsx` | Acao local sem persistencia | Baixo nesta fase; alto se precisar auditoria de tempo |
-| Finalizar etapa | Tarefas Execucao | `tarefas_fluxoExecutorPanel.tsx` | Acao local sem persistencia | Baixo nesta fase; alto se precisar auditoria de tempo |
+| Nenhum critico nesta area | Tarefas Execucao | `tarefas_fluxoExecutorPanel.tsx` | Inicio/fim de etapa agora persistem em `operational_assignment_stage_runs` | Monitorar aplicacao da migration em ambiente |
+
+## 4. Contrato tecnico - etapas persistentes
+
+- `Iniciar etapa`: grava `started_at`, atraso de inicio e usuario em `operational_assignment_stage_runs`.
+- `Finalizar etapa`: exige preenchimento no frontend, grava `finished_at`, duracao, atraso de fim e libera a proxima etapa.
+- `Autosave de resposta/anexo`: `tarefas_rpc_executor_autosalvar_respostas` grava rascunho em `operational_field_answers` sem enviar ao aprovador.
+- `Enviar respostas ao aprovador`: continua sendo o unico comando que muda status para `aguardando_aprovacao`.

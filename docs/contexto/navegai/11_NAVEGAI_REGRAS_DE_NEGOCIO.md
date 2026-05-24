@@ -7,7 +7,10 @@
 - Valor de resposta nao deve ser inferido apenas por evidencia.
 - Aprovador e auditor possuem fluxos proprios; nao alterar junto com executor sem pedido.
 - Envio ao aprovador deve depender de completude das perguntas/etapas obrigatorias.
-- Cronometro por etapa atualmente e local/visual; persistencia exige banco/RPC aprovados.
+- Cronometro por etapa deve persistir em `operational_assignment_stage_runs`.
+- Clique em Iniciar etapa grava imediatamente `started_at`; fechar/reabrir deve manter etapa em andamento e tempo decorrido.
+- Finalizar etapa grava `finished_at`, `duration_seconds`, atraso de fim e libera a proxima etapa.
+- Autosave de resposta/anexo nao envia ao aprovador; o envio final continua exclusivo do botao `Enviar respostas ao aprovador`.
 
 ## 2. Propostas
 
