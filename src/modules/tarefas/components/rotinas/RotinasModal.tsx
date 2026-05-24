@@ -335,9 +335,9 @@ async function loadTemplate(templateId: string) {
     horario_limite_execucao: tmpl.horario_limite_execucao || "18:00",
     tolerancia_minutos: tmpl.tolerancia_minutos || 0, sla_horas: tmpl.sla_horas || 12,
     sla_executor_tarefa_horas:
-      slaResp.executor_tarefa_horas ?? TAREFAS_SLA_RESPONSABILIDADE_DEFAULTS.executorTarefaHoras,
+      slaResp.executor_tarefa_horas ?? tmpl.sla_horas ?? TAREFAS_SLA_RESPONSABILIDADE_DEFAULTS.executorTarefaHoras,
     sla_executor_plano_aprovador_horas:
-      slaResp.executor_plano_aprovador_horas ?? TAREFAS_SLA_RESPONSABILIDADE_DEFAULTS.executorPlanoAprovadorHoras,
+      slaResp.executor_plano_aprovador_horas ?? tmpl.prazo_sla_correcao_horas ?? TAREFAS_SLA_RESPONSABILIDADE_DEFAULTS.executorPlanoAprovadorHoras,
     sla_aprovador_aprovar_horas:
       slaResp.aprovador_aprovar_horas ?? TAREFAS_SLA_RESPONSABILIDADE_DEFAULTS.aprovadorAprovarHoras,
     sla_aprovador_plano_auditor_horas:
@@ -487,6 +487,12 @@ export function RotinasModal({ open, onClose, templateId, setores, colaboradores
 
     setSaving1("avaliado", true);
     try {
+      await upsertTemplate(currentId, {
+        tolerancia_minutos: form.tolerancia_minutos,
+        sla_horas: form.sla_executor_tarefa_horas || form.sla_horas,
+        prazo_sla_correcao_horas: form.sla_executor_plano_aprovador_horas || form.prazo_sla_correcao_horas,
+      });
+      await saveSlaResponsabilidadesToDb(currentId, form);
       const { sections: s, fields: f } = await saveFieldsToDb(currentId, sections, fields);
       setSections(s);
       setFields(f);
@@ -619,6 +625,7 @@ export function RotinasModal({ open, onClose, templateId, setores, colaboradores
               <TabsContent value="avaliado" className="mt-0 h-full">
                 {tarefasAbertas === 0 ? (
                   <RotinasTabAvaliado
+                    form={form} setForm={set}
                     sections={sections} setSections={setSections}
                     fields={fields} setFields={setFields}
                     onSave={saveAvaliado} saving={saving.avaliado}

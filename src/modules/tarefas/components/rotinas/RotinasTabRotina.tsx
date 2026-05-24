@@ -363,43 +363,6 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
         </div>
       )}
 
-      {/* SLA do executor */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-border pt-4">
-        <div className="space-y-1.5">
-          <Label>SLA do Executor (horas)</Label>
-          <Input
-            type="number"
-            min={1}
-            value={form.sla_executor_tarefa_horas || 12}
-            onChange={(e) => {
-              const valor = +e.target.value || 12;
-              set("sla_executor_tarefa_horas", valor);
-              set("sla_horas", valor);
-            }}
-          />
-          <p className="text-[10px] text-muted-foreground">Padrao: 12h para concluir a tarefa.</p>
-        </div>
-        <div className="space-y-1.5">
-          <Label>SLA do plano para executor (horas)</Label>
-          <Input
-            type="number"
-            min={1}
-            value={form.sla_executor_plano_aprovador_horas || 12}
-            onChange={(e) => {
-              const valor = +e.target.value || 12;
-              set("sla_executor_plano_aprovador_horas", valor);
-              set("prazo_sla_correcao_horas", valor);
-            }}
-          />
-          <p className="text-[10px] text-muted-foreground">Padrao: 12h para responder plano do aprovador.</p>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Tolerância de Atraso (minutos)</Label>
-          <Input type="number" min={0} value={form.tolerancia_minutos || 0} onChange={(e) => set("tolerancia_minutos", +e.target.value || 0)} />
-          <p className="text-[10px] text-muted-foreground">Minutos extras sem penalidade.</p>
-        </div>
-      </div>
-
       {/* Preview + Botão forçar geração */}
       <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-3">
         <div className="flex items-center justify-between">

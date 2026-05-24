@@ -8,10 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, GripVertical, Trash2, Copy, ChevronDown, ChevronRight, Save, Clock, Settings2 } from "lucide-react";
-import { SectionForm, FieldForm, OpcaoRegra, defaultSection, defaultField, FIELD_TYPES, SECTION_COLORS, getDefaultOpcoesRegras } from "@/modules/tarefas/types/tarefas_types";
+import { TemplateForm, SectionForm, FieldForm, OpcaoRegra, defaultSection, defaultField, FIELD_TYPES, SECTION_COLORS, getDefaultOpcoesRegras } from "@/modules/tarefas/types/tarefas_types";
 import { cn } from "@/lib/utils";
 
 interface Props {
+  form: TemplateForm;
+  setForm: <K extends keyof TemplateForm>(k: K, v: TemplateForm[K]) => void;
   sections: SectionForm[];
   setSections: React.Dispatch<React.SetStateAction<SectionForm[]>>;
   fields: FieldForm[];
@@ -369,7 +371,7 @@ function SectionCard({ section, fieldsDoSection, onUpdateSection, onDeleteSectio
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
-export function RotinasTabAvaliado({ sections, setSections, fields, setFields, onSave, saving, onFieldsChanged }: Props) {
+export function RotinasTabAvaliado({ form, setForm, sections, setSections, fields, setFields, onSave, saving, onFieldsChanged }: Props) {
   const addSection = () => setSections(prev => [...prev, defaultSection(prev.length)]);
 
   const updateSection = useCallback((updated: SectionForm) => {
@@ -430,6 +432,53 @@ export function RotinasTabAvaliado({ sections, setSections, fields, setFields, o
 
   return (
     <div className="space-y-4 p-1">
+      <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+        <div>
+          <h3 className="text-sm font-semibold">Prazos do Avaliado</h3>
+          <p className="text-[11px] text-muted-foreground">Defina o tempo esperado para resposta do executor e a tolerância de atraso.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-1.5">
+            <Label>SLA do Executor (horas)</Label>
+            <Input
+              type="number"
+              min={1}
+              value={form.sla_executor_tarefa_horas || 12}
+              onChange={(e) => {
+                const valor = +e.target.value || 12;
+                setForm("sla_executor_tarefa_horas", valor);
+                setForm("sla_horas", valor);
+              }}
+            />
+            <p className="text-[10px] text-muted-foreground">Padrão: 12h para concluir a tarefa.</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>SLA do plano para executor (horas)</Label>
+            <Input
+              type="number"
+              min={1}
+              value={form.sla_executor_plano_aprovador_horas || 12}
+              onChange={(e) => {
+                const valor = +e.target.value || 12;
+                setForm("sla_executor_plano_aprovador_horas", valor);
+                setForm("prazo_sla_correcao_horas", valor);
+              }}
+            />
+            <p className="text-[10px] text-muted-foreground">Padrão: 12h para responder plano do aprovador.</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Tolerância de Atraso (minutos)</Label>
+            <Input
+              type="number"
+              min={0}
+              value={form.tolerancia_minutos || 0}
+              onChange={(e) => setForm("tolerancia_minutos", +e.target.value || 0)}
+            />
+            <p className="text-[10px] text-muted-foreground">Minutos extras sem penalidade.</p>
+          </div>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold">Estrutura da Tarefa</h3>
