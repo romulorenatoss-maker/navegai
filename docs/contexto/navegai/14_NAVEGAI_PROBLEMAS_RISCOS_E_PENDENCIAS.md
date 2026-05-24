@@ -8,6 +8,7 @@
 | Artefatos antigos de IA no repo | Media | `reports/AI_RETURN`, `docs/AI` | Nao usar como verdade sem validar codigo |
 | Tarefas com fluxo complexo | Alta | RPCs e triggers `tarefas_*` | Alterar localmente e testar status |
 | Secrets/ambientes | Alta | Edge Functions e Supabase | `.env` deve ficar fora do Git |
+| Boot branco por Supabase env | Alta | `client.ts` com `import.meta.env.VITE_SUPABASE_URL` pode virar `undefined` no Lovable publicado | Nao alterar padrao Lovable do client sem validar deploy |
 | Persistencia de tempo por etapa | Media | NAO ENCONTRADO NO CODIGO | Propor tabela/RPC somente com aprovacao |
 
 ## 2. Pendencias de mapa

@@ -1,5 +1,12 @@
 # Navegai - Changelog Tecnico
 
+## 2026-05-24 - Memoria de incidente Supabase client
+
+- Incidente reportado: tela branca em mobile/desktop apos publicar.
+- Causa confirmada pelo Lovable: `src/integrations/supabase/client.ts` usava `import.meta.env.VITE_SUPABASE_URL`; no bundle publicado ficou `undefined`, gerando `supabaseUrl is required` no boot.
+- Correcao aplicada no Lovable: restaurar padrao Lovable com Supabase URL e anon/publishable key disponiveis diretamente no client frontend.
+- Regra futura: nao converter `client.ts` para depender somente de `import.meta.env` sem validar deploy publicado; service role e demais secrets continuam proibidos no frontend.
+
 ## 2026-05-24 - Etapas do executor persistentes
 
 - Pedido: gravar inicio/fim de etapa, tempo decorrido, atraso de inicio/fim e manter respostas/anexos ao fechar/reabrir.
