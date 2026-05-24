@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { requirePropostasAccess } from "../_shared/propostas_auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -63,6 +64,8 @@ const extrairUltimaMensagemUsuario = (messages: Msg[]) => [...messages].reverse(
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const __auth = await requirePropostasAccess(req, corsHeaders);
+  if (__auth instanceof Response) return __auth;
 
   try {
     const { messages, contexto } = await req.json() as {
