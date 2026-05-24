@@ -1,5 +1,12 @@
 # Navegai - Changelog Tecnico
 
+## 2026-05-24 - Storage seguro mobile
+
+- Incidente prevenido: Safari/iOS/WebView pode lancar `SecurityError` ao acessar `localStorage`/`sessionStorage`, causando tela branca antes do React montar.
+- Correcao Lovable incorporada: `src/integrations/supabase/client.ts` usa storage seguro com fallback em memoria para Auth do Supabase.
+- Ajuste complementar: `src/hooks/useSessionTracker.ts` usa helpers `safeSessionGet`, `safeSessionSet` e `safeSessionRemove` tambem no `beforeunload` e no encerramento de sessao.
+- Regra futura: nao acessar storage do navegador direto em codigo de boot/sessao; sempre usar wrapper seguro.
+
 ## 2026-05-24 - Hotfix RPC de etapas indisponivel
 
 - Incidente reportado: ao iniciar etapa no mobile, Supabase retornou `Could not find the function public.tarefas_rpc_executor_iniciar_etapa(...) in the schema cache`.

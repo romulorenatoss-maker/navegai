@@ -9,6 +9,7 @@
 | Tarefas com fluxo complexo | Alta | RPCs e triggers `tarefas_*` | Alterar localmente e testar status |
 | Secrets/ambientes | Alta | Edge Functions e Supabase | `.env` deve ficar fora do Git |
 | Boot branco por Supabase env | Alta | `client.ts` com `import.meta.env.VITE_SUPABASE_URL` pode virar `undefined` no Lovable publicado | Nao alterar padrao Lovable do client sem validar deploy |
+| Boot branco por storage bloqueado | Alta | Safari/iOS privado, WebView ou cookies bloqueados podem lancar `SecurityError` em `localStorage`/`sessionStorage` | Usar storage seguro/fallback em memoria e helpers `safeSession*` |
 | RPC nova antes de migration/cache | Alta | PostgREST pode retornar `Could not find the function ... in the schema cache` | Frontend deve ter fallback e migration deve estar aplicada antes de depender da RPC |
 | Persistencia de tempo por etapa | Media | NAO ENCONTRADO NO CODIGO | Propor tabela/RPC somente com aprovacao |
 

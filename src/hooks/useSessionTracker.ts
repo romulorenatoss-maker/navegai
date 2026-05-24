@@ -49,14 +49,14 @@ export function useSessionTracker(userId: string | null, profileId: string | nul
       if (!error && data) {
         sessionRowId.current = data.id;
         // Store in sessionStorage so beforeunload can reference it
-        try { sessionStorage.setItem("__session_row_id", data.id); } catch {}
+        safeSessionSet("__session_row_id", data.id);
       }
     };
 
     startSession();
 
     const handleBeforeUnload = () => {
-      const rowId = sessionRowId.current || sessionStorage.getItem("__session_row_id");
+      const rowId = sessionRowId.current || safeSessionGet("__session_row_id");
       if (!rowId) return;
 
       const now = new Date().toISOString();
@@ -120,7 +120,7 @@ export function useSessionTracker(userId: string | null, profileId: string | nul
       .eq("id", rowId);
 
     sessionRowId.current = null;
-    try { sessionStorage.removeItem("__session_row_id"); } catch {}
+    safeSessionRemove("__session_row_id");
   }, []);
 
   return { endSession };

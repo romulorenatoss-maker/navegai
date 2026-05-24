@@ -24,6 +24,8 @@
 - Padrao Lovable aprovado: manter `SUPABASE_URL` e `SUPABASE_PUBLISHABLE_KEY` diretamente disponiveis no `client.ts` do frontend publicado.
 - Nao trocar o `client.ts` para depender apenas de `import.meta.env` sem validar build publicada no Lovable.
 - Nunca hardcodar service role, tokens privados, GitHub token, chaves de IA ou secrets de Edge Function no frontend. A excecao e somente URL do Supabase e anon/publishable key.
+- Auth do Supabase deve usar storage seguro com fallback em memoria; `localStorage` pode falhar em Safari/iOS privado, cookies bloqueados ou WebView.
+- `sessionStorage` deve ser acessado por helper seguro (`try/catch`), inclusive em `beforeunload`.
 
 ## 4. Backup
 
