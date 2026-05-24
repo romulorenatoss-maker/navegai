@@ -35,3 +35,9 @@ verify_jwt = true
 
 [functions.preview-proposta]
 verify_jwt = true
+
+[functions.propostas-render-docx]
+verify_jwt = true
+
+[functions.propostas-produtos-conversa]
+verify_jwt = true
