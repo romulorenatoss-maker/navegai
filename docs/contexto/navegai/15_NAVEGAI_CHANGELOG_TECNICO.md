@@ -1,5 +1,13 @@
 # Navegai - Changelog Tecnico
 
+## 2026-05-24 - Hotfix RPC de etapas indisponivel
+
+- Incidente reportado: ao iniciar etapa no mobile, Supabase retornou `Could not find the function public.tarefas_rpc_executor_iniciar_etapa(...) in the schema cache`.
+- Causa provavel: frontend publicado chegou antes da migration/RPC estar aplicada ou antes do cache PostgREST atualizar.
+- Correcao: `tarefas_fluxoExecutorPanel.tsx` agora cai para modo local se RPC de etapa/autosave estiver indisponivel, sem travar a tela.
+- Ajuste visual: botoes Iniciar/Finalizar desabilitados agora ficam claramente cinza no mobile.
+- Regra futura: toda RPC nova usada pelo frontend precisa de fallback ou bloqueio visual ate o banco estar disponivel.
+
 ## 2026-05-24 - Memoria de incidente Supabase client
 
 - Incidente reportado: tela branca em mobile/desktop apos publicar.

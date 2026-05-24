@@ -38,15 +38,20 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
   const [rascunho, setRascunho] = useState<Record<string, ExecutorRespostaInput>>({});
   const [etapaSelecionadaId, setEtapaSelecionadaId] = useState<string | null>(null);
   const [etapaAcaoPendenteId, setEtapaAcaoPendenteId] = useState<string | null>(null);
+  const [etapaLocalEmAndamentoId, setEtapaLocalEmAndamentoId] = useState<string | null>(null);
+  const [etapaLocalIniciadaEm, setEtapaLocalIniciadaEm] = useState<number | null>(null);
+  const [etapasLocaisConcluidas, setEtapasLocaisConcluidas] = useState<Record<string, boolean>>({});
+  const [persistenciaEtapasIndisponivel, setPersistenciaEtapasIndisponivel] = useState(false);
   const autosaveTimersRef = useRef<Record<string, number>>({});
+  const autosaveIndisponivelRef = useRef(false);
   const [, setTick] = useState(0);
 
   useEffect(() => {
     const temEtapaRodando = data?.etapasRuns?.some((run) => run.status === "em_andamento");
-    if (!temEtapaRodando) return;
+    if (!temEtapaRodando && !etapaLocalEmAndamentoId) return;
     const timer = window.setInterval(() => setTick((prev) => prev + 1), 1000);
     return () => window.clearInterval(timer);
-  }, [data?.etapasRuns]);
+  }, [data?.etapasRuns, etapaLocalEmAndamentoId]);
 
   useEffect(() => {
     return () => {
@@ -64,6 +69,14 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
 
   const a = data.assignment;
   const sla = tarefasExtrairSlaResponsabilidades(a);
+
+  const erroRpcIndisponivel = (err: any) => {
+    const texto = `${err?.code ?? ""} ${err?.message ?? ""} ${err?.details ?? ""}`.toLowerCase();
+    return texto.includes("could not find the function")
+      || texto.includes("schema cache")
+      || texto.includes("pgrst202")
+      || texto.includes("function") && texto.includes("does not exist");
+  };
 
   const sectionById = (() => {
     const snap = a.template_snapshot ?? {};
@@ -98,6 +111,11 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
         });
         invalidate();
       } catch (err: any) {
+        if (erroRpcIndisponivel(err)) {
+          autosaveIndisponivelRef.current = true;
+          console.warn("[tarefas] autosave persistente indisponivel; mantendo rascunho local", err);
+          return;
+        }
         toast.error(err?.message || "Nao foi possivel autosalvar a resposta.");
       }
     }, 700);
@@ -235,8 +253,10 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
     data.etapasRuns.forEach((run) => map.set(run.stage_id, run));
     return map;
   })();
-  const etapaConcluida = (etapaId: string) => etapaRunById.get(etapaId)?.status === "concluida";
-  const etapaEmAndamento = (etapaId: string) => etapaRunById.get(etapaId)?.status === "em_andamento";
+  const etapaConcluida = (etapaId: string) =>
+    etapaRunById.get(etapaId)?.status === "concluida" || !!etapasLocaisConcluidas[etapaId];
+  const etapaEmAndamento = (etapaId: string) =>
+    etapaRunById.get(etapaId)?.status === "em_andamento" || etapaLocalEmAndamentoId === etapaId;
   const todasEtapasConcluidas = etapas.every((etapa) => etapaConcluida(etapa.id));
   const etapaAtualIndexRaw = etapas.findIndex((etapa) => !etapaConcluida(etapa.id));
   const etapaAtualIndex = etapaAtualIndexRaw === -1 ? Math.max(0, etapas.length - 1) : etapaAtualIndexRaw;
@@ -282,6 +302,14 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
       invalidate();
       toast.success(`${etapa.label} iniciada.`);
     } catch (err: any) {
+      if (erroRpcIndisponivel(err)) {
+        setPersistenciaEtapasIndisponivel(true);
+        setEtapaSelecionadaId(etapa.id);
+        setEtapaLocalEmAndamentoId(etapa.id);
+        setEtapaLocalIniciadaEm(Date.now());
+        toast.warning("Etapa iniciada localmente. A persistencia aguardara a atualizacao do banco.");
+        return;
+      }
       toast.error(err?.message || "Nao foi possivel iniciar a etapa.");
     } finally {
       setEtapaAcaoPendenteId(null);
@@ -303,6 +331,16 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
       invalidate();
       toast.success(`${etapa.label} finalizada.`);
     } catch (err: any) {
+      if (erroRpcIndisponivel(err)) {
+        setPersistenciaEtapasIndisponivel(true);
+        setEtapasLocaisConcluidas((prev) => ({ ...prev, [etapa.id]: true }));
+        if (etapaLocalEmAndamentoId === etapa.id) {
+          setEtapaLocalEmAndamentoId(null);
+          setEtapaLocalIniciadaEm(null);
+        }
+        toast.warning(`${etapa.label} finalizada localmente. A persistencia aguardara a atualizacao do banco.`);
+        return;
+      }
       toast.error(err?.message || "Nao foi possivel finalizar a etapa.");
     } finally {
       setEtapaAcaoPendenteId(null);
@@ -345,8 +383,8 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
       {etapas.map((etapa, etapaIndex) => {
         const etapaStatus = getEtapaStatus(etapa, etapaIndex);
         const runEtapa = etapaRunById.get(etapa.id);
-        const etapaEstaEmAndamento = runEtapa?.status === "em_andamento";
-        const etapaEstaConcluida = runEtapa?.status === "concluida";
+        const etapaEstaEmAndamento = etapaEmAndamento(etapa.id);
+        const etapaEstaConcluida = etapaConcluida(etapa.id);
         const acaoPendente = etapaAcaoPendenteId === etapa.id;
         const podeResponderEtapa = etapaEstaEmAndamento && etapaStatus !== "bloqueada" && !etapaEstaConcluida;
         const perguntasPendentes = etapa.perguntas.filter((pergunta) => !perguntaCompleta(pergunta)).length;
@@ -392,17 +430,26 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
                   )}
                 </div>
                 <div className="flex items-center gap-1.5">
-                  {runEtapa && (
+                  {runEtapa ? (
                     <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-[11px] font-medium">
                       <Timer className="h-3 w-3" /> {formatElapsed(runEtapa.started_at, runEtapa.finished_at, runEtapa.duration_seconds)}
+                    </span>
+                  ) : etapaLocalEmAndamentoId === etapa.id && etapaLocalIniciadaEm ? (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-[11px] font-medium">
+                      <Timer className="h-3 w-3" /> {formatElapsed(new Date(etapaLocalIniciadaEm).toISOString())}
+                    </span>
+                  ) : null}
+                  {persistenciaEtapasIndisponivel && (
+                    <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700">
+                      modo local
                     </span>
                   )}
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-7 px-2 text-xs"
-                    disabled={acaoPendente || etapaStatus === "bloqueada" || !!runEtapa}
+                    className="h-7 px-2 text-xs disabled:opacity-45 disabled:bg-muted disabled:text-muted-foreground"
+                    disabled={acaoPendente || etapaStatus === "bloqueada" || !!runEtapa || etapaLocalEmAndamentoId === etapa.id || !!etapasLocaisConcluidas[etapa.id]}
                     onClick={() => iniciarEtapa(etapa)}
                   >
                     {acaoPendente && !runEtapa ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Play className="h-3 w-3 mr-1" />}
@@ -411,7 +458,7 @@ export function FluxoExecutorPanel({ assignmentId, meusSetorIds = [] }: Props) {
                   <Button
                     type="button"
                     size="sm"
-                    className="h-7 px-2 text-xs"
+                    className="h-7 px-2 text-xs disabled:opacity-45 disabled:bg-muted disabled:text-muted-foreground"
                     disabled={acaoPendente || etapaStatus === "bloqueada" || !etapaEstaEmAndamento || !etapaPreenchida(etapa) || etapaEstaConcluida}
                     onClick={() => finalizarEtapa(etapa)}
                   >
