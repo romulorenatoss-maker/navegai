@@ -5,39 +5,95 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const json = (body: Record<string, unknown>, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+type SupabaseAuthErrorDetails = Error & {
+  status?: number;
+  code?: string | null;
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
 
-    const authHeader = req.headers.get("Authorization")!;
-    const token = authHeader.replace("Bearer ", "");
+    if (!supabaseUrl || !serviceRoleKey || !anonKey) {
+      return json({ error: "Edge Function sem configuração de ambiente do Supabase." }, 500);
+    }
+
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return json({ error: "Sessão expirada. Entre novamente e tente alterar a senha." }, 401);
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    const callerClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
     const { data: { user: caller }, error: authError } = await supabaseAdmin.auth.getUser(token);
     if (authError || !caller) {
-      return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return json({ error: "Não autorizado. Entre novamente e tente alterar a senha." }, 401);
     }
 
-    const { data: isAdmin } = await supabaseAdmin.rpc("is_admin", { _user_id: caller.id });
-    if (!isAdmin) {
-      return new Response(JSON.stringify({ error: "Apenas administradores podem alterar senhas." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const { data: isPlatformAdmin, error: platformAdminError } = await callerClient.rpc("security_is_platform_admin");
+    let canUpdatePassword = !!isPlatformAdmin;
+
+    if (platformAdminError) {
+      const { data: isLegacyAdmin, error: legacyAdminError } = await supabaseAdmin.rpc("is_admin", {
+        _user_id: caller.id,
+      });
+      if (legacyAdminError) {
+        console.error("[admin-update-password] admin check error:", {
+          platformAdminError,
+          legacyAdminError,
+        });
+      }
+      canUpdatePassword = !!isLegacyAdmin;
     }
 
-    const { target_user_id, new_password } = await req.json();
-    if (!target_user_id || !new_password || new_password.length < 6) {
-      return new Response(JSON.stringify({ error: "Senha deve ter no mínimo 6 caracteres." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!canUpdatePassword) {
+      return json({ error: "Apenas administradores podem alterar senhas." }, 403);
     }
 
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(target_user_id, { password: new_password });
+    const payload = await req.json().catch(() => null) as {
+      target_user_id?: string;
+      new_password?: string;
+    } | null;
+
+    const targetUserId = payload?.target_user_id?.trim();
+    const newPassword = payload?.new_password ?? "";
+
+    if (!targetUserId) {
+      return json(
+        { error: "Colaborador sem usuário de acesso vinculado. Recrie ou vincule o login antes de alterar a senha." },
+        400,
+      );
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      return json({ error: "Senha deve ter no mínimo 6 caracteres." }, 400);
+    }
+
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
+      password: newPassword,
+    });
     if (updateError) {
+      const updateErrorDetails = updateError as SupabaseAuthErrorDetails;
       console.error("[admin-update-password] updateUserById error:", {
-        target_user_id,
-        status: (updateError as any).status,
-        code: (updateError as any).code,
+        target_user_id: targetUserId,
+        status: updateErrorDetails.status,
+        code: updateErrorDetails.code,
         name: updateError.name,
         message: updateError.message,
       });
@@ -50,17 +106,20 @@ Deno.serve(async (req) => {
         friendly = "A senha não atende à política mínima de tamanho/complexidade. Use uma senha mais forte.";
       } else if (raw.includes("same_password")) {
         friendly = "A nova senha não pode ser igual à atual.";
+      } else if (raw.includes("user not found") || raw.includes("not found")) {
+        friendly = "Usuário de acesso do colaborador não foi encontrado no Auth do Supabase.";
       }
 
-      return new Response(
-        JSON.stringify({ error: friendly, details: updateError.message, code: (updateError as any).code ?? null }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return json({
+        error: friendly,
+        details: updateError.message,
+        code: updateErrorDetails.code ?? null,
+      }, 400);
     }
 
-    return new Response(JSON.stringify({ success: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return json({ success: true });
   } catch (err) {
     console.error("[admin-update-password] unexpected error:", err);
-    return new Response(JSON.stringify({ error: (err as Error).message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return json({ error: "Erro inesperado ao alterar senha.", details: (err as Error).message }, 500);
   }
 });

@@ -360,6 +360,10 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
 
   const handleChangePassword = async () => {
     if (!collaborator) return;
+    if (!collaborator.user_id) {
+      toast.error("Este colaborador não tem usuário de acesso vinculado.");
+      return;
+    }
     if (newPassword.length < 6) { toast.error("Senha deve ter no mínimo 6 caracteres."); return; }
     if (newPassword !== confirmPassword) { toast.error("As senhas não coincidem."); return; }
 
@@ -368,11 +372,24 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
       const res = await supabase.functions.invoke("admin-update-password", {
         body: { target_user_id: collaborator.user_id, new_password: newPassword },
       });
-      // Quando a edge function retorna não-2xx, res.error é genérico ("non-2xx").
-      // A mensagem real do GoTrue está em res.data.error — priorize-a.
+      type FunctionErrorPayload = { error?: string; message?: string } | null;
+      type FunctionErrorContext = {
+        error?: string;
+        json?: () => Promise<FunctionErrorPayload>;
+        clone?: () => { json?: () => Promise<FunctionErrorPayload> };
+      };
+      let functionError: FunctionErrorPayload = (res.data as FunctionErrorPayload)?.error ? (res.data as FunctionErrorPayload) : null;
+      const errorContext = (res.error as { context?: FunctionErrorContext } | null | undefined)?.context;
+      if (!functionError && errorContext && typeof errorContext.json === "function") {
+        const errorResponse = typeof errorContext.clone === "function" ? errorContext.clone() : errorContext;
+        functionError = typeof errorResponse.json === "function" ? await errorResponse.json().catch(() => null) : null;
+      } else if (!functionError && errorContext?.error) {
+        functionError = errorContext;
+      }
+
       const realError =
-        (res.data as any)?.error ||
-        (res.error as any)?.context?.error ||
+        functionError?.error ||
+        functionError?.message ||
         res.error?.message;
       if (realError) throw new Error(realError);
       toast.success("Senha alterada com sucesso!");
