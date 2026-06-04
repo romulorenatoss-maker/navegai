@@ -10,6 +10,12 @@ const jsonHeaders = {
   "Content-Type": "application/json",
 };
 
+type MfaFactor = {
+  id: string;
+  status?: string;
+  factor_type?: string;
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -47,14 +53,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: jsonHeaders });
     }
 
-    const { data: roleData, error: roleError } = await adminClient
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", caller.id)
-      .eq("role", "admin")
-      .maybeSingle();
+    const { data: isPlatformAdmin, error: adminCheckError } = await callerClient.rpc("security_is_platform_admin");
 
-    if (roleError || !roleData) {
+    if (adminCheckError || !isPlatformAdmin) {
       return new Response(JSON.stringify({ error: "Apenas administradores podem gerenciar 2FA." }), { status: 403, headers: jsonHeaders });
     }
 
@@ -72,11 +73,11 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: jsonHeaders });
       }
 
-      const verified = data?.factors?.filter((factor: any) => factor.status === "verified" && factor.factor_type === "totp") || [];
+      const verified = (data?.factors as MfaFactor[] | undefined)?.filter((factor) => factor.status === "verified" && factor.factor_type === "totp") || [];
 
       return new Response(JSON.stringify({
         has_mfa: verified.length > 0,
-        factors: verified.map((factor: any) => ({ id: factor.id })),
+        factors: verified.map((factor) => ({ id: factor.id })),
       }), { status: 200, headers: jsonHeaders });
     }
 
@@ -86,7 +87,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: listErr.message }), { status: 400, headers: jsonHeaders });
       }
 
-      const factors = data?.factors?.filter((factor: any) => factor.factor_type === "totp") || [];
+      const factors = (data?.factors as MfaFactor[] | undefined)?.filter((factor) => factor.factor_type === "totp") || [];
 
       for (const factor of factors) {
         const { error: deleteErr } = await adminClient.auth.admin.mfa.deleteFactor({

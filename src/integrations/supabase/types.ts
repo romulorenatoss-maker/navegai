@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.4"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -230,18 +230,21 @@ export type Database = {
           created_at: string
           id: string
           nome: string
+          tenant_id: string | null
         }
         Insert: {
           cidade_id: string
           created_at?: string
           id?: string
           nome: string
+          tenant_id?: string | null
         }
         Update: {
           cidade_id?: string
           created_at?: string
           id?: string
           nome?: string
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -249,6 +252,13 @@ export type Database = {
             columns: ["cidade_id"]
             isOneToOne: false
             referencedRelation: "cidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bairros_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "security_tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -261,6 +271,7 @@ export type Database = {
           numero_tentativa: number
           periodo: string
           prioridade: number
+          tenant_id: string | null
         }
         Insert: {
           created_at?: string
@@ -269,6 +280,7 @@ export type Database = {
           numero_tentativa: number
           periodo: string
           prioridade?: number
+          tenant_id?: string | null
         }
         Update: {
           created_at?: string
@@ -277,8 +289,17 @@ export type Database = {
           numero_tentativa?: number
           periodo?: string
           prioridade?: number
+          tenant_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cadencia_tentativas_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "security_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       campanhas: {
         Row: {
@@ -286,6 +307,7 @@ export type Database = {
           created_at: string
           id: string
           nome: string
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -293,6 +315,7 @@ export type Database = {
           created_at?: string
           id?: string
           nome: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -300,9 +323,18 @@ export type Database = {
           created_at?: string
           id?: string
           nome?: string
+          tenant_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "campanhas_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "security_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       checklist_itens: {
         Row: {
@@ -388,6 +420,7 @@ export type Database = {
           recorrencia: Database["public"]["Enums"]["recorrencia_tipo"]
           recorrencia_dias: number[] | null
           setor_id: string | null
+          tenant_id: string | null
           tipo_servico_id: string | null
           titulo: string
           updated_at: string
@@ -401,6 +434,7 @@ export type Database = {
           recorrencia?: Database["public"]["Enums"]["recorrencia_tipo"]
           recorrencia_dias?: number[] | null
           setor_id?: string | null
+          tenant_id?: string | null
           tipo_servico_id?: string | null
           titulo: string
           updated_at?: string
@@ -414,6 +448,7 @@ export type Database = {
           recorrencia?: Database["public"]["Enums"]["recorrencia_tipo"]
           recorrencia_dias?: number[] | null
           setor_id?: string | null
+          tenant_id?: string | null
           tipo_servico_id?: string | null
           titulo?: string
           updated_at?: string
@@ -424,6 +459,13 @@ export type Database = {
             columns: ["setor_id"]
             isOneToOne: false
             referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklists_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "security_tenants"
             referencedColumns: ["id"]
           },
           {
@@ -440,18 +482,29 @@ export type Database = {
           created_at: string
           id: string
           nome: string
+          tenant_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           nome: string
+          tenant_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           nome?: string
+          tenant_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cidades_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "security_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cliente_contatos: {
         Row: {
@@ -574,6 +627,7 @@ export type Database = {
           referencia: string | null
           rg: string | null
           rua_id: string | null
+          tenant_id: string | null
           tipo_pessoa: string
           updated_at: string
         }
@@ -598,6 +652,7 @@ export type Database = {
           referencia?: string | null
           rg?: string | null
           rua_id?: string | null
+          tenant_id?: string | null
           tipo_pessoa?: string
           updated_at?: string
         }
@@ -622,6 +677,7 @@ export type Database = {
           referencia?: string | null
           rg?: string | null
           rua_id?: string | null
+          tenant_id?: string | null
           tipo_pessoa?: string
           updated_at?: string
         }
@@ -695,6 +751,7 @@ export type Database = {
           quantidade_tentativas: number
           tempo_exibicao_leads_horas: number
           tempo_expiracao_captura_segundos: number
+          tenant_id: string | null
           tipo_servico_conversao_id: string | null
           updated_at: string
         }
@@ -707,6 +764,7 @@ export type Database = {
           quantidade_tentativas?: number
           tempo_exibicao_leads_horas?: number
           tempo_expiracao_captura_segundos?: number
+          tenant_id?: string | null
           tipo_servico_conversao_id?: string | null
           updated_at?: string
         }
@@ -719,10 +777,18 @@ export type Database = {
           quantidade_tentativas?: number
           tempo_exibicao_leads_horas?: number
           tempo_expiracao_captura_segundos?: number
+          tenant_id?: string | null
           tipo_servico_conversao_id?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "configuracao_fluxo_leads_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "security_tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "configuracao_fluxo_leads_tipo_servico_conversao_id_fkey"
             columns: ["tipo_servico_conversao_id"]
@@ -994,20 +1060,31 @@ export type Database = {
           created_at: string
           descricao: string
           id: string
+          tenant_id: string | null
         }
         Insert: {
           ativo?: boolean
           created_at?: string
           descricao: string
           id?: string
+          tenant_id?: string | null
         }
         Update: {
           ativo?: boolean
           created_at?: string
           descricao?: string
           id?: string
+          tenant_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "lead_objecoes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "security_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lead_tarefas_contato: {
         Row: {
@@ -1089,6 +1166,7 @@ export type Database = {
           responsavel_id: string | null
           rua_id: string | null
           status_lead: string
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1116,6 +1194,7 @@ export type Database = {
           responsavel_id?: string | null
           rua_id?: string | null
           status_lead?: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1143,6 +1222,7 @@ export type Database = {
           responsavel_id?: string | null
           rua_id?: string | null
           status_lead?: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1218,70 +1298,6 @@ export type Database = {
           },
         ]
       }
-      operational_action_plans: {
-        Row: {
-          assignment_id: string
-          concluido_em: string | null
-          created_at: string
-          created_by: string | null
-          descricao: string
-          id: string
-          prazo: string | null
-          responsavel_id: string | null
-          resultado: string | null
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          assignment_id: string
-          concluido_em?: string | null
-          created_at?: string
-          created_by?: string | null
-          descricao: string
-          id?: string
-          prazo?: string | null
-          responsavel_id?: string | null
-          resultado?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          assignment_id?: string
-          concluido_em?: string | null
-          created_at?: string
-          created_by?: string | null
-          descricao?: string
-          id?: string
-          prazo?: string | null
-          responsavel_id?: string | null
-          resultado?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "operational_action_plans_assignment_id_fkey"
-            columns: ["assignment_id"]
-            isOneToOne: false
-            referencedRelation: "operational_assignments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "operational_action_plans_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "operational_action_plans_responsavel_id_fkey"
-            columns: ["responsavel_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       operational_approval_answers: {
         Row: {
           assignment_id: string
@@ -1308,6 +1324,7 @@ export type Database = {
           respondido_em: string
           respondido_por: string
           resposta: string
+          tenant_id: string | null
         }
         Insert: {
           assignment_id: string
@@ -1334,6 +1351,7 @@ export type Database = {
           respondido_em?: string
           respondido_por: string
           resposta?: string
+          tenant_id?: string | null
         }
         Update: {
           assignment_id?: string
@@ -1360,6 +1378,7 @@ export type Database = {
           respondido_em?: string
           respondido_por?: string
           resposta?: string
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -1393,6 +1412,7 @@ export type Database = {
           detalhes_json: Json | null
           etapa: string | null
           id: string
+          tenant_id: string | null
           tipo_evento: string
           usuario_id: string | null
         }
@@ -1403,6 +1423,7 @@ export type Database = {
           detalhes_json?: Json | null
           etapa?: string | null
           id?: string
+          tenant_id?: string | null
           tipo_evento: string
           usuario_id?: string | null
         }
@@ -1413,6 +1434,7 @@ export type Database = {
           detalhes_json?: Json | null
           etapa?: string | null
           id?: string
+          tenant_id?: string | null
           tipo_evento?: string
           usuario_id?: string | null
         }
@@ -1578,6 +1600,7 @@ export type Database = {
           template_snapshot: Json | null
           template_versao: number | null
           tempo_gasto_minutos: number | null
+          tenant_id: string | null
           tipo_assignment: string
           ultimo_motivo_reagendamento: string | null
           updated_at: string
@@ -1636,6 +1659,7 @@ export type Database = {
           template_snapshot?: Json | null
           template_versao?: number | null
           tempo_gasto_minutos?: number | null
+          tenant_id?: string | null
           tipo_assignment?: string
           ultimo_motivo_reagendamento?: string | null
           updated_at?: string
@@ -1694,6 +1718,7 @@ export type Database = {
           template_snapshot?: Json | null
           template_versao?: number | null
           tempo_gasto_minutos?: number | null
+          tenant_id?: string | null
           tipo_assignment?: string
           ultimo_motivo_reagendamento?: string | null
           updated_at?: string
@@ -1819,6 +1844,7 @@ export type Database = {
           motivo_alteracao: string | null
           observacao: string | null
           resposta: string | null
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1832,6 +1858,7 @@ export type Database = {
           motivo_alteracao?: string | null
           observacao?: string | null
           resposta?: string | null
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1845,6 +1872,7 @@ export type Database = {
           motivo_alteracao?: string | null
           observacao?: string | null
           resposta?: string | null
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1996,6 +2024,7 @@ export type Database = {
           responsavel_id: string | null
           status: string
           step_log_id: string | null
+          tenant_id: string | null
           tipos_evidencia_requeridos: Json | null
           updated_at: string
           validada_em: string | null
@@ -2023,6 +2052,7 @@ export type Database = {
           responsavel_id?: string | null
           status?: string
           step_log_id?: string | null
+          tenant_id?: string | null
           tipos_evidencia_requeridos?: Json | null
           updated_at?: string
           validada_em?: string | null
@@ -2050,6 +2080,7 @@ export type Database = {
           responsavel_id?: string | null
           status?: string
           step_log_id?: string | null
+          tenant_id?: string | null
           tipos_evidencia_requeridos?: Json | null
           updated_at?: string
           validada_em?: string | null
@@ -2162,6 +2193,7 @@ export type Database = {
           id: string
           observacao: string | null
           resposta: string | null
+          tenant_id: string | null
         }
         Insert: {
           assignment_id: string
@@ -2172,6 +2204,7 @@ export type Database = {
           id?: string
           observacao?: string | null
           resposta?: string | null
+          tenant_id?: string | null
         }
         Update: {
           assignment_id?: string
@@ -2182,6 +2215,7 @@ export type Database = {
           id?: string
           observacao?: string | null
           resposta?: string | null
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -2312,6 +2346,7 @@ export type Database = {
           observacao: string | null
           respondido_em: string
           respondido_por: string
+          tenant_id: string | null
           valor_booleano: boolean | null
           valor_data: string | null
           valor_json: Json | null
@@ -2331,6 +2366,7 @@ export type Database = {
           observacao?: string | null
           respondido_em?: string
           respondido_por: string
+          tenant_id?: string | null
           valor_booleano?: boolean | null
           valor_data?: string | null
           valor_json?: Json | null
@@ -2350,6 +2386,7 @@ export type Database = {
           observacao?: string | null
           respondido_em?: string
           respondido_por?: string
+          tenant_id?: string | null
           valor_booleano?: boolean | null
           valor_data?: string | null
           valor_json?: Json | null
@@ -2411,6 +2448,7 @@ export type Database = {
           reincidencia_ref: string | null
           respondido: boolean | null
           rodada: number
+          tenant_id: string | null
           tipo_evidencia_exigida: string | null
         }
         Insert: {
@@ -2435,6 +2473,7 @@ export type Database = {
           reincidencia_ref?: string | null
           respondido?: boolean | null
           rodada?: number
+          tenant_id?: string | null
           tipo_evidencia_exigida?: string | null
         }
         Update: {
@@ -2459,6 +2498,7 @@ export type Database = {
           reincidencia_ref?: string | null
           respondido?: boolean | null
           rodada?: number
+          tenant_id?: string | null
           tipo_evidencia_exigida?: string | null
         }
         Relationships: [
@@ -2506,59 +2546,6 @@ export type Database = {
           },
         ]
       }
-      operational_rankings: {
-        Row: {
-          contingencias_abertas: number | null
-          contingencias_resolvidas: number | null
-          created_at: string
-          id: string
-          periodo_fim: string
-          periodo_inicio: string
-          periodo_tipo: string
-          profile_id: string
-          rotinas_atrasadas: number | null
-          rotinas_no_prazo: number | null
-          score_medio: number | null
-          total_rotinas: number | null
-        }
-        Insert: {
-          contingencias_abertas?: number | null
-          contingencias_resolvidas?: number | null
-          created_at?: string
-          id?: string
-          periodo_fim: string
-          periodo_inicio: string
-          periodo_tipo: string
-          profile_id: string
-          rotinas_atrasadas?: number | null
-          rotinas_no_prazo?: number | null
-          score_medio?: number | null
-          total_rotinas?: number | null
-        }
-        Update: {
-          contingencias_abertas?: number | null
-          contingencias_resolvidas?: number | null
-          created_at?: string
-          id?: string
-          periodo_fim?: string
-          periodo_inicio?: string
-          periodo_tipo?: string
-          profile_id?: string
-          rotinas_atrasadas?: number | null
-          rotinas_no_prazo?: number | null
-          score_medio?: number | null
-          total_rotinas?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "operational_rankings_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       operational_score_logs: {
         Row: {
           assignment_id: string
@@ -2574,6 +2561,7 @@ export type Database = {
           sla_correcoes: number | null
           target_profile_id: string | null
           target_setor_id: string | null
+          tenant_id: string | null
           tipo_score: string
         }
         Insert: {
@@ -2590,6 +2578,7 @@ export type Database = {
           sla_correcoes?: number | null
           target_profile_id?: string | null
           target_setor_id?: string | null
+          tenant_id?: string | null
           tipo_score?: string
         }
         Update: {
@@ -2606,6 +2595,7 @@ export type Database = {
           sla_correcoes?: number | null
           target_profile_id?: string | null
           target_setor_id?: string | null
+          tenant_id?: string | null
           tipo_score?: string
         }
         Relationships: [
@@ -3142,6 +3132,7 @@ export type Database = {
           responsavel_id: string | null
           setor_id: string | null
           sla_horas: number | null
+          tenant_id: string | null
           tipo_atribuicao_avaliado: string
           tipo_execucao: string
           tolerancia_minutos: number | null
@@ -3200,6 +3191,7 @@ export type Database = {
           responsavel_id?: string | null
           setor_id?: string | null
           sla_horas?: number | null
+          tenant_id?: string | null
           tipo_atribuicao_avaliado?: string
           tipo_execucao?: string
           tolerancia_minutos?: number | null
@@ -3258,6 +3250,7 @@ export type Database = {
           responsavel_id?: string | null
           setor_id?: string | null
           sla_horas?: number | null
+          tenant_id?: string | null
           tipo_atribuicao_avaliado?: string
           tipo_execucao?: string
           tolerancia_minutos?: number | null
@@ -3352,6 +3345,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "operational_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "security_tenants"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "operational_templates_validador_contingencia_profile_id_fkey"
             columns: ["validador_contingencia_profile_id"]
             isOneToOne: false
@@ -3381,6 +3381,7 @@ export type Database = {
           numero_os: string | null
           status: Database["public"]["Enums"]["os_status"]
           tecnico_id: string | null
+          tenant_id: string | null
           tipo_servico_id: string | null
           updated_at: string
         }
@@ -3397,6 +3398,7 @@ export type Database = {
           numero_os?: string | null
           status?: Database["public"]["Enums"]["os_status"]
           tecnico_id?: string | null
+          tenant_id?: string | null
           tipo_servico_id?: string | null
           updated_at?: string
         }
@@ -3413,6 +3415,7 @@ export type Database = {
           numero_os?: string | null
           status?: Database["public"]["Enums"]["os_status"]
           tecnico_id?: string | null
+          tenant_id?: string | null
           tipo_servico_id?: string | null
           updated_at?: string
         }
@@ -3546,6 +3549,7 @@ export type Database = {
           setor_avaliado_id: string | null
           setor_nota_id: string | null
           target_employee_type: string
+          tenant_id: string | null
           tipo_avaliacao_id: string | null
           tipo_avaliado: string
           tipo_servico_id: string | null
@@ -3564,6 +3568,7 @@ export type Database = {
           setor_avaliado_id?: string | null
           setor_nota_id?: string | null
           target_employee_type?: string
+          tenant_id?: string | null
           tipo_avaliacao_id?: string | null
           tipo_avaliado?: string
           tipo_servico_id?: string | null
@@ -3582,6 +3587,7 @@ export type Database = {
           setor_avaliado_id?: string | null
           setor_nota_id?: string | null
           target_employee_type?: string
+          tenant_id?: string | null
           tipo_avaliacao_id?: string | null
           tipo_avaliado?: string
           tipo_servico_id?: string | null
@@ -3621,6 +3627,13 @@ export type Database = {
             columns: ["setor_nota_id"]
             isOneToOne: false
             referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "perguntas_avaliacao_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "security_tenants"
             referencedColumns: ["id"]
           },
           {
@@ -3761,6 +3774,7 @@ export type Database = {
           descricao: string | null
           id: string
           nome_plano: string
+          tenant_id: string | null
           velocidade: string | null
         }
         Insert: {
@@ -3768,6 +3782,7 @@ export type Database = {
           descricao?: string | null
           id?: string
           nome_plano: string
+          tenant_id?: string | null
           velocidade?: string | null
         }
         Update: {
@@ -3775,9 +3790,18 @@ export type Database = {
           descricao?: string | null
           id?: string
           nome_plano?: string
+          tenant_id?: string | null
           velocidade?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "planos_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "security_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -3791,6 +3815,7 @@ export type Database = {
           pode_editar_avaliacoes: boolean
           pode_excluir_avaliacoes: boolean
           setor_id: string | null
+          tenant_id: string | null
           updated_at: string
           user_id: string
         }
@@ -3805,6 +3830,7 @@ export type Database = {
           pode_editar_avaliacoes?: boolean
           pode_excluir_avaliacoes?: boolean
           setor_id?: string | null
+          tenant_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -3819,6 +3845,7 @@ export type Database = {
           pode_editar_avaliacoes?: boolean
           pode_excluir_avaliacoes?: boolean
           setor_id?: string | null
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -4745,6 +4772,7 @@ export type Database = {
           id: string
           periodo_contato: string
           prioridade: string
+          tenant_id: string | null
           tentativa_numero: number
         }
         Insert: {
@@ -4754,6 +4782,7 @@ export type Database = {
           id?: string
           periodo_contato?: string
           prioridade?: string
+          tenant_id?: string | null
           tentativa_numero: number
         }
         Update: {
@@ -4763,9 +4792,18 @@ export type Database = {
           id?: string
           periodo_contato?: string
           prioridade?: string
+          tenant_id?: string | null
           tentativa_numero?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "rotina_tentativas_leads_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "security_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ruas: {
         Row: {
@@ -4774,6 +4812,7 @@ export type Database = {
           created_at: string
           id: string
           nome: string
+          tenant_id: string | null
         }
         Insert: {
           bairro_id: string
@@ -4781,6 +4820,7 @@ export type Database = {
           created_at?: string
           id?: string
           nome: string
+          tenant_id?: string | null
         }
         Update: {
           bairro_id?: string
@@ -4788,6 +4828,7 @@ export type Database = {
           created_at?: string
           id?: string
           nome?: string
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -4797,7 +4838,203 @@ export type Database = {
             referencedRelation: "bairros"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ruas_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "security_tenants"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      security_access_attempts: {
+        Row: {
+          action: string
+          attempted_at: string
+          blocked: boolean
+          email_normalized: string | null
+          id: string
+          ip_address: string | null
+          ip_prefix: string | null
+          metadata: Json
+          nome: string | null
+          profile_id: string | null
+          reason: string | null
+          success: boolean
+          user_agent: string | null
+          user_agent_hash: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action?: string
+          attempted_at?: string
+          blocked?: boolean
+          email_normalized?: string | null
+          id?: string
+          ip_address?: string | null
+          ip_prefix?: string | null
+          metadata?: Json
+          nome?: string | null
+          profile_id?: string | null
+          reason?: string | null
+          success?: boolean
+          user_agent?: string | null
+          user_agent_hash?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          attempted_at?: string
+          blocked?: boolean
+          email_normalized?: string | null
+          id?: string
+          ip_address?: string | null
+          ip_prefix?: string | null
+          metadata?: Json
+          nome?: string | null
+          profile_id?: string | null
+          reason?: string | null
+          success?: boolean
+          user_agent?: string | null
+          user_agent_hash?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      security_access_blocks: {
+        Row: {
+          attempts_count: number
+          blocked_until: string | null
+          created_at: string
+          created_by: string | null
+          email_normalized: string | null
+          id: string
+          ip_address: string | null
+          ip_prefix: string | null
+          is_active: boolean
+          metadata: Json
+          nome: string | null
+          profile_id: string | null
+          reason: string
+          release_reason: string | null
+          released_at: string | null
+          released_by: string | null
+          scope: string
+          user_agent_hash: string | null
+          user_id: string | null
+        }
+        Insert: {
+          attempts_count?: number
+          blocked_until?: string | null
+          created_at?: string
+          created_by?: string | null
+          email_normalized?: string | null
+          id?: string
+          ip_address?: string | null
+          ip_prefix?: string | null
+          is_active?: boolean
+          metadata?: Json
+          nome?: string | null
+          profile_id?: string | null
+          reason?: string
+          release_reason?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          scope?: string
+          user_agent_hash?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          attempts_count?: number
+          blocked_until?: string | null
+          created_at?: string
+          created_by?: string | null
+          email_normalized?: string | null
+          id?: string
+          ip_address?: string | null
+          ip_prefix?: string | null
+          is_active?: boolean
+          metadata?: Json
+          nome?: string | null
+          profile_id?: string | null
+          reason?: string
+          release_reason?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          scope?: string
+          user_agent_hash?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      security_profile_tenants: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          papel: string
+          profile_id: string
+          tenant_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          papel?: string
+          profile_id: string
+          tenant_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          papel?: string
+          profile_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_profile_tenants_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_profile_tenants_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "security_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_tenants: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          slug: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          slug?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          slug?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       sessoes_usuario: {
         Row: {
@@ -4847,7 +5084,7 @@ export type Database = {
           descricao: string | null
           id: string
           nome: string
-          responsavel_padrao_id: string | null
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -4856,7 +5093,7 @@ export type Database = {
           descricao?: string | null
           id?: string
           nome: string
-          responsavel_padrao_id?: string | null
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -4865,15 +5102,15 @@ export type Database = {
           descricao?: string | null
           id?: string
           nome?: string
-          responsavel_padrao_id?: string | null
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "setores_responsavel_padrao_id_fkey"
-            columns: ["responsavel_padrao_id"]
+            foreignKeyName: "setores_tenant_id_fkey"
+            columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "security_tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -5007,6 +5244,7 @@ export type Database = {
           respondido_por: string | null
           resposta_valor_json: Json | null
           rodada: number
+          tenant_id: string | null
         }
         Insert: {
           assignment_id: string
@@ -5024,6 +5262,7 @@ export type Database = {
           respondido_por?: string | null
           resposta_valor_json?: Json | null
           rodada: number
+          tenant_id?: string | null
         }
         Update: {
           assignment_id?: string
@@ -5041,6 +5280,7 @@ export type Database = {
           respondido_por?: string | null
           resposta_valor_json?: Json | null
           rodada?: number
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -5083,6 +5323,7 @@ export type Database = {
           respondido_por: string | null
           resposta_valor_json: Json | null
           rodada: number
+          tenant_id: string | null
         }
         Insert: {
           assignment_id: string
@@ -5100,6 +5341,7 @@ export type Database = {
           respondido_por?: string | null
           resposta_valor_json?: Json | null
           rodada: number
+          tenant_id?: string | null
         }
         Update: {
           assignment_id?: string
@@ -5117,6 +5359,7 @@ export type Database = {
           respondido_por?: string | null
           resposta_valor_json?: Json | null
           rodada?: number
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -5159,6 +5402,7 @@ export type Database = {
           sla_executor: Json
           sla_plano_acao: Json
           sla_validador: Json
+          tenant_id: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -5178,6 +5422,7 @@ export type Database = {
           sla_executor?: Json
           sla_plano_acao?: Json
           sla_validador?: Json
+          tenant_id?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -5197,10 +5442,19 @@ export type Database = {
           sla_executor?: Json
           sla_plano_acao?: Json
           sla_validador?: Json
+          tenant_id?: string | null
           updated_at?: string
           updated_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tarefas_pontuacao_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "security_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tarefas_storage_config: {
         Row: {
@@ -5266,236 +5520,6 @@ export type Database = {
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      task_assignments: {
-        Row: {
-          created_at: string
-          data_prevista: string
-          evidencia_url: string | null
-          fim_em: string | null
-          id: string
-          inicio_em: string | null
-          motivo_bloqueio: string | null
-          observacao: string | null
-          pontuacao_obtida: number | null
-          prazo_limite: string | null
-          responsavel_id: string | null
-          status: string
-          template_id: string
-          tempo_gasto_minutos: number | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          data_prevista?: string
-          evidencia_url?: string | null
-          fim_em?: string | null
-          id?: string
-          inicio_em?: string | null
-          motivo_bloqueio?: string | null
-          observacao?: string | null
-          pontuacao_obtida?: number | null
-          prazo_limite?: string | null
-          responsavel_id?: string | null
-          status?: string
-          template_id: string
-          tempo_gasto_minutos?: number | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          data_prevista?: string
-          evidencia_url?: string | null
-          fim_em?: string | null
-          id?: string
-          inicio_em?: string | null
-          motivo_bloqueio?: string | null
-          observacao?: string | null
-          pontuacao_obtida?: number | null
-          prazo_limite?: string | null
-          responsavel_id?: string | null
-          status?: string
-          template_id?: string
-          tempo_gasto_minutos?: number | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "task_assignments_responsavel_id_fkey"
-            columns: ["responsavel_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "task_assignments_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "task_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      task_execution_logs: {
-        Row: {
-          acao: string
-          assignment_id: string
-          created_at: string
-          detalhes: Json | null
-          id: string
-          profile_id: string
-        }
-        Insert: {
-          acao: string
-          assignment_id: string
-          created_at?: string
-          detalhes?: Json | null
-          id?: string
-          profile_id: string
-        }
-        Update: {
-          acao?: string
-          assignment_id?: string
-          created_at?: string
-          detalhes?: Json | null
-          id?: string
-          profile_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "task_execution_logs_assignment_id_fkey"
-            columns: ["assignment_id"]
-            isOneToOne: false
-            referencedRelation: "task_assignments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "task_execution_logs_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      task_score_logs: {
-        Row: {
-          assignment_id: string
-          created_at: string
-          descricao: string | null
-          id: string
-          profile_id: string
-          tipo: string
-          valor: number
-        }
-        Insert: {
-          assignment_id: string
-          created_at?: string
-          descricao?: string | null
-          id?: string
-          profile_id: string
-          tipo: string
-          valor?: number
-        }
-        Update: {
-          assignment_id?: string
-          created_at?: string
-          descricao?: string | null
-          id?: string
-          profile_id?: string
-          tipo?: string
-          valor?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "task_score_logs_assignment_id_fkey"
-            columns: ["assignment_id"]
-            isOneToOne: false
-            referencedRelation: "task_assignments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "task_score_logs_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      task_templates: {
-        Row: {
-          ativo: boolean
-          bonus_antecipacao: number
-          created_at: string
-          descricao: string | null
-          dias_execucao: number[] | null
-          dificuldade: string
-          exigir_evidencia_foto: boolean
-          id: string
-          meta_execucao_minutos: number | null
-          obrigar_observacao: boolean
-          penalidade_atraso: number
-          penalidade_nao_execucao: number
-          pontuacao_base: number
-          prazo_horas: number
-          prioridade: string
-          setor_id: string | null
-          tipo_recorrencia: string
-          titulo: string
-          updated_at: string
-        }
-        Insert: {
-          ativo?: boolean
-          bonus_antecipacao?: number
-          created_at?: string
-          descricao?: string | null
-          dias_execucao?: number[] | null
-          dificuldade?: string
-          exigir_evidencia_foto?: boolean
-          id?: string
-          meta_execucao_minutos?: number | null
-          obrigar_observacao?: boolean
-          penalidade_atraso?: number
-          penalidade_nao_execucao?: number
-          pontuacao_base?: number
-          prazo_horas?: number
-          prioridade?: string
-          setor_id?: string | null
-          tipo_recorrencia?: string
-          titulo: string
-          updated_at?: string
-        }
-        Update: {
-          ativo?: boolean
-          bonus_antecipacao?: number
-          created_at?: string
-          descricao?: string | null
-          dias_execucao?: number[] | null
-          dificuldade?: string
-          exigir_evidencia_foto?: boolean
-          id?: string
-          meta_execucao_minutos?: number | null
-          obrigar_observacao?: boolean
-          penalidade_atraso?: number
-          penalidade_nao_execucao?: number
-          pontuacao_base?: number
-          prazo_horas?: number
-          prioridade?: string
-          setor_id?: string | null
-          tipo_recorrencia?: string
-          titulo?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "task_templates_setor_id_fkey"
-            columns: ["setor_id"]
-            isOneToOne: false
-            referencedRelation: "setores"
             referencedColumns: ["id"]
           },
         ]
@@ -5621,6 +5645,7 @@ export type Database = {
           descricao: string | null
           id: string
           nome: string
+          tenant_id: string | null
         }
         Insert: {
           ativo?: boolean
@@ -5629,6 +5654,7 @@ export type Database = {
           descricao?: string | null
           id?: string
           nome: string
+          tenant_id?: string | null
         }
         Update: {
           ativo?: boolean
@@ -5637,8 +5663,17 @@ export type Database = {
           descricao?: string | null
           id?: string
           nome?: string
+          tenant_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tipos_avaliacao_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "security_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tipos_servico: {
         Row: {
@@ -5649,6 +5684,7 @@ export type Database = {
           id: string
           nome: string
           setor_id: string | null
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -5659,6 +5695,7 @@ export type Database = {
           id?: string
           nome: string
           setor_id?: string | null
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -5669,6 +5706,7 @@ export type Database = {
           id?: string
           nome?: string
           setor_id?: string | null
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -5684,6 +5722,13 @@ export type Database = {
             columns: ["setor_id"]
             isOneToOne: false
             referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tipos_servico_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "security_tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -5925,6 +5970,16 @@ export type Database = {
         Args: { _lead_id: string; _profile_id: string; _user_id: string }
         Returns: boolean
       }
+      audit_rpc_registrar_log: {
+        Args: {
+          p_acao: string
+          p_dados_anteriores?: Json
+          p_dados_novos?: Json
+          p_registro_id?: string
+          p_tabela: string
+        }
+        Returns: undefined
+      }
       calcular_media_operacional_ponderada: {
         Args: {
           _data_fim?: string
@@ -5965,6 +6020,8 @@ export type Database = {
           total_os: number
         }[]
       }
+      estoque_usuario_autorizado: { Args: never; Returns: boolean }
+      estoque_usuario_profile_id: { Args: never; Returns: string }
       get_user_effective_permissions: {
         Args: { _profile_id: string }
         Returns: {
@@ -6001,7 +6058,15 @@ export type Database = {
         Args: { _cliente_id: string }
         Returns: boolean
       }
+      leads_rpc_excluir_lote: {
+        Args: { p_acao?: string; p_lead_ids: string[] }
+        Returns: number
+      }
       normalize_cpf: { Args: { cpf_input: string }; Returns: string }
+      os_rpc_excluir_lote: {
+        Args: { p_acao?: string; p_os_ids: string[] }
+        Returns: number
+      }
       propostas_categoria_em_uso: {
         Args: { _codigo: string }
         Returns: {
@@ -6013,6 +6078,187 @@ export type Database = {
         Args: { _user_id: string }
         Returns: boolean
       }
+      security_current_profile_id: { Args: never; Returns: string }
+      security_is_platform_admin: { Args: never; Returns: boolean }
+      security_is_tenant_admin: {
+        Args: { p_tenant_id: string }
+        Returns: boolean
+      }
+      security_is_tenant_manager: {
+        Args: { p_tenant_id: string }
+        Returns: boolean
+      }
+      security_require_admin: { Args: never; Returns: undefined }
+      security_resolver_tenant_corrente: { Args: never; Returns: string }
+      security_resolver_tenant_padrao: { Args: never; Returns: string }
+      security_rpc_campanha_salvar: {
+        Args: { p_ativo?: boolean; p_campanha_id?: string; p_nome?: string }
+        Returns: string
+      }
+      security_rpc_checklist_excluir: {
+        Args: { p_checklist_id: string }
+        Returns: undefined
+      }
+      security_rpc_checklist_salvar: {
+        Args: { p_checklist_id?: string; p_titulo?: string }
+        Returns: string
+      }
+      security_rpc_colaborador_atualizar_basico: {
+        Args: {
+          p_cargo: string
+          p_nome: string
+          p_profile_id: string
+          p_setores?: string[]
+        }
+        Returns: undefined
+      }
+      security_rpc_colaborador_excluir: {
+        Args: { p_profile_id: string }
+        Returns: undefined
+      }
+      security_rpc_colaborador_toggle_ativo: {
+        Args: { p_profile_id: string }
+        Returns: undefined
+      }
+      security_rpc_lead_objecao_criar: {
+        Args: { p_descricao: string }
+        Returns: string
+      }
+      security_rpc_lead_objecao_toggle_ativo: {
+        Args: { p_ativo: boolean; p_objecao_id: string }
+        Returns: undefined
+      }
+      security_rpc_pergunta_desativar: {
+        Args: { p_pergunta_id: string }
+        Returns: undefined
+      }
+      security_rpc_pergunta_salvar: {
+        Args: {
+          p_avaliador_id?: string
+          p_checklist_id?: string
+          p_correlacao_pergunta_id?: string
+          p_ordem?: number
+          p_pergunta?: string
+          p_pergunta_id?: string
+          p_peso?: number
+          p_setor_avaliado_id?: string
+          p_setor_nota_id?: string
+          p_target_employee_type?: string
+          p_tipo_avaliacao_id?: string
+          p_tipo_avaliado?: string
+          p_tipo_servico_id?: string
+        }
+        Returns: string
+      }
+      security_rpc_perguntas_reordenar: {
+        Args: { p_itens: Json }
+        Returns: undefined
+      }
+      security_rpc_permissoes_criar_grupo: {
+        Args: { p_description?: string; p_name: string }
+        Returns: string
+      }
+      security_rpc_permissoes_desativar_usuario: {
+        Args: { p_profile_id: string }
+        Returns: undefined
+      }
+      security_rpc_permissoes_excluir_grupo: {
+        Args: { p_group_id: string }
+        Returns: undefined
+      }
+      security_rpc_permissoes_set_group_permission: {
+        Args: {
+          p_action: string
+          p_bool_value?: boolean
+          p_group_id: string
+          p_resource_id: string
+          p_scope_value?: string
+        }
+        Returns: undefined
+      }
+      security_rpc_permissoes_set_usuario_override: {
+        Args: {
+          p_action: string
+          p_bool_value?: boolean
+          p_is_null?: boolean
+          p_profile_id: string
+          p_resource_id: string
+          p_scope_value?: string
+        }
+        Returns: undefined
+      }
+      security_rpc_permissoes_tela_salvar: {
+        Args: { p_profile_id: string; p_telas?: string[] }
+        Returns: undefined
+      }
+      security_rpc_permissoes_toggle_usuario_grupo: {
+        Args: { p_assigned: boolean; p_group_id: string; p_profile_id: string }
+        Returns: undefined
+      }
+      security_rpc_rotina_tentativas_salvar: {
+        Args: { p_config: Json; p_config_id: string; p_tentativas: Json }
+        Returns: undefined
+      }
+      security_rpc_sessao_finalizar: {
+        Args: { p_reason?: string; p_session_id: string }
+        Returns: undefined
+      }
+      security_rpc_sessao_iniciar: {
+        Args: { p_profile_id?: string }
+        Returns: string
+      }
+      security_rpc_setor_excluir: {
+        Args: { p_setor_id: string }
+        Returns: undefined
+      }
+      security_rpc_setor_salvar: {
+        Args: {
+          p_ativo?: boolean
+          p_descricao?: string
+          p_nome?: string
+          p_setor_id?: string
+        }
+        Returns: string
+      }
+      security_rpc_setor_toggle_ativo: {
+        Args: { p_setor_id: string }
+        Returns: undefined
+      }
+      security_rpc_system_log_registrar: {
+        Args: {
+          p_context?: Json
+          p_level: string
+          p_message: string
+          p_module?: string
+        }
+        Returns: undefined
+      }
+      security_rpc_tipo_servico_excluir: {
+        Args: { p_tipo_servico_id: string }
+        Returns: undefined
+      }
+      security_rpc_tipo_servico_salvar: {
+        Args: {
+          p_checklists?: string[]
+          p_descricao?: string
+          p_nome?: string
+          p_tipo_servico_id?: string
+        }
+        Returns: string
+      }
+      security_rpc_tipo_servico_toggle_ativo: {
+        Args: { p_tipo_servico_id: string }
+        Returns: undefined
+      }
+      security_usuario_tem_tenant: {
+        Args: { p_tenant_id: string }
+        Returns: boolean
+      }
+      security_usuario_tem_tenant_estrito: {
+        Args: { p_tenant_id: string }
+        Returns: boolean
+      }
+      security_usuario_tenant_ids: { Args: never; Returns: string[] }
       sync_user_role: {
         Args: { _cargo: string; _user_id: string }
         Returns: undefined
@@ -6053,6 +6299,7 @@ export type Database = {
           respondido_por: string | null
           resposta_valor_json: Json | null
           rodada: number
+          tenant_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -6086,12 +6333,40 @@ export type Database = {
           respondido_por: string | null
           resposta_valor_json: Json | null
           rodada: number
+          tenant_id: string | null
         }
         SetofOptions: {
           from: "*"
           to: "tarefas_planos_acao_aprovador"
           isOneToOne: true
           isSetofReturn: false
+        }
+      }
+      tarefas_rpc_aprovador_criar_planos_executor_lote: {
+        Args: { p_assignment_id: string; p_planos: Json }
+        Returns: {
+          assignment_id: string
+          criado_em: string
+          criado_por: string | null
+          criticidade: string | null
+          deleted_at: string | null
+          field_id: string
+          id: string
+          instrucao: string | null
+          itens_plano: Json
+          prazo_resolucao: string | null
+          respondido: boolean
+          respondido_em: string | null
+          respondido_por: string | null
+          resposta_valor_json: Json | null
+          rodada: number
+          tenant_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "tarefas_planos_acao_aprovador"
+          isOneToOne: false
+          isSetofReturn: true
         }
       }
       tarefas_rpc_aprovador_responder_plano_auditor: {
@@ -6112,6 +6387,7 @@ export type Database = {
           respondido_por: string | null
           resposta_valor_json: Json | null
           rodada: number
+          tenant_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -6119,6 +6395,27 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      tarefas_rpc_assignment_history_registrar: {
+        Args: {
+          p_assignment_id: string
+          p_detalhes_json?: Json
+          p_etapa?: string
+          p_tipo_evento: string
+          p_usuario_id?: string
+        }
+        Returns: undefined
+      }
+      tarefas_rpc_audit_trail_registrar: {
+        Args: {
+          p_assignment_id: string
+          p_dados_anteriores?: Json
+          p_dados_novos?: Json
+          p_executado_por?: string
+          p_motivo?: string
+          p_tipo_evento: string
+        }
+        Returns: undefined
       }
       tarefas_rpc_auditor_aprovar_auditoria: {
         Args: { p_assignment_id: string; p_notas?: Json }
@@ -6152,6 +6449,7 @@ export type Database = {
           respondido_por: string | null
           resposta_valor_json: Json | null
           rodada: number
+          tenant_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -6185,6 +6483,7 @@ export type Database = {
           respondido_por: string | null
           resposta_valor_json: Json | null
           rodada: number
+          tenant_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -6192,6 +6491,28 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      tarefas_rpc_contingencia_iniciar_tratamento: {
+        Args: {
+          p_contingency_id: string
+          p_plano_acao?: string
+          p_prazo_sla: string
+          p_tipos_evidencia_requeridos?: Json
+        }
+        Returns: undefined
+      }
+      tarefas_rpc_contingency_resolution_log_registrar: {
+        Args: {
+          p_acao: string
+          p_contingency_id: string
+          p_evidencia_url?: string
+          p_observacao?: string
+        }
+        Returns: undefined
+      }
+      tarefas_rpc_dashboard_ajustar_score: {
+        Args: { p_assignment_id: string; p_motivo: string; p_score: number }
+        Returns: undefined
       }
       tarefas_rpc_executor_autosalvar_respostas: {
         Args: { p_assignment_id: string; p_respostas: Json }
@@ -6295,6 +6616,7 @@ export type Database = {
           respondido_por: string | null
           resposta_valor_json: Json | null
           rodada: number
+          tenant_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -6302,6 +6624,37 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      tarefas_rpc_expiracao_cancelar_tarefa: {
+        Args: { p_assignment_id: string; p_motivo: string }
+        Returns: Json
+      }
+      tarefas_rpc_expiracao_reabrir_com_novo_prazo: {
+        Args: {
+          p_assignment_id: string
+          p_motivo: string
+          p_novo_prazo: string
+        }
+        Returns: Json
+      }
+      tarefas_rpc_sla_pausa_encerrar: {
+        Args: {
+          p_assignment_id: string
+          p_duration_ms?: number
+          p_ended_at?: string
+          p_status_destino?: string
+        }
+        Returns: undefined
+      }
+      tarefas_rpc_sla_pausa_iniciar: {
+        Args: {
+          p_assignment_id: string
+          p_motivo?: string
+          p_started_at?: string
+          p_status_destino?: string
+          p_status_origem?: string
+        }
+        Returns: undefined
       }
       user_has_avaliacao_on_os: {
         Args: { _os_id: string; _user_id: string }

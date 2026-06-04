@@ -38,14 +38,9 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { data: userRoles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
-
-    const roles = (userRoles || []).map((r: any) => r.role);
-    if (!roles.includes("admin") && !roles.includes("avaliador")) {
-      return new Response(JSON.stringify({ error: "Acesso restrito a administradores e avaliadores." }), {
+    const { data: isPlatformAdmin, error: adminCheckError } = await callerClient.rpc("security_is_platform_admin");
+    if (adminCheckError || !isPlatformAdmin) {
+      return new Response(JSON.stringify({ error: "Acesso restrito a administradores globais." }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

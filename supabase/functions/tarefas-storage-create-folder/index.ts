@@ -47,8 +47,8 @@ Deno.serve(async (req) => {
   const { data: userRes, error: userErr } = await userClient.auth.getUser();
   if (userErr || !userRes?.user) return json({ error: 'invalid_user' }, 401);
 
-  const { data: isAdminData } = await userClient.rpc('is_admin', { _user_id: userRes.user.id });
-  if (!isAdminData) return json({ error: 'forbidden_admin_only' }, 403);
+  const { data: isPlatformAdmin, error: adminCheckError } = await userClient.rpc('security_is_platform_admin');
+  if (adminCheckError || !isPlatformAdmin) return json({ error: 'forbidden_admin_only' }, 403);
 
   // ---- Body ----
   let body: { provider?: string; root_folder_id?: string; folder_name?: string };

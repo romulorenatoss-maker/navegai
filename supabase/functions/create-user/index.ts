@@ -50,14 +50,9 @@ Deno.serve(async (req) => {
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    const { data: roleData, error: roleCheckError } = await adminClient
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", caller.id)
-      .eq("role", "admin")
-      .maybeSingle();
+    const { data: isPlatformAdmin, error: adminCheckError } = await callerClient.rpc("security_is_platform_admin");
 
-    if (roleCheckError || !roleData) {
+    if (adminCheckError || !isPlatformAdmin) {
       return new Response(JSON.stringify({ error: "Apenas administradores podem criar usuários" }), {
         status: 403,
         headers: jsonHeaders,

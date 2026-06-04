@@ -5,6 +5,38 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+type TemplateSection = {
+  id: string;
+  nome: string | null;
+  descricao: string | null;
+  peso: number | null;
+  ordem: number | null;
+  cor: string | null;
+};
+
+type TemplateField = {
+  id: string;
+  section_id: string | null;
+  label: string | null;
+  descricao: string | null;
+  tipo: string | null;
+  ordem: number | null;
+  obrigatorio: boolean | null;
+  peso: number | null;
+  nota_maxima: number | null;
+  impacta_score: boolean | null;
+  criticidade: string | null;
+  gera_contingencia: boolean | null;
+  exige_evidencia: boolean | null;
+  tipo_evidencia: string | null;
+  opcoes: unknown;
+  condicao_visibilidade: unknown;
+  validacao: unknown;
+  formula: string | null;
+  visivel_para: unknown;
+  editavel_por: unknown;
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -37,10 +69,8 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const userId = claimsData.claims.sub;
-      const adminCheck = createClient(supabaseUrl, serviceKey);
-      const { data: isAdminData } = await adminCheck.rpc("is_admin", { _user_id: userId });
-      if (!isAdminData) {
+      const { data: isPlatformAdmin, error: adminCheckError } = await userClient.rpc("security_is_platform_admin");
+      if (adminCheckError || !isPlatformAdmin) {
         return new Response(JSON.stringify({ error: "Forbidden" }), {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -165,7 +195,7 @@ Deno.serve(async (req) => {
           validador_contingencia_profile_id: t.validador_contingencia_profile_id || null,
           validador_contingencia_setor_id: t.validador_contingencia_setor_id || null,
         },
-        sections: (sections || []).map((s: any) => ({
+        sections: ((sections || []) as TemplateSection[]).map((s) => ({
           id: s.id,
           nome: s.nome,
           descricao: s.descricao,
@@ -173,7 +203,7 @@ Deno.serve(async (req) => {
           ordem: s.ordem,
           cor: s.cor,
         })),
-        fields: (fields || []).map((f: any) => ({
+        fields: ((fields || []) as TemplateField[]).map((f) => ({
           id: f.id,
           section_id: f.section_id,
           label: f.label,

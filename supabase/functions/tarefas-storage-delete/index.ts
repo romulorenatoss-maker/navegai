@@ -40,8 +40,8 @@ Deno.serve(async (req) => {
       .from('profiles').select('id').eq('user_id', userRes.user.id).maybeSingle();
     if (!profile) return json({ error: 'profile_not_found' }, 403);
 
-    const { data: isAdminData } = await userClient.rpc('is_admin', { _user_id: userRes.user.id });
-    const isAdmin = !!isAdminData;
+    const { data: isPlatformAdmin } = await userClient.rpc('security_is_platform_admin');
+    const isAdmin = !!isPlatformAdmin;
 
     const admin = createClient(supabaseUrl, serviceKey);
     const { data: anexo, error } = await admin
