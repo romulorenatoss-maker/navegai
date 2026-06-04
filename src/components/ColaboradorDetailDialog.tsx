@@ -121,7 +121,7 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
 
       // Get tipo_servico names
       const tsIds = [...new Set(deduped.map(o => o.tipo_servico_id).filter(Boolean))] as string[];
-      let tsMap: Record<string, string> = {};
+      const tsMap: Record<string, string> = {};
       if (tsIds.length > 0) {
         const { data: tss } = await supabase.from("tipos_servico").select("id, nome").in("id", tsIds);
         tss?.forEach(t => { tsMap[t.id] = t.nome; });
@@ -218,7 +218,7 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
         .in("avaliacao_id", avalIds);
 
       const perguntaIds = [...new Set(respostas?.map(r => r.pergunta_id) || [])];
-      let perguntaMap: Record<string, { pergunta: string; peso: number; ordem: number }> = {};
+      const perguntaMap: Record<string, { pergunta: string; peso: number; ordem: number }> = {};
       if (perguntaIds.length > 0) {
         const { data: perguntas } = await supabase.from("perguntas_avaliacao")
           .select("id, pergunta, peso, ordem").in("id", perguntaIds).order("ordem");
@@ -226,14 +226,14 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
       }
 
       const avaliadorIds = [...new Set(avals.map(a => a.avaliador_id))];
-      let avaliadorNames: Record<string, string> = {};
+      const avaliadorNames: Record<string, string> = {};
       if (avaliadorIds.length > 0) {
         const { data: profiles } = await supabase.from("profiles").select("id, nome").in("id", avaliadorIds);
         profiles?.forEach(p => { avaliadorNames[p.id] = p.nome; });
       }
 
       const taIds = [...new Set(avals.map(a => a.tipo_avaliacao_id).filter(Boolean))] as string[];
-      let taNames: Record<string, string> = {};
+      const taNames: Record<string, string> = {};
       if (taIds.length > 0) {
         const { data: tas } = await supabase.from("tipos_avaliacao").select("id, nome").in("id", taIds);
         tas?.forEach(t => { taNames[t.id] = t.nome; });

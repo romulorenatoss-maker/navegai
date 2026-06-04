@@ -58,7 +58,7 @@ export function usePendingNotifications() {
           });
 
           const allPerguntaIds = [...new Set(Object.values(perguntasByOS).flat())];
-          let perguntaSetorMap: Record<string, string | null> = {};
+          const perguntaSetorMap: Record<string, string | null> = {};
           if (allPerguntaIds.length > 0) {
             const { data: perguntasData } = await supabase
               .from("perguntas_avaliacao")

@@ -34,7 +34,7 @@ export default function MinhasAvaliacoesPendentes() {
         if (mySetorIds.length === 0 && profile.setor_id) mySetorIds = [profile.setor_id];
         if (mySetorIds.length === 0 && !isAdmin) { setPendingList([]); setLoading(false); return; }
 
-        let pendingQuery = supabase
+        const pendingQuery = supabase
           .from("ordens_servico")
           .select("id, numero_os, cliente_nome, tipo_servico_id, status, colaborador_avaliado_id, atendente_id, tecnico_id")
           .in("status", ["aberta", "em_andamento"])
@@ -73,7 +73,7 @@ export default function MinhasAvaliacoesPendentes() {
         });
 
         const allPerguntaIds = [...new Set(Object.values(perguntasByOS).flat())];
-        let perguntaSetorMap: Record<string, string | null> = {};
+        const perguntaSetorMap: Record<string, string | null> = {};
         if (allPerguntaIds.length > 0) {
           const { data: perguntasData } = await supabase
             .from("perguntas_avaliacao")
